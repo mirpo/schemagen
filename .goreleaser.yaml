@@ -1,0 +1,66 @@
+version: 2
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - GO111MODULE=on
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+      - -tags=netgo
+    ldflags:
+      - "-s"
+      - "-w"
+      - "-X github.com/mirpo/schemagen/cmd.Version={{ .Version }}"
+      - "-X github.com/mirpo/schemagen/cmd.Commit={{ .ShortCommit }}"
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: "./main.go"
+
+archives:
+  - format: tar.gz
+    files:
+      - README.md
+      - LICENSE
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+release:
+  prerelease: auto
+
+source:
+  enabled: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - "^style:"
+      - "^refactor:"
+      - "^build:"
+      - Merge pull request
+      - Merge branch
+
+brews:
+  - repository:
+      owner: "mirpo"
+      name: "homebrew-tools"
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: "Miroslav Pokrovskii"
+      email: "miroslavpokrovskiy@gmail.com"
+    homepage: "https://github.com/mirpo/schemagen"
+    description: "Fast CLI tool that converts JSON Schema into TypeScript interfaces, Python Pydantic v2 models, and Go structs."
