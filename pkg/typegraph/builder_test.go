@@ -388,7 +388,7 @@ func TestExtractTypeNameFromFilename(t *testing.T) {
 		{
 			name:     "multiple dots",
 			ref:      "config.v2.json",
-			expected: "Config.v2",
+			expected: "ConfigV2",
 		},
 		{
 			name:     "no extension",
@@ -398,7 +398,7 @@ func TestExtractTypeNameFromFilename(t *testing.T) {
 		{
 			name:     "double extension",
 			ref:      "data.schema.json",
-			expected: "Data.schema",
+			expected: "DataSchema",
 		},
 		{
 			name:     "hyphenated",
@@ -413,7 +413,7 @@ func TestExtractTypeNameFromFilename(t *testing.T) {
 		{
 			name:     "mixed naming",
 			ref:      "user_profile-data.v2.json",
-			expected: "UserProfileData.v2",
+			expected: "UserProfileDataV2",
 		},
 		{
 			name:     "just extension",
