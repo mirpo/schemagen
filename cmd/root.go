@@ -7,7 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = "dev"
+var (
+	Version = "dev"
+	Commit  = "none"
+)
 
 // NewRootCmd creates a new root command instance for testing isolation
 func NewRootCmd() *cobra.Command {
