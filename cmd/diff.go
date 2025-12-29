@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/kylelemons/godebug/diff"
 	"github.com/mirpo/schemagen/pkg/compare"
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -23,15 +24,15 @@ Exit codes:
   0 - No differences
   1 - Error during diff
   2 - Differences found`,
+		Example: `  schemagen diff ./schemas --out-ts ./types
+  schemagen diff ./schemas --out-py ./models --no-color`,
 		Args:         cobra.MinimumNArgs(1),
 		RunE:         runDiff,
-		SilenceUsage: true, // Don't show usage on expected errors
+		SilenceUsage: true,
 	}
 
-	// Add shared generation flags
 	AddGenerationFlags(cmd)
-
-	// Add diff-specific flag
+	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 	cmd.Flags().Bool("no-color", false, "Disable colored output")
 
 	return cmd
@@ -41,26 +42,19 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	noColor, _ := cmd.Flags().GetBool("no-color")
 	input := args[0]
 
-	// Disable color if requested
 	if noColor {
 		color.NoColor = true
 	}
 
-	// Get generation flags using shared helper
 	flags := GetGenerationFlags(cmd)
 
-	// Validate at least one output directory is specified
-	if flags.OutTS == "" && flags.OutPY == "" && flags.OutGo == "" {
-		return fmt.Errorf("at least one output directory (--out-ts, --out-py, or --out-go) must be specified")
-	}
-
-	// Run comparison using pkg/compare
+	// Run comparison
 	result, err := compare.Run(&compare.Config{
 		Input: input,
 		Flags: flags,
 	})
 	if err != nil {
-		return fmt.Errorf("diff failed: %w", err)
+		return errors.Wrap(err, "diff failed")
 	}
 
 	// Show diffs if any
@@ -83,20 +77,20 @@ func runDiff(cmd *cobra.Command, args []string) error {
 
 		case compare.StatusModified:
 			color.Yellow("\n~ %s", fileDiff.Path)
-			showUnifiedDiff(fileDiff.OldContent, fileDiff.NewContent, fileDiff.Path)
+			showUnifiedDiff(fileDiff.OldContent, fileDiff.NewContent)
 		}
 	}
 
 	fmt.Println()
 	color.Red("✗ Differences found")
-	return ExitCodeError{
+	return &errors.ExitCodeError{
 		Message: "differences found",
 		Code:    2,
 	}
 }
 
 // showUnifiedDiff shows a unified diff with context lines
-func showUnifiedDiff(old, new, filename string) {
+func showUnifiedDiff(old, new string) {
 	// Use godebug/diff to generate line-by-line diff
 	diffOutput := diff.Diff(old, new)
 

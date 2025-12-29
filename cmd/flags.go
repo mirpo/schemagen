@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/mirpo/schemagen/pkg/config"
+	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +21,7 @@ func AddGenerationFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("disable-timestamp", false, "Disable timestamp in generated file headers")
 
 	// Output strategy flag
-	cmd.Flags().String("output-strategy", "multifile", "Output file strategy: 'bundle' (all in types.*), 'multifile' or 'multi-file' (one per schema), 'bundledeps' or 'bundle-deps' (root + deps)")
+	cmd.Flags().String("output-strategy", "multifile", "Output file strategy: 'bundle', 'multifile', 'bundledeps', 'bundle-per-dir'")
 
 	// TypeScript feature flags
 	cmd.Flags().Bool("ts-unknown-any", false, "Use 'unknown' instead of 'any' for untyped schemas (TypeScript)")
@@ -37,7 +38,7 @@ func AddGenerationFlags(cmd *cobra.Command) {
 	cmd.Flags().String("go-module-path", "", "Go module path for absolute imports (e.g., github.com/org/project)")
 }
 
-// GetGenerationFlags extracts generation flags from a cobra command
+// GetGenerationFlags extracts generation flags from a cobra command.
 func GetGenerationFlags(cmd *cobra.Command) *config.GenerationFlags {
 	flags := &config.GenerationFlags{}
 
@@ -48,7 +49,9 @@ func GetGenerationFlags(cmd *cobra.Command) *config.GenerationFlags {
 	flags.ExtractInline, _ = cmd.Flags().GetBool("extract-inline")
 	flags.DisableHeaders, _ = cmd.Flags().GetBool("disable-headers")
 	flags.DisableTimestamp, _ = cmd.Flags().GetBool("disable-timestamp")
-	flags.OutputStrategy, _ = cmd.Flags().GetString("output-strategy")
+
+	strategyStr, _ := cmd.Flags().GetString("output-strategy")
+	flags.OutputStrategy = output.ParseStrategy(strategyStr)
 
 	flags.TSUnknownAny, _ = cmd.Flags().GetBool("ts-unknown-any")
 	flags.TSAdditionalProperties, _ = cmd.Flags().GetBool("ts-additional-properties")

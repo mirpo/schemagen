@@ -8,7 +8,6 @@ import (
 
 	"github.com/mirpo/schemagen/pkg/config"
 	"github.com/mirpo/schemagen/pkg/generation"
-	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
@@ -19,22 +18,6 @@ type Config struct {
 	Loader      *schema.Loader
 	Flags       *config.GenerationFlags
 	ExistingDir string
-}
-
-// normalizeOutputStrategy converts CLI string input to output.OutputStrategy.
-func normalizeOutputStrategy(strategy string) output.OutputStrategy {
-	switch strategy {
-	case "bundle":
-		return output.StrategyBundle
-	case "multifile", "multi-file":
-		return output.StrategyMultiFile
-	case "bundledeps", "bundle-deps":
-		return output.StrategyBundleDeps
-	case "bundle-per-dir":
-		return output.StrategyBundlePerDir
-	default:
-		return output.StrategyBundle
-	}
 }
 
 // FileStatus represents the status of a file comparison.
@@ -86,13 +69,11 @@ func Run(cfg *Config) (*Result, error) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	strategy := normalizeOutputStrategy(cfg.Flags.OutputStrategy)
-
-	if err := generateAll(tmpDir, schemas, loader, cfg.Flags, strategy); err != nil {
+	if err := generateAll(tmpDir, schemas, loader, cfg.Flags); err != nil {
 		return nil, err
 	}
 
-	diffs, err := compareDirectories(tmpDir, cfg.ExistingDir, cfg.Flags)
+	diffs, err := compareDirectories(tmpDir, cfg.Flags)
 	if err != nil {
 		return nil, fmt.Errorf("comparing directories: %w", err)
 	}
@@ -108,7 +89,6 @@ func generateAll(
 	schemas []*schema.Schema,
 	loader *schema.Loader,
 	flags *config.GenerationFlags,
-	strategy output.OutputStrategy,
 ) error {
 	if flags.OutTS != "" {
 		if err := generation.Run(&generation.Config{
@@ -119,7 +99,7 @@ func generateAll(
 			ExtractInline:    flags.ExtractInline,
 			DisableHeaders:   flags.DisableHeaders,
 			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   strategy,
+			OutputStrategy:   flags.OutputStrategy,
 			TypeScript: &generation.TypeScriptConfig{
 				UnknownAny:           flags.TSUnknownAny,
 				AdditionalProperties: flags.TSAdditionalProperties,
@@ -135,12 +115,13 @@ func generateAll(
 			Compiler:         loader.Compiler(),
 			OutDir:           filepath.Join(tmpDir, "py"),
 			Language:         generation.LanguagePython,
-			ExtractInline:    true,
+			ExtractInline:    flags.ExtractInline,
 			DisableHeaders:   flags.DisableHeaders,
 			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   strategy,
+			OutputStrategy:   flags.OutputStrategy,
 			Python: &generation.PythonConfig{
-				SnakeCaseField: flags.PySnakeCaseField,
+				SnakeCaseField:       flags.PySnakeCaseField,
+				AdditionalProperties: flags.PyAdditionalProperties,
 			},
 		}); err != nil {
 			return fmt.Errorf("python generation failed: %w", err)
@@ -156,7 +137,7 @@ func generateAll(
 			ExtractInline:    flags.ExtractInline,
 			DisableHeaders:   flags.DisableHeaders,
 			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   strategy,
+			OutputStrategy:   flags.OutputStrategy,
 			Go: &generation.GoConfig{
 				PackageName: flags.GoPackageName,
 				UsePointers: flags.GoUsePointers,
@@ -172,7 +153,7 @@ func generateAll(
 }
 
 // compareDirectories compares generated and existing directories.
-func compareDirectories(generatedRoot, existingRoot string, flags *config.GenerationFlags) ([]FileDiff, error) {
+func compareDirectories(generatedRoot string, flags *config.GenerationFlags) ([]FileDiff, error) {
 	var diffs []FileDiff
 
 	type lang struct {

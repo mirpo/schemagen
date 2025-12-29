@@ -3,20 +3,11 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/mirpo/schemagen/pkg/schema"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
-
-// ExitCodeError allows commands to return specific exit codes
-type ExitCodeError struct {
-	Message string
-	Code    int
-}
-
-func (e ExitCodeError) Error() string {
-	return e.Message
-}
 
 func newValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -30,8 +21,11 @@ for pre-commit hooks and CI pipelines.
 Exit codes:
   0 - All schemas valid
   1 - Validation errors found`,
-		Args: cobra.MinimumNArgs(1),
-		RunE: runValidate,
+		Example: `  schemagen validate ./schemas
+  schemagen validate ./api/*.json --format json`,
+		Args:         cobra.MinimumNArgs(1),
+		RunE:         runValidate,
+		SilenceUsage: true,
 	}
 
 	cmd.Flags().String("format", "text", "Output format: text or json")
@@ -48,10 +42,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	schemas, err := loader.Load(inputPath)
 	if err != nil {
 		log.Error().Err(err).Str("input", inputPath).Msg("Schema validation failed")
-		return ExitCodeError{
-			Message: fmt.Sprintf("validation failed: %v", err),
-			Code:    1,
-		}
+		return errors.Wrap(err, "validation failed")
 	}
 
 	log.Info().Int("count", len(schemas)).Msg("All schemas are valid")

@@ -10,6 +10,66 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
+func TestOutputStrategy_Set(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected OutputStrategy
+		wantErr  bool
+	}{
+		// Valid inputs
+		{"bundle", "bundle", StrategyBundle, false},
+		{"multifile", "multifile", StrategyMultiFile, false},
+		{"multi-file", "multi-file", StrategyMultiFile, false},
+		{"bundledeps", "bundledeps", StrategyBundleDeps, false},
+		{"bundle-deps", "bundle-deps", StrategyBundleDeps, false},
+		{"bundle-per-dir", "bundle-per-dir", StrategyBundlePerDir, false},
+
+		// Invalid inputs should error
+		{"invalid", "invalid", "", true},
+		{"empty", "", "", true},
+		{"typo", "bundel", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var s OutputStrategy
+			err := s.Set(tt.input)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid output strategy")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, s)
+			}
+		})
+	}
+}
+
+func TestOutputStrategy_String(t *testing.T) {
+	tests := []struct {
+		strategy OutputStrategy
+		expected string
+	}{
+		{StrategyBundle, "bundle"},
+		{StrategyMultiFile, "multi-file"},
+		{StrategyBundleDeps, "bundle-deps"},
+		{StrategyBundlePerDir, "bundle-per-dir"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.strategy.String())
+		})
+	}
+}
+
+func TestOutputStrategy_Type(t *testing.T) {
+	var s OutputStrategy
+	assert.Equal(t, "strategy", s.Type())
+}
+
 func TestPlanOutput_Bundle(t *testing.T) {
 	graph := &typegraph.Graph{
 		Types: []*typegraph.Type{

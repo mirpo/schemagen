@@ -18,7 +18,7 @@ type GenerationFlags struct {
 	ExtractInline    bool
 	DisableHeaders   bool
 	DisableTimestamp bool
-	OutputStrategy   string
+	OutputStrategy   output.OutputStrategy
 
 	// TypeScript-specific flags
 	TSUnknownAny           bool
@@ -45,7 +45,7 @@ func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *
 		ExtractInline:    f.ExtractInline,
 		DisableHeaders:   f.DisableHeaders,
 		DisableTimestamp: f.DisableTimestamp,
-		OutputStrategy:   normalizeOutputStrategy(f.OutputStrategy),
+		OutputStrategy:   f.OutputStrategy,
 	}
 
 	switch lang {
@@ -60,13 +60,8 @@ func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *
 			AdditionalProperties: f.PyAdditionalProperties,
 		}
 	case generation.LanguageGo:
-		// Use flag values or defaults
-		packageName := f.GoPackageName
-		if packageName == "" {
-			packageName = "models"
-		}
 		cfg.Go = &generation.GoConfig{
-			PackageName: packageName,
+			PackageName: f.GoPackageName,
 			UsePointers: f.GoUsePointers,
 			OmitEmpty:   f.GoOmitEmpty,
 			ModulePath:  f.GoModulePath,
@@ -74,21 +69,4 @@ func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *
 	}
 
 	return cfg
-}
-
-// normalizeOutputStrategy converts CLI string input to output.OutputStrategy constant
-func normalizeOutputStrategy(strategy string) output.OutputStrategy {
-	switch strategy {
-	case "bundle":
-		return output.StrategyBundle
-	case "multifile", "multi-file":
-		return output.StrategyMultiFile
-	case "bundledeps", "bundle-deps":
-		return output.StrategyBundleDeps
-	case "bundle-per-dir":
-		return output.StrategyBundlePerDir
-	default:
-		// Default to bundle if unrecognized
-		return output.StrategyBundle
-	}
 }

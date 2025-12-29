@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +38,7 @@ func TestValidateCommandInvalidFile(t *testing.T) {
 	err := cmd.Execute()
 	require.Error(t, err)
 
-	exitErr, ok := err.(ExitCodeError)
+	exitErr, ok := err.(*errors.ExitCodeError)
 	require.True(t, ok, "Should return ExitCodeError")
 	assert.Equal(t, 1, exitErr.Code, "Should exit with code 1 for validation failure")
 }
@@ -70,7 +71,7 @@ func TestValidateCommandInvalidJSON(t *testing.T) {
 	err = cmd.Execute()
 	require.Error(t, err)
 
-	exitErr, ok := err.(ExitCodeError)
+	exitErr, ok := err.(*errors.ExitCodeError)
 	require.True(t, ok, "Should return ExitCodeError")
 	assert.Equal(t, 1, exitErr.Code, "Should exit with code 1 for validation error")
 }
@@ -109,7 +110,7 @@ func TestValidateCommandMultipleFilesWithErrors(t *testing.T) {
 	err = cmd.Execute()
 	require.Error(t, err)
 
-	exitErr, ok := err.(ExitCodeError)
+	exitErr, ok := err.(*errors.ExitCodeError)
 	require.True(t, ok, "Should return ExitCodeError")
 	assert.Equal(t, 1, exitErr.Code, "Should exit with code 1 for validation errors")
 }

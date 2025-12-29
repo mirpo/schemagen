@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mirpo/schemagen/pkg/compare"
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -21,15 +22,15 @@ Exit codes:
   0 - Files match (no drift)
   1 - Error during verification
   2 - Files don't match (drift detected)`,
+		Example: `  schemagen verify ./schemas --out-ts ./types
+  schemagen verify ./schemas --out-ts ./ts --out-py ./py --quiet`,
 		Args:         cobra.MinimumNArgs(1),
 		RunE:         runVerify,
-		SilenceUsage: true, // Don't show usage on expected errors
+		SilenceUsage: true,
 	}
 
-	// Add shared generation flags
 	AddGenerationFlags(cmd)
-
-	// Add verify-specific flag
+	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 	cmd.Flags().Bool("quiet", false, "Suppress output (only exit codes)")
 
 	return cmd
@@ -38,22 +39,15 @@ Exit codes:
 func runVerify(cmd *cobra.Command, args []string) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	input := args[0]
-
-	// Get generation flags using shared helper
 	flags := GetGenerationFlags(cmd)
 
-	// Validate at least one output directory is specified
-	if flags.OutTS == "" && flags.OutPY == "" && flags.OutGo == "" {
-		return fmt.Errorf("at least one output directory (--out-ts, --out-py, or --out-go) must be specified")
-	}
-
-	// Run comparison using pkg/compare
+	// Run comparison
 	result, err := compare.Run(&compare.Config{
 		Input: input,
 		Flags: flags,
 	})
 	if err != nil {
-		return fmt.Errorf("verification failed: %w", err)
+		return errors.Wrap(err, "verification failed")
 	}
 
 	// Log differences if not quiet
@@ -77,7 +71,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 			fmt.Println("❌ Drift detected! Generated files don't match existing files.")
 			fmt.Println("Run 'schemagen generate' to update generated files.")
 		}
-		return ExitCodeError{
+		return &errors.ExitCodeError{
 			Message: "drift detected",
 			Code:    2,
 		}

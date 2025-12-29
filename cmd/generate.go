@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/mirpo/schemagen/pkg/config"
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/schema"
 	"github.com/rs/zerolog/log"
@@ -18,35 +17,30 @@ func newGenerateCmd() *cobra.Command {
 
 Supports TypeScript interfaces, Python Pydantic v2 models, and Go structs.
 Input can be a single file, directory, or glob pattern.`,
-		Args: cobra.MinimumNArgs(1),
-		RunE: runGenerate,
+		Example: `  schemagen generate ./schemas --out-ts ./types
+  schemagen generate ./api/*.json --out-py ./models --out-go ./pkg/models`,
+		Args:         cobra.MinimumNArgs(1),
+		RunE:         runGenerate,
+		SilenceUsage: true,
 	}
 
-	// Add shared generation flags
 	AddGenerationFlags(cmd)
+	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 
 	return cmd
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
 	input := args[0]
-
-	// Get flags using shared helper
 	flags := GetGenerationFlags(cmd)
 
-	// Need at least one output
-	if flags.OutTS == "" && flags.OutPY == "" && flags.OutGo == "" {
-		log.Warn().Msg("No output specified. Use --out-ts, --out-py, and/or --out-go")
-		return nil
-	}
-
-	// Load schemas using new pkg/schema loader
+	// Load schemas
 	log.Info().Str("input", input).Msg("Loading schemas")
 	loader := schema.NewLoader()
 	schemas, err := loader.Load(input)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load schemas")
-		return fmt.Errorf("loading schemas: %w", err)
+		return errors.Wrap(err, "loading schemas")
 	}
 	log.Info().Int("count", len(schemas)).Msg("Loaded schemas")
 
@@ -55,7 +49,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		cfg := config.ToGenerationConfig(flags, schemas, loader.Compiler(), flags.OutTS, generation.LanguageTypeScript)
 		if err := generation.Run(cfg); err != nil {
 			log.Error().Err(err).Msg("TypeScript generation failed")
-			return fmt.Errorf("generating TypeScript: %w", err)
+			return errors.Wrap(err, "generating TypeScript")
 		}
 		log.Info().Str("dir", flags.OutTS).Msg("TypeScript generation complete")
 	}
@@ -65,7 +59,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		cfg := config.ToGenerationConfig(flags, schemas, loader.Compiler(), flags.OutPY, generation.LanguagePython)
 		if err := generation.Run(cfg); err != nil {
 			log.Error().Err(err).Msg("Python generation failed")
-			return fmt.Errorf("generating Python: %w", err)
+			return errors.Wrap(err, "generating Python")
 		}
 		log.Info().Str("dir", flags.OutPY).Msg("Python generation complete")
 	}
@@ -75,7 +69,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		cfg := config.ToGenerationConfig(flags, schemas, loader.Compiler(), flags.OutGo, generation.LanguageGo)
 		if err := generation.Run(cfg); err != nil {
 			log.Error().Err(err).Msg("Go generation failed")
-			return fmt.Errorf("generating Go: %w", err)
+			return errors.Wrap(err, "generating Go")
 		}
 		log.Info().Str("dir", flags.OutGo).Msg("Go generation complete")
 	}
