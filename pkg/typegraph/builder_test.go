@@ -1,6 +1,7 @@
 package typegraph
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/kaptinlin/jsonschema"
@@ -311,7 +312,7 @@ func TestNormalizeRefPath(t *testing.T) {
 		{
 			name:             "multiple slashes",
 			ref:              "///settings.json",
-			expectedVariants: []string{"///settings.json", "/settings.json"},
+			expectedVariants: []string{"///settings.json", filepath.Clean("///settings.json")},
 		},
 		{
 			name:             "trailing slash",
