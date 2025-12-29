@@ -85,7 +85,7 @@ func discoverFromDirectory(root string, extensions []string) ([]DiscoveredSchema
 
 		schemas = append(schemas, DiscoveredSchema{
 			AbsolutePath: path,
-			RelativePath: rel,
+			RelativePath: filepath.ToSlash(rel),
 			SchemaRoot:   root,
 		})
 		return nil

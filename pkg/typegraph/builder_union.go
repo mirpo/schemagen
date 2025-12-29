@@ -4,8 +4,8 @@ import (
 	"github.com/kaptinlin/jsonschema"
 )
 
-// buildUnion builds a union type from a schema with anyOf/oneOf.
-func (b *Builder) buildUnion(typ *Type, schema *jsonschema.Schema) error {
+// BuildUnion builds a union type from a schema with anyOf/oneOf (implements TypeBuilder).
+func (b *Builder) BuildUnion(typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindUnion
 
 	// Get union members (anyOf takes precedence over oneOf)
@@ -16,7 +16,7 @@ func (b *Builder) buildUnion(typ *Type, schema *jsonschema.Schema) error {
 
 	typ.UnionMembers = make([]*TypeRef, 0, len(members))
 	for _, memberSchema := range members {
-		memberRef := b.buildTypeRef(memberSchema, "")
+		memberRef := b.BuildTypeRef(memberSchema, "")
 		typ.UnionMembers = append(typ.UnionMembers, memberRef)
 	}
 

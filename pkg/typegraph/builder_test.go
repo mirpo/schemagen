@@ -137,7 +137,7 @@ func TestExtractTypeNameFromRef_ExternalRefs(t *testing.T) {
 			}
 
 			builder := NewBuilder(compiler)
-			result := builder.extractTypeNameFromRef(tt.ref)
+			result := builder.resolver.ExtractTypeName(tt.ref)
 			assert.Equal(t, tt.expectedResult, result)
 		})
 	}
@@ -205,7 +205,7 @@ func TestExtractTypeNameFromRef_InternalDefs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			compiler := jsonschema.NewCompiler()
 			builder := NewBuilder(compiler)
-			result := builder.extractTypeNameFromRef(tt.ref)
+			result := builder.resolver.ExtractTypeName(tt.ref)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -254,10 +254,10 @@ func TestExtractTypeNameFromRef_RootSelfReference(t *testing.T) {
 			compiler.SetSchema("test.json", schema)
 
 			builder := NewBuilder(compiler)
-			// Set the root schema context for the builder
-			builder.currentSchema = schema
+			// Set the root schema context for the resolver
+			builder.resolver.SetCurrentSchema(schema)
 
-			result := builder.extractTypeNameFromRef(tt.ref)
+			result := builder.resolver.ExtractTypeName(tt.ref)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -1539,31 +1539,25 @@ func TestBuild_NullableField(t *testing.T) {
 }
 
 func TestEnsureUniqueTypeName_UniqueBaseName(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	registry := NewTypeRegistry()
 
 	// Add an existing type
-	builder.types = []*Type{
-		{Name: "User"},
-	}
+	registry.Add(&Type{Name: "User"})
 
 	// Request a unique name that doesn't conflict
-	result := builder.ensureUniqueTypeName("Product")
+	result := registry.EnsureUniqueName("Product")
 	assert.Equal(t, "Product", result)
 }
 
 func TestEnsureUniqueTypeName_ConflictingName(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	registry := NewTypeRegistry()
 
 	// Add existing types with conflicting names
-	builder.types = []*Type{
-		{Name: "User"},
-		{Name: "User2"},
-	}
+	registry.Add(&Type{Name: "User"})
+	registry.Add(&Type{Name: "User2"})
 
 	// Request "User" which conflicts - should return "User3"
-	result := builder.ensureUniqueTypeName("User")
+	result := registry.EnsureUniqueName("User")
 	assert.Equal(t, "User3", result)
 }
 
@@ -1604,7 +1598,7 @@ func TestMapPrimitiveType_UUID(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "uuid.UUID", result)
 }
 
@@ -1618,7 +1612,7 @@ func TestMapPrimitiveType_Email(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "string", result)
 }
 
@@ -1632,7 +1626,7 @@ func TestMapPrimitiveType_Int32(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "int32", result)
 }
 
@@ -1646,7 +1640,7 @@ func TestMapPrimitiveType_Float(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "float32", result)
 }
 
@@ -1663,7 +1657,7 @@ func TestBuildTypeRef_ConstValue(t *testing.T) {
 		},
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.Equal(t, KindEnum, ref.Kind)
 	assert.Equal(t, "string", ref.GoType)
@@ -1682,16 +1676,16 @@ func TestBuildTypeRef_InlineEnumExtraction(t *testing.T) {
 	}
 
 	// Call buildTypeRef with a field name so it extracts
-	ref := builder.buildTypeRef(schema, "status")
+	ref := builder.BuildTypeRef(schema, "status")
 
 	// Should extract to a separate type and return a ref
 	assert.Equal(t, KindRef, ref.Kind)
 	assert.Equal(t, "Status", ref.TypeName)
 
 	// Check that a new type was added to builder
-	assert.Len(t, builder.types, 1)
-	assert.Equal(t, "Status", builder.types[0].Name)
-	assert.Equal(t, KindEnum, builder.types[0].Kind)
+	assert.Len(t, builder.registry.All(), 1)
+	assert.Equal(t, "Status", builder.registry.All()[0].Name)
+	assert.Equal(t, KindEnum, builder.registry.All()[0].Kind)
 }
 
 func TestDeriveTypeName_TitleAlreadyPascalCase(t *testing.T) {
@@ -1703,7 +1697,7 @@ func TestDeriveTypeName_TitleAlreadyPascalCase(t *testing.T) {
 		Title: &title,
 	}
 
-	result := builder.deriveTypeName(schema, "")
+	result := builder.resolver.DeriveTypeName(schema, "")
 	assert.Equal(t, "UserProfile", result)
 }
 
@@ -1716,7 +1710,7 @@ func TestDeriveTypeName_TitleNeedsPascalCase(t *testing.T) {
 		Title: &title,
 	}
 
-	result := builder.deriveTypeName(schema, "")
+	result := builder.resolver.DeriveTypeName(schema, "")
 	assert.Equal(t, "UserProfile", result)
 }
 
@@ -1728,7 +1722,7 @@ func TestDeriveTypeName_FromURI(t *testing.T) {
 		// No title
 	}
 
-	result := builder.deriveTypeName(schema, "payloads/subscribe.json")
+	result := builder.resolver.DeriveTypeName(schema, "payloads/subscribe.json")
 	assert.Equal(t, "Subscribe", result)
 }
 
@@ -1740,7 +1734,7 @@ func TestDeriveTypeName_NoTitleNoURI(t *testing.T) {
 		// No title
 	}
 
-	result := builder.deriveTypeName(schema, "")
+	result := builder.resolver.DeriveTypeName(schema, "")
 	assert.Equal(t, "Unknown", result)
 }
 
@@ -1748,14 +1742,9 @@ func TestGetOrderedPropertyNames_WithCustomOrder(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
 	builder := NewBuilder(compiler)
 
-	// Create property order
+	// Create property order (structBuilder is used internally now)
 	order := schema.NewPropertyOrder()
-	// Use reflection to set the order (since orders field is private)
-	// Or we can test this through a full integration test
-	// For now, let's create a simpler test
-
-	// Set currentOrder on builder
-	builder.currentOrder = order
+	builder.structBuilder.SetCurrentOrder(order)
 
 	properties := jsonschema.SchemaMap{
 		"zebra": &jsonschema.Schema{},
@@ -1781,7 +1770,7 @@ func TestBuildTypeRef_OneOf(t *testing.T) {
 		},
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.Equal(t, KindUnion, ref.Kind)
 	assert.Len(t, ref.UnionMembers, 2)
@@ -1799,7 +1788,7 @@ func TestBuildTypeRef_ArrayWithItems(t *testing.T) {
 		},
 	}
 
-	ref := builder.buildTypeRef(schema, "tags")
+	ref := builder.BuildTypeRef(schema, "tags")
 
 	assert.Equal(t, KindArray, ref.Kind)
 	assert.NotNil(t, ref.ItemType)
@@ -1815,7 +1804,7 @@ func TestBuildTypeRef_ObjectWithoutProperties(t *testing.T) {
 		Type: []string{"object"},
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.Equal(t, KindMap, ref.Kind)
 	assert.NotNil(t, ref.ValueType)
@@ -1829,12 +1818,12 @@ func TestExtractDefinition_PrimitiveType(t *testing.T) {
 		Type: []string{"string"},
 	}
 
-	err := builder.extractDefinition("CustomString", schema)
+	err := builder.walker.ExtractDefinition("CustomString", schema)
 
 	assert.NoError(t, err)
-	assert.Len(t, builder.types, 1)
-	assert.Equal(t, "CustomString", builder.types[0].Name)
-	assert.Equal(t, KindPrimitive, builder.types[0].Kind)
+	assert.Len(t, builder.registry.All(), 1)
+	assert.Equal(t, "CustomString", builder.registry.All()[0].Name)
+	assert.Equal(t, KindPrimitive, builder.registry.All()[0].Kind)
 }
 
 func TestGetDescription_WithDescription(t *testing.T) {
@@ -1864,7 +1853,7 @@ func TestBuildTypeRef_PrimitiveWithFormat(t *testing.T) {
 		Format: &format,
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.Equal(t, KindPrimitive, ref.Kind)
 	assert.Equal(t, "string", ref.GoType)
@@ -1880,7 +1869,7 @@ func TestBuildTypeRef_WithRef(t *testing.T) {
 		Ref: "#/$defs/MyType",
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	// Should create a reference
 	assert.Equal(t, KindRef, ref.Kind)
@@ -1918,11 +1907,11 @@ func TestProcessSchema_WithDefs(t *testing.T) {
 	}
 
 	builder := NewBuilder(compiler)
-	err = builder.processSchema(testSchema)
+	err = builder.walker.Process(testSchema)
 
 	assert.NoError(t, err)
 	// Should have SubType from $defs + Root
-	assert.GreaterOrEqual(t, len(builder.types), 2)
+	assert.GreaterOrEqual(t, len(builder.registry.All()), 2)
 }
 
 func TestExtractInlineObjectType(t *testing.T) {
@@ -1964,7 +1953,7 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 		Required: []string{"name"},
 	}
 
-	fields := builder.buildFieldsFromProperties(schema, "")
+	fields := builder.BuildFieldsFromProperties(schema, "")
 
 	assert.Len(t, fields, 2)
 	// Should be alphabetically ordered
@@ -1983,7 +1972,7 @@ func TestBuildTypeRef_NullableType(t *testing.T) {
 		Type: []string{"string", "null"},
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.True(t, ref.Nullable)
 	assert.Equal(t, KindPrimitive, ref.Kind)
@@ -1998,7 +1987,7 @@ func TestBuildTypeRef_ArrayWithoutItems(t *testing.T) {
 		Type: []string{"array"},
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.Equal(t, KindArray, ref.Kind)
 	assert.NotNil(t, ref.ItemType)
@@ -2018,7 +2007,7 @@ func TestBuildTypeRef_MapWithTypedAdditionalProperties(t *testing.T) {
 		},
 	}
 
-	ref := builder.buildTypeRef(schema, "")
+	ref := builder.BuildTypeRef(schema, "")
 
 	assert.Equal(t, KindMap, ref.Kind)
 	assert.NotNil(t, ref.ValueType)
@@ -2035,7 +2024,7 @@ func TestBuildTypeRef_InlineEnumNoExtraction(t *testing.T) {
 		Enum: []interface{}{"option1", "option2", "option3"},
 	}
 
-	ref := builder.buildTypeRef(schema, "status")
+	ref := builder.BuildTypeRef(schema, "status")
 
 	// Should remain inline
 	assert.Equal(t, KindEnum, ref.Kind)
@@ -2066,7 +2055,7 @@ func TestBuildStruct_AllOfWithRef(t *testing.T) {
 		Name: "Extended",
 	}
 
-	err := builder.buildStruct(typ, schema)
+	err := builder.BuildStruct(typ, schema)
 
 	assert.NoError(t, err)
 	assert.Equal(t, KindStruct, typ.Kind)
@@ -2085,7 +2074,7 @@ func TestMapPrimitiveType_DateTimeFormat(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "time.Time", result)
 }
 
@@ -2099,7 +2088,7 @@ func TestMapPrimitiveType_DateFormat(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "time.Time", result)
 }
 
@@ -2113,7 +2102,7 @@ func TestMapPrimitiveType_Int64Format(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "int64", result)
 }
 
@@ -2127,7 +2116,7 @@ func TestMapPrimitiveType_DoubleFormat(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "float64", result)
 }
 
@@ -2141,7 +2130,7 @@ func TestMapPrimitiveType_TimeFormat(t *testing.T) {
 		Format: &format,
 	}
 
-	result := builder.mapPrimitiveType(schema)
+	result := builder.MapPrimitiveType(schema)
 	assert.Equal(t, "string", result)
 }
 
@@ -2196,7 +2185,7 @@ func TestMapPrimitiveType_AllFormats(t *testing.T) {
 				schema.Format = &tt.format
 			}
 
-			result := builder.mapPrimitiveType(schema)
+			result := builder.MapPrimitiveType(schema)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -2221,7 +2210,7 @@ func TestBuildStruct_WithAdditionalProperties(t *testing.T) {
 		Name: "TestType",
 	}
 
-	err := builder.buildStruct(typ, schema)
+	err := builder.BuildStruct(typ, schema)
 
 	assert.NoError(t, err)
 	assert.Equal(t, KindStruct, typ.Kind)
@@ -2305,7 +2294,7 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			builder := NewBuilder(compiler)
 
 			schema := tt.setupSchema()
-			ref := builder.buildTypeRef(schema, tt.fieldName)
+			ref := builder.BuildTypeRef(schema, tt.fieldName)
 
 			assert.Equal(t, tt.expectKind, ref.Kind)
 			if tt.expectChecks != nil {
@@ -2624,7 +2613,7 @@ func TestBuildUnion(t *testing.T) {
 			Name: "UnionNullable",
 		}
 
-		err := builder.buildUnion(typ, schema)
+		err := builder.BuildUnion(typ, schema)
 		assert.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 3)
@@ -2643,7 +2632,7 @@ func TestBuildUnion(t *testing.T) {
 			Name: "SimpleUnion",
 		}
 
-		err := builder.buildUnion(typ, schema)
+		err := builder.BuildUnion(typ, schema)
 		assert.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 2)
@@ -2670,11 +2659,11 @@ func TestProcessSchema_Union(t *testing.T) {
 		Compiled: compiled,
 	}
 
-	err := builder.processSchema(s)
+	err := builder.walker.Process(s)
 	assert.NoError(t, err)
-	assert.Len(t, builder.types, 1)
+	assert.Len(t, builder.registry.All(), 1)
 
-	typ := builder.types[0]
+	typ := builder.registry.All()[0]
 	assert.Equal(t, "UnionNullable", typ.Name)
 	assert.Equal(t, KindUnion, typ.Kind)
 	assert.Len(t, typ.UnionMembers, 3)
