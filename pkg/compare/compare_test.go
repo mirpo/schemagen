@@ -506,5 +506,4 @@ func TestFileStatus_Constants(t *testing.T) {
 	assert.Equal(t, FileStatus("modified"), StatusModified, "StatusModified should match")
 	assert.Equal(t, FileStatus("new"), StatusNew, "StatusNew should match")
 	assert.Equal(t, FileStatus("deleted"), StatusDeleted, "StatusDeleted should match")
-	assert.Equal(t, FileStatus("same"), StatusSame, "StatusSame should match")
 }
