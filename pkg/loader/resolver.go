@@ -5,165 +5,177 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
+/*
+Public types
+*/
 type ExternalRef struct {
 	FilePath string
 	Fragment string
 }
 
+/*
+Extract external $ref references
+*/
 func ExtractExternalRefs(schemaPath string) ([]ExternalRef, error) {
 	data, err := os.ReadFile(schemaPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read schema file: %w", err)
 	}
 
-	var schema map[string]interface{}
-	if err := json.Unmarshal(data, &schema); err != nil {
+	var root any
+	if err := json.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("failed to parse schema: %w", err)
 	}
 
-	basePath := filepath.Dir(schemaPath)
-	refs := make(map[string]ExternalRef)
+	base := filepath.Dir(schemaPath)
+	refs := map[string]ExternalRef{}
 
-	extractRefsRecursive(schema, basePath, refs)
+	extractRefsRecursive(root, base, refs)
 
-	result := make([]ExternalRef, 0, len(refs))
-	for _, ref := range refs {
-		result = append(result, ref)
+	out := make([]ExternalRef, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, r)
 	}
 
-	return result, nil
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].FilePath == out[j].FilePath {
+			return out[i].Fragment < out[j].Fragment
+		}
+		return out[i].FilePath < out[j].FilePath
+	})
+
+	return out, nil
 }
 
-func extractRefsRecursive(node interface{}, basePath string, refs map[string]ExternalRef) {
+func extractRefsRecursive(node any, basePath string, acc map[string]ExternalRef) {
 	switch v := node.(type) {
-	case map[string]interface{}:
-		if refValue, ok := v["$ref"]; ok {
-			if refStr, ok := refValue.(string); ok {
-				if ref := parseRef(refStr, basePath); ref != nil {
-					key := ref.FilePath
-					if ref.Fragment != "" {
-						key = ref.FilePath + "#" + ref.Fragment
-					}
-					refs[key] = *ref
+	case map[string]any:
+		if raw, ok := v["$ref"]; ok {
+			if s, ok := raw.(string); ok {
+				if ref := parseRef(s, basePath); ref != nil {
+					key := ref.FilePath + "#" + ref.Fragment
+					acc[key] = *ref
 				}
 			}
 		}
-
-		for _, value := range v {
-			extractRefsRecursive(value, basePath, refs)
+		for _, val := range v {
+			extractRefsRecursive(val, basePath, acc)
 		}
 
-	case []interface{}:
+	case []any:
 		for _, item := range v {
-			extractRefsRecursive(item, basePath, refs)
+			extractRefsRecursive(item, basePath, acc)
 		}
 	}
 }
 
-func parseRef(refStr string, basePath string) *ExternalRef {
+func parseRef(refStr, basePath string) *ExternalRef {
 	if strings.HasPrefix(refStr, "#") {
 		return nil
 	}
 
-	parts := strings.SplitN(refStr, "#", 2)
-	filePart := parts[0]
-	fragment := ""
-	if len(parts) > 1 {
-		fragment = parts[1]
-	}
-
-	if filePart == "" {
+	file, frag, _ := strings.Cut(refStr, "#")
+	if file == "" {
 		return nil
 	}
 
-	absPath, err := ResolveRefPath(filePart, basePath)
+	abs, err := ResolveRefPath(file, basePath)
 	if err != nil {
 		return nil
 	}
 
 	return &ExternalRef{
-		FilePath: absPath,
-		Fragment: fragment,
+		FilePath: abs,
+		Fragment: frag,
 	}
 }
 
-func ResolveRefPath(refPath string, basePath string) (string, error) {
+func ResolveRefPath(refPath, basePath string) (string, error) {
 	if filepath.IsAbs(refPath) {
 		return filepath.Clean(refPath), nil
 	}
 
-	fullPath := filepath.Join(basePath, refPath)
-	absPath, err := filepath.Abs(fullPath)
+	full := filepath.Join(basePath, refPath)
+	abs, err := filepath.Abs(full)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve ref path: %w", err)
 	}
-
-	return filepath.Clean(absPath), nil
+	return filepath.Clean(abs), nil
 }
 
+/*
+Recursive schema loading
+*/
+
 func LoadSchemasRecursive(initialPath string) ([]DiscoveredSchema, error) {
-	absPath, err := filepath.Abs(initialPath)
+	abs, err := filepath.Abs(initialPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve initial path: %w", err)
 	}
 
-	info, err := os.Stat(absPath)
+	info, err := os.Stat(abs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat initial path: %w", err)
 	}
 
 	if info.IsDir() {
-		return DiscoverSchemas(DiscoveryOptions{Input: absPath})
+		return DiscoverSchemas(DiscoveryOptions{Input: abs})
 	}
 
-	return loadSingleFileWithDeps(absPath)
+	return loadSingleFileWithDeps(abs)
 }
 
-func loadSingleFileWithDeps(initialPath string) ([]DiscoveredSchema, error) {
-	schemaRoot := filepath.Dir(initialPath)
-	discovered := make(map[string]DiscoveredSchema)
-	queue := []string{initialPath}
-	processed := make(map[string]bool)
+func loadSingleFileWithDeps(entry string) ([]DiscoveredSchema, error) {
+	root := filepath.Dir(entry)
+
+	queue := []string{entry}
+	seen := map[string]bool{}
+	out := map[string]DiscoveredSchema{}
 
 	for len(queue) > 0 {
-		current := queue[0]
+		cur := queue[0]
 		queue = queue[1:]
 
-		if processed[current] {
+		if seen[cur] {
 			continue
 		}
-		processed[current] = true
+		seen[cur] = true
 
-		relPath, err := filepath.Rel(schemaRoot, current)
+		rel, err := filepath.Rel(root, cur)
 		if err != nil {
-			relPath = filepath.Base(current)
+			rel = filepath.Base(cur)
 		}
 
-		discovered[current] = DiscoveredSchema{
-			AbsolutePath: current,
-			RelativePath: relPath,
-			SchemaRoot:   schemaRoot,
+		out[cur] = DiscoveredSchema{
+			AbsolutePath: cur,
+			RelativePath: rel,
+			SchemaRoot:   root,
 		}
 
-		refs, err := ExtractExternalRefs(current)
+		refs, err := ExtractExternalRefs(cur)
 		if err != nil {
-			continue
+			continue // tolerate broken schemas
 		}
 
-		for _, ref := range refs {
-			if !processed[ref.FilePath] {
-				queue = append(queue, ref.FilePath)
+		for _, r := range refs {
+			if !seen[r.FilePath] {
+				queue = append(queue, r.FilePath)
 			}
 		}
 	}
 
-	result := make([]DiscoveredSchema, 0, len(discovered))
-	for _, schema := range discovered {
-		result = append(result, schema)
+	result := make([]DiscoveredSchema, 0, len(out))
+	for _, s := range out {
+		result = append(result, s)
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].RelativePath < result[j].RelativePath
+	})
 
 	return result, nil
 }

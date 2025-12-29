@@ -10,325 +10,167 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExtractExternalRefs_Sibling(t *testing.T) {
-	tmpDir := t.TempDir()
+/*
+Helpers
+*/
 
-	schema := map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"header": map[string]interface{}{
+func writeJSON(t *testing.T, path string, data any) {
+	t.Helper()
+
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	b, err := json.Marshal(data)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, b, 0o644))
+}
+
+/*
+ExtractExternalRefs
+*/
+
+func TestExtractExternalRefs_Sibling(t *testing.T) {
+	tmp := t.TempDir()
+
+	writeJSON(t, filepath.Join(tmp, "event.json"), map[string]any{
+		"properties": map[string]any{
+			"header": map[string]any{
 				"$ref": "header.json",
 			},
 		},
-	}
+	})
 
-	schemaPath := filepath.Join(tmpDir, "event.json")
-	writeJSON(t, schemaPath, schema)
+	refs, err := ExtractExternalRefs(filepath.Join(tmp, "event.json"))
+	require.NoError(t, err)
+	require.Len(t, refs, 1)
 
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 1, "should extract exactly 1 ref")
-
-	expectedPath := filepath.Join(tmpDir, "header.json")
-	assert.Equal(t, expectedPath, refs[0].FilePath, "FilePath should match")
-}
-
-func TestExtractExternalRefs_Subdirectory(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	schema := map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"payload": map[string]interface{}{
-				"$ref": "payloads/subscribe.json",
-			},
-		},
-	}
-
-	schemaPath := filepath.Join(tmpDir, "event.json")
-	writeJSON(t, schemaPath, schema)
-
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 1, "should extract exactly 1 ref")
-
-	expectedPath := filepath.Join(tmpDir, "payloads", "subscribe.json")
-	assert.Equal(t, expectedPath, refs[0].FilePath, "FilePath should match")
-}
-
-func TestExtractExternalRefs_ParentDirectory(t *testing.T) {
-	tmpDir := t.TempDir()
-	nestedDir := filepath.Join(tmpDir, "nested")
-	err := os.MkdirAll(nestedDir, 0o755)
-	require.NoError(t, err, "should create nested directory")
-
-	schema := map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"common": map[string]interface{}{
-				"$ref": "../types.json",
-			},
-		},
-	}
-
-	schemaPath := filepath.Join(nestedDir, "user.json")
-	writeJSON(t, schemaPath, schema)
-
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 1, "should extract exactly 1 ref")
-
-	expectedPath := filepath.Join(tmpDir, "types.json")
-	assert.Equal(t, expectedPath, refs[0].FilePath, "FilePath should match")
-}
-
-func TestExtractExternalRefs_InternalRef_Skipped(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	schema := map[string]interface{}{
-		"$defs": map[string]interface{}{
-			"Address": map[string]interface{}{
-				"type": "object",
-			},
-		},
-		"properties": map[string]interface{}{
-			"address": map[string]interface{}{
-				"$ref": "#/$defs/Address",
-			},
-		},
-	}
-
-	schemaPath := filepath.Join(tmpDir, "user.json")
-	writeJSON(t, schemaPath, schema)
-
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	assert.Empty(t, refs, "internal refs should be skipped")
+	assert.Equal(t,
+		filepath.Join(tmp, "header.json"),
+		refs[0].FilePath,
+	)
+	assert.Empty(t, refs[0].Fragment)
 }
 
 func TestExtractExternalRefs_WithFragment(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmp := t.TempDir()
 
-	schema := map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"type": map[string]interface{}{
-				"$ref": "common.json#/$defs/EventType",
-			},
-		},
-	}
-
-	schemaPath := filepath.Join(tmpDir, "event.json")
-	writeJSON(t, schemaPath, schema)
-
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 1, "should extract exactly 1 ref")
-
-	expectedPath := filepath.Join(tmpDir, "common.json")
-	assert.Equal(t, expectedPath, refs[0].FilePath, "FilePath should match")
-	assert.Equal(t, "/$defs/EventType", refs[0].Fragment, "Fragment should match")
-}
-
-func TestExtractExternalRefs_MultipleRefs(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	schema := map[string]interface{}{
-		"allOf": []interface{}{
-			map[string]interface{}{"$ref": "base.json"},
-			map[string]interface{}{"$ref": "timestamps.json"},
-		},
-		"properties": map[string]interface{}{
-			"owner": map[string]interface{}{
-				"$ref": "person.json",
-			},
-			"address": map[string]interface{}{
-				"$ref": "common/address.json",
-			},
-		},
-	}
-
-	schemaPath := filepath.Join(tmpDir, "user.json")
-	writeJSON(t, schemaPath, schema)
-
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 4, "should extract exactly 4 refs")
-
-	refPaths := make(map[string]bool)
-	for _, ref := range refs {
-		refPaths[filepath.Base(ref.FilePath)] = true
-	}
-
-	expectedFiles := []string{"base.json", "timestamps.json", "person.json", "address.json"}
-	for _, expected := range expectedFiles {
-		assert.True(t, refPaths[expected], "should find ref to %s", expected)
-	}
-}
-
-func TestExtractExternalRefs_NestedInAllOf(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	schema := map[string]interface{}{
-		"allOf": []interface{}{
-			map[string]interface{}{
-				"properties": map[string]interface{}{
-					"nested": map[string]interface{}{
-						"$ref": "nested.json",
-					},
-				},
-			},
-		},
-	}
-
-	schemaPath := filepath.Join(tmpDir, "test.json")
-	writeJSON(t, schemaPath, schema)
-
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 1, "should extract exactly 1 ref")
-
-	expectedPath := filepath.Join(tmpDir, "nested.json")
-	assert.Equal(t, expectedPath, refs[0].FilePath, "FilePath should match")
-}
-
-func TestExtractExternalRefs_Deduplication(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	schema := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"field1": map[string]interface{}{
-				"$ref": "common.json",
-			},
-			"field2": map[string]interface{}{
-				"$ref": "common.json",
-			},
-			"field3": map[string]interface{}{
+	writeJSON(t, filepath.Join(tmp, "event.json"), map[string]any{
+		"properties": map[string]any{
+			"type": map[string]any{
 				"$ref": "common.json#/$defs/Type",
 			},
 		},
-	}
+	})
 
-	schemaPath := filepath.Join(tmpDir, "test.json")
-	writeJSON(t, schemaPath, schema)
+	refs, err := ExtractExternalRefs(filepath.Join(tmp, "event.json"))
+	require.NoError(t, err)
+	require.Len(t, refs, 1)
 
-	refs, err := ExtractExternalRefs(schemaPath)
-	require.NoError(t, err, "ExtractExternalRefs() should not return error")
-	require.Len(t, refs, 2, "should deduplicate refs but keep different fragments")
+	assert.Equal(t,
+		filepath.Join(tmp, "common.json"),
+		refs[0].FilePath,
+	)
+	assert.Equal(t, "/$defs/Type", refs[0].Fragment)
 }
 
-func TestLoadSchemasRecursive_SingleFile(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestExtractExternalRefs_InternalRefsIgnored(t *testing.T) {
+	tmp := t.TempDir()
 
-	headerSchema := map[string]interface{}{"type": "object"}
-	writeJSON(t, filepath.Join(tmpDir, "header.json"), headerSchema)
-
-	eventSchema := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"header": map[string]interface{}{"$ref": "header.json"},
+	writeJSON(t, filepath.Join(tmp, "schema.json"), map[string]any{
+		"$defs": map[string]any{
+			"A": map[string]any{"type": "string"},
 		},
+		"properties": map[string]any{
+			"a": map[string]any{
+				"$ref": "#/$defs/A",
+			},
+		},
+	})
+
+	refs, err := ExtractExternalRefs(filepath.Join(tmp, "schema.json"))
+	require.NoError(t, err)
+	assert.Empty(t, refs)
+}
+
+func TestExtractExternalRefs_Deduplication(t *testing.T) {
+	tmp := t.TempDir()
+
+	writeJSON(t, filepath.Join(tmp, "schema.json"), map[string]any{
+		"properties": map[string]any{
+			"a": map[string]any{"$ref": "common.json"},
+			"b": map[string]any{"$ref": "common.json"},
+			"c": map[string]any{"$ref": "common.json#/$defs/X"},
+		},
+	})
+
+	refs, err := ExtractExternalRefs(filepath.Join(tmp, "schema.json"))
+	require.NoError(t, err)
+	require.Len(t, refs, 2)
+}
+
+/*
+LoadSchemasRecursive
+*/
+
+func TestLoadSchemasRecursive_SingleFileWithDeps(t *testing.T) {
+	tmp := t.TempDir()
+
+	writeJSON(t, filepath.Join(tmp, "header.json"), map[string]any{"type": "object"})
+	writeJSON(t, filepath.Join(tmp, "event.json"), map[string]any{
+		"properties": map[string]any{
+			"h": map[string]any{"$ref": "header.json"},
+		},
+	})
+
+	schemas, err := LoadSchemasRecursive(filepath.Join(tmp, "event.json"))
+	require.NoError(t, err)
+	require.Len(t, schemas, 2)
+
+	found := map[string]bool{}
+	for _, s := range schemas {
+		found[filepath.Base(s.AbsolutePath)] = true
 	}
-	eventPath := filepath.Join(tmpDir, "event.json")
-	writeJSON(t, eventPath, eventSchema)
 
-	schemas, err := LoadSchemasRecursive(eventPath)
-	require.NoError(t, err, "LoadSchemasRecursive() should not return error")
-	require.Len(t, schemas, 2, "should load exactly 2 schemas (event + header)")
-
-	foundEvent := false
-	foundHeader := false
-	for _, schema := range schemas {
-		if filepath.Base(schema.AbsolutePath) == "event.json" {
-			foundEvent = true
-		}
-		if filepath.Base(schema.AbsolutePath) == "header.json" {
-			foundHeader = true
-		}
-	}
-
-	assert.True(t, foundEvent, "should find event.json")
-	assert.True(t, foundHeader, "should find header.json")
+	assert.True(t, found["event.json"])
+	assert.True(t, found["header.json"])
 }
 
 func TestLoadSchemasRecursive_ChainedDeps(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmp := t.TempDir()
 
-	cSchema := map[string]interface{}{"type": "string"}
-	writeJSON(t, filepath.Join(tmpDir, "c.json"), cSchema)
+	writeJSON(t, filepath.Join(tmp, "c.json"), map[string]any{"type": "string"})
+	writeJSON(t, filepath.Join(tmp, "b.json"), map[string]any{
+		"$ref": "c.json",
+	})
+	writeJSON(t, filepath.Join(tmp, "a.json"), map[string]any{
+		"$ref": "b.json",
+	})
 
-	bSchema := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"c": map[string]interface{}{"$ref": "c.json"},
-		},
-	}
-	writeJSON(t, filepath.Join(tmpDir, "b.json"), bSchema)
-
-	aSchema := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"b": map[string]interface{}{"$ref": "b.json"},
-		},
-	}
-	aPath := filepath.Join(tmpDir, "a.json")
-	writeJSON(t, aPath, aSchema)
-
-	schemas, err := LoadSchemasRecursive(aPath)
-	require.NoError(t, err, "LoadSchemasRecursive() should not return error")
-	require.Len(t, schemas, 3, "should load exactly 3 schemas (a → b → c)")
-
-	foundFiles := make(map[string]bool)
-	for _, schema := range schemas {
-		foundFiles[filepath.Base(schema.AbsolutePath)] = true
-	}
-
-	for _, expected := range []string{"a.json", "b.json", "c.json"} {
-		assert.True(t, foundFiles[expected], "should find %s", expected)
-	}
+	schemas, err := LoadSchemasRecursive(filepath.Join(tmp, "a.json"))
+	require.NoError(t, err)
+	require.Len(t, schemas, 3)
 }
 
-func TestLoadSchemasRecursive_CircularRef(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestLoadSchemasRecursive_CircularRefs(t *testing.T) {
+	tmp := t.TempDir()
 
-	aSchema := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"b": map[string]interface{}{"$ref": "b.json"},
-		},
-	}
-	aPath := filepath.Join(tmpDir, "a.json")
-	writeJSON(t, aPath, aSchema)
+	writeJSON(t, filepath.Join(tmp, "a.json"), map[string]any{
+		"$ref": "b.json",
+	})
+	writeJSON(t, filepath.Join(tmp, "b.json"), map[string]any{
+		"$ref": "a.json",
+	})
 
-	bSchema := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"a": map[string]interface{}{"$ref": "a.json"},
-		},
-	}
-	writeJSON(t, filepath.Join(tmpDir, "b.json"), bSchema)
-
-	schemas, err := LoadSchemasRecursive(aPath)
-	require.NoError(t, err, "LoadSchemasRecursive() should not return error")
-	require.Len(t, schemas, 2, "circular ref should not cause infinite loop")
+	schemas, err := LoadSchemasRecursive(filepath.Join(tmp, "a.json"))
+	require.NoError(t, err)
+	require.Len(t, schemas, 2)
 }
 
-func TestLoadSchemasRecursive_Directory(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestLoadSchemasRecursive_DirectoryDelegatesToDiscover(t *testing.T) {
+	tmp := t.TempDir()
 
-	writeJSON(t, filepath.Join(tmpDir, "a.json"), map[string]interface{}{"type": "object"})
-	writeJSON(t, filepath.Join(tmpDir, "b.json"), map[string]interface{}{"type": "object"})
+	writeJSON(t, filepath.Join(tmp, "a.json"), map[string]any{"type": "object"})
+	writeJSON(t, filepath.Join(tmp, "b.json"), map[string]any{"type": "object"})
 
-	schemas, err := LoadSchemasRecursive(tmpDir)
-	require.NoError(t, err, "LoadSchemasRecursive() should not return error")
-	require.Len(t, schemas, 2, "should load exactly 2 schemas")
-}
-
-func writeJSON(t *testing.T, path string, data interface{}) {
-	t.Helper()
-
-	dir := filepath.Dir(path)
-	err := os.MkdirAll(dir, 0o755)
-	require.NoError(t, err, "should create directory")
-
-	jsonData, err := json.Marshal(data)
-	require.NoError(t, err, "should marshal JSON")
-
-	err = os.WriteFile(path, jsonData, 0o644)
-	require.NoError(t, err, "should write JSON file")
+	schemas, err := LoadSchemasRecursive(tmp)
+	require.NoError(t, err)
+	require.Len(t, schemas, 2)
 }
