@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CyclicRef",
+  "description": "Type with cyclic reference to itself",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier"
+    },
+    "name": {
+      "type": "string"
+    },
+    "parent": {
+      "$ref": "#",
+      "description": "Reference to parent node (cyclic)"
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "$ref": "#"
+      },
+      "description": "Child nodes (cyclic)"
+    }
+  },
+  "required": ["id"]
+}

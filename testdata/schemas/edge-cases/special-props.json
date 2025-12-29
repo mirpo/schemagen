@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SpecialProps",
+  "description": "Object with special property names requiring aliases",
+  "type": "object",
+  "properties": {
+    "kebab-case": {
+      "type": "string",
+      "description": "Property with kebab-case name"
+    },
+    "with spaces": {
+      "type": "string",
+      "description": "Property with spaces"
+    },
+    "123numeric": {
+      "type": "integer",
+      "description": "Property starting with number"
+    },
+    "$dollar": {
+      "type": "boolean",
+      "description": "Property starting with dollar"
+    },
+    "class": {
+      "type": "string",
+      "description": "Python reserved keyword"
+    },
+    "from": {
+      "type": "string",
+      "description": "Python reserved keyword"
+    }
+  },
+  "required": ["kebab-case"]
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DescriptionQuotes",
+  "description": "This has \"double quotes\" and '''triple single''' and \"\"\"triple double\"\"\" quotes",
+  "type": "object",
+  "properties": {
+    "field": {
+      "type": "string",
+      "description": "Field with \"quotes\" and \\backslash in description"
+    }
+  }
+}

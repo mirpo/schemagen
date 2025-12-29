@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BlogPost",
+  "description": "Blog post with deeply nested inline types for extraction testing",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "archived"]
+    },
+    "author": {
+      "type": "object",
+      "description": "Inline author object (should be extracted)",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "editor", "contributor"]
+        }
+      },
+      "required": ["name", "email"]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "comments": {
+      "type": "array",
+      "description": "Array of inline comment objects",
+      "items": {
+        "type": "object",
+        "description": "Inline comment object (should be extracted)",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "commenter": {
+            "type": "object",
+            "description": "Nested inline commenter object (should be extracted)",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "required": ["name", "email"]
+          }
+        },
+        "required": ["id", "text", "commenter"]
+      }
+    }
+  },
+  "required": ["id", "title", "status", "author"]
+}

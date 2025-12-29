@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SubscribePayload",
+  "description": "Payload for subscribe event",
+  "type": "object",
+  "properties": {
+    "topic": {
+      "type": "string",
+      "description": "Topic to subscribe to"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Subscription filters",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "qos": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Quality of service level"
+    }
+  },
+  "required": ["topic"]
+}

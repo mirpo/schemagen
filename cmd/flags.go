@@ -1,0 +1,65 @@
+package cmd
+
+import (
+	"github.com/mirpo/schemagen/pkg/config"
+	"github.com/spf13/cobra"
+)
+
+// AddGenerationFlags adds all generation-related flags to a command
+func AddGenerationFlags(cmd *cobra.Command) {
+	// Output directory flags
+	cmd.Flags().String("out-ts", "", "Output directory for TypeScript")
+	cmd.Flags().String("out-py", "", "Output directory for Python")
+	cmd.Flags().String("out-go", "", "Output directory for Go")
+
+	// Type extraction flag
+	cmd.Flags().Bool("extract-inline", false, "Extract inline enums and nested objects to top-level types")
+
+	// Header control flags
+	cmd.Flags().Bool("disable-headers", false, "Disable all generated file headers")
+	cmd.Flags().Bool("disable-timestamp", false, "Disable timestamp in generated file headers")
+
+	// Output strategy flag
+	cmd.Flags().String("output-strategy", "multifile", "Output file strategy: 'bundle' (all in types.*), 'multifile' or 'multi-file' (one per schema), 'bundledeps' or 'bundle-deps' (root + deps)")
+
+	// TypeScript feature flags
+	cmd.Flags().Bool("ts-unknown-any", false, "Use 'unknown' instead of 'any' for untyped schemas (TypeScript)")
+	cmd.Flags().Bool("ts-additional-properties", false, "Add index signatures for additionalProperties (TypeScript)")
+
+	// Python feature flags
+	cmd.Flags().Bool("py-snake-case-field", false, "Convert Python field names to snake_case with JSON alias")
+	cmd.Flags().Bool("py-additional-properties", false, "Add model_config with extra='allow' for additionalProperties (Python)")
+
+	// Go feature flags
+	cmd.Flags().String("go-package", "models", "Go package name for generated files")
+	cmd.Flags().Bool("go-pointers", true, "Use pointers for optional Go fields")
+	cmd.Flags().Bool("go-omit-empty", true, "Add omitempty to optional Go JSON tags")
+	cmd.Flags().String("go-module-path", "", "Go module path for absolute imports (e.g., github.com/org/project)")
+}
+
+// GetGenerationFlags extracts generation flags from a cobra command
+func GetGenerationFlags(cmd *cobra.Command) *config.GenerationFlags {
+	flags := &config.GenerationFlags{}
+
+	flags.OutTS, _ = cmd.Flags().GetString("out-ts")
+	flags.OutPY, _ = cmd.Flags().GetString("out-py")
+	flags.OutGo, _ = cmd.Flags().GetString("out-go")
+
+	flags.ExtractInline, _ = cmd.Flags().GetBool("extract-inline")
+	flags.DisableHeaders, _ = cmd.Flags().GetBool("disable-headers")
+	flags.DisableTimestamp, _ = cmd.Flags().GetBool("disable-timestamp")
+	flags.OutputStrategy, _ = cmd.Flags().GetString("output-strategy")
+
+	flags.TSUnknownAny, _ = cmd.Flags().GetBool("ts-unknown-any")
+	flags.TSAdditionalProperties, _ = cmd.Flags().GetBool("ts-additional-properties")
+
+	flags.PySnakeCaseField, _ = cmd.Flags().GetBool("py-snake-case-field")
+	flags.PyAdditionalProperties, _ = cmd.Flags().GetBool("py-additional-properties")
+
+	flags.GoPackageName, _ = cmd.Flags().GetString("go-package")
+	flags.GoUsePointers, _ = cmd.Flags().GetBool("go-pointers")
+	flags.GoOmitEmpty, _ = cmd.Flags().GetBool("go-omit-empty")
+	flags.GoModulePath, _ = cmd.Flags().GetString("go-module-path")
+
+	return flags
+}

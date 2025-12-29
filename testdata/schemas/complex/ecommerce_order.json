@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EcommerceOrder",
+  "description": "Production-like ecommerce order schema",
+  "$defs": {
+    "Money": {
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "enum": ["USD", "EUR", "GBP", "JPY"] }
+      },
+      "required": ["amount", "currency"]
+    },
+    "Address": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "street": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "zipCode": { "type": "string" },
+        "country": { "type": "string" }
+      },
+      "required": ["name", "street", "city", "country"]
+    },
+    "LineItem": {
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "unitPrice": { "$ref": "#/$defs/Money" },
+        "totalPrice": { "$ref": "#/$defs/Money" }
+      },
+      "required": ["productId", "productName", "quantity", "unitPrice", "totalPrice"]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "orderId": { "type": "string" },
+    "customerId": { "type": "string" },
+    "orderDate": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "processing", "shipped", "delivered", "cancelled"]
+    },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/LineItem" },
+      "minItems": 1
+    },
+    "shippingAddress": { "$ref": "#/$defs/Address" },
+    "billingAddress": { "$ref": "#/$defs/Address" },
+    "subtotal": { "$ref": "#/$defs/Money" },
+    "tax": { "$ref": "#/$defs/Money" },
+    "shipping": { "$ref": "#/$defs/Money" },
+    "total": { "$ref": "#/$defs/Money" }
+  },
+  "required": [
+    "orderId",
+    "customerId",
+    "orderDate",
+    "status",
+    "items",
+    "shippingAddress",
+    "total"
+  ]
+}

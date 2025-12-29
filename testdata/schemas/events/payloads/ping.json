@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PingPayload",
+  "description": "Payload for ping event",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Ping timestamp"
+    },
+    "ttl": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Time to live in milliseconds"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Ping sequence number"
+    }
+  },
+  "required": ["timestamp", "ttl"]
+}

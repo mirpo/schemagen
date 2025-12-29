@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Simple
+description: A simple test schema
+type: object
+properties:
+  name:
+    type: string
+    description: The name field
+  value:
+    type: integer
+    description: The numeric value
+required:
+  - name

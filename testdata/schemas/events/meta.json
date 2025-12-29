@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventMetadata",
+  "description": "Event metadata for tracing and correlation",
+  "type": "object",
+  "properties": {
+    "correlationId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation ID for tracking related events"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User who triggered the event"
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "ttl": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Time to live in seconds"
+    }
+  },
+  "required": ["correlationId"]
+}

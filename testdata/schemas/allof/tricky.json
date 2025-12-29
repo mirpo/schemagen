@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MegaTest",
+  "description": "One schema to test everything",
+  "$defs": {
+    "IdObject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "Timestamped": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "createdAt"
+      ]
+    },
+    "Person": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "next": {
+          "$ref": "#/$defs/Node"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "#/$defs/IdObject"
+    },
+    {
+      "$ref": "#/$defs/Timestamped"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "owner": {
+          "$ref": "#/$defs/Person"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "paused",
+            {
+              "complex": true
+            }
+          ]
+        }
+      },
+      "required": [
+        "tags",
+        "status"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "active",
+            "disabled"
+          ]
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "payload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "A"
+            },
+            "data": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "B"
+            },
+            "data": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ]
+        }
+      ]
+    },
+    "node": {
+      "$ref": "#/$defs/Node"
+    }
+  }
+}

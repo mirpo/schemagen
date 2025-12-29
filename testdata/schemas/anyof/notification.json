@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Notification",
+  "description": "A notification that can be sent via multiple channels",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique notification ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the notification was created"
+    },
+    "channel": {
+      "anyOf": [
+        {
+          "type": "object",
+          "description": "Email channel configuration",
+          "properties": {
+            "type": {"type": "string", "enum": ["email"]},
+            "to": {"type": "string", "format": "email"},
+            "subject": {"type": "string"}
+          },
+          "required": ["type", "to", "subject"]
+        },
+        {
+          "type": "object",
+          "description": "SMS channel configuration",
+          "properties": {
+            "type": {"type": "string", "enum": ["sms"]},
+            "phoneNumber": {"type": "string"},
+            "countryCode": {"type": "string"}
+          },
+          "required": ["type", "phoneNumber"]
+        },
+        {
+          "type": "object",
+          "description": "Push notification configuration",
+          "properties": {
+            "type": {"type": "string", "enum": ["push"]},
+            "deviceId": {"type": "string"},
+            "badge": {"type": "number"}
+          },
+          "required": ["type", "deviceId"]
+        }
+      ],
+      "description": "Delivery channel configuration (email, SMS, or push)"
+    },
+    "content": {
+      "anyOf": [
+        {
+          "type": "object",
+          "description": "Plain text content",
+          "properties": {
+            "format": {"type": "string", "enum": ["text"]},
+            "body": {"type": "string"}
+          },
+          "required": ["format", "body"]
+        },
+        {
+          "type": "object",
+          "description": "HTML content",
+          "properties": {
+            "format": {"type": "string", "enum": ["html"]},
+            "body": {"type": "string"},
+            "css": {"type": "string"}
+          },
+          "required": ["format", "body"]
+        }
+      ],
+      "description": "Notification content (text or HTML)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "urgent"],
+      "description": "Notification priority level"
+    }
+  },
+  "required": ["id", "timestamp", "channel", "content"]
+}

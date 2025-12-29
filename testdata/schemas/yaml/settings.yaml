@@ -1,0 +1,13 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Settings
+description: Application settings
+type: object
+properties:
+  debug:
+    type: boolean
+  logLevel:
+    type: string
+    enum: [debug, info, warn, error]
+  maxConnections:
+    type: integer
+    minimum: 1

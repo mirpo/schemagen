@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Organization",
+  "description": "Organization schema with chained internal references",
+  "$defs": {
+    "Country": {
+      "type": "object",
+      "description": "Country information",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string",
+          "enum": ["US", "CA", "UK", "FR", "DE", "JP"]
+        }
+      },
+      "required": ["name", "code"]
+    },
+    "Address": {
+      "type": "object",
+      "description": "Address with country reference",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "zipCode": {
+          "type": "string"
+        },
+        "country": {
+          "$ref": "#/$defs/Country",
+          "description": "Reference to Country"
+        }
+      },
+      "required": ["street", "city", "country"]
+    },
+    "Office": {
+      "type": "object",
+      "description": "Office with address reference",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "$ref": "#/$defs/Address",
+          "description": "Reference to Address (which references Country)"
+        },
+        "employees": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["name", "address"]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "headquarters": {
+      "$ref": "#/$defs/Office",
+      "description": "Main office (references Office → Address → Country)"
+    },
+    "branches": {
+      "type": "array",
+      "description": "Branch offices (reuses Office type multiple times)",
+      "items": {
+        "$ref": "#/$defs/Office"
+      }
+    }
+  },
+  "required": ["id", "name", "headquarters"]
+}

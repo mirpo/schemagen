@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EnumComplex",
+  "description": "Enum with complex values (objects/arrays) - all preserved in output",
+  "enum": [
+    "simple",
+    {"complex": true},
+    42,
+    ["array", "value"]
+  ]
+}

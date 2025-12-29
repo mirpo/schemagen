@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event",
+  "description": "Main event schema with external references",
+  "type": "object",
+  "properties": {
+    "header": {
+      "$ref": "header.json",
+      "description": "Event header (external ref without fragment)"
+    },
+    "meta": {
+      "$ref": "meta.json",
+      "description": "Event metadata (external ref without fragment)"
+    },
+    "payload": {
+      "description": "Event payload (varies by event type)",
+      "oneOf": [
+        {
+          "$ref": "payloads/subscribe.json",
+          "description": "Subscribe event payload"
+        },
+        {
+          "$ref": "payloads/unsubscribe.json",
+          "description": "Unsubscribe event payload"
+        },
+        {
+          "$ref": "payloads/ping.json",
+          "description": "Ping event payload"
+        },
+        {
+          "$ref": "payloads/pong.json",
+          "description": "Pong event payload"
+        }
+      ]
+    }
+  },
+  "required": [
+    "header",
+    "meta",
+    "payload"
+  ]
+}

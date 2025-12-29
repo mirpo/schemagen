@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventHeader",
+  "description": "Standard event header with metadata",
+  "$defs": {
+    "EventType": {
+      "type": "string",
+      "enum": ["subscribe", "unsubscribe", "ping", "pong"],
+      "description": "Type of event"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event identifier"
+    },
+    "type": {
+      "$ref": "#/$defs/EventType"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event occurred"
+    },
+    "source": {
+      "type": "string",
+      "format": "uri",
+      "description": "Event source system"
+    }
+  },
+  "required": ["id", "type", "timestamp", "source"]
+}

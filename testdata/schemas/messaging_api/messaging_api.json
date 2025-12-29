@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MessagingAPI",
+  "description": "Real-world messaging API with pagination, errors, and message queue concepts",
+  "$defs": {
+    "Message": {
+      "type": "object",
+      "description": "Message in a queue or topic",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique message identifier"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Message topic or queue name"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Message payload (any structure)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the message was created"
+        },
+        "ttl": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Time to live in seconds"
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of delivery attempts"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "normal", "high", "critical"],
+          "description": "Message priority level"
+        }
+      },
+      "required": ["id", "topic", "payload", "timestamp"]
+    },
+    "Subscription": {
+      "type": "object",
+      "description": "Subscription to a topic",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Topic pattern to subscribe to"
+        },
+        "filters": {
+          "type": "object",
+          "description": "Message filtering rules",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "deliveryMode": {
+          "type": "string",
+          "enum": ["at-most-once", "at-least-once", "exactly-once"],
+          "description": "Delivery guarantee level"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Webhook URL for message delivery"
+        }
+      },
+      "required": ["id", "topic", "deliveryMode"]
+    },
+    "Error": {
+      "type": "object",
+      "description": "API error details",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "field": {
+          "type": "string",
+          "description": "Field that caused the error"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error context"
+        }
+      },
+      "required": ["code", "message"]
+    },
+    "Pagination": {
+      "type": "object",
+      "description": "Pagination information",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Current page number"
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Items per page"
+        },
+        "totalPages": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of pages"
+        },
+        "totalItems": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of items"
+        },
+        "hasNext": {
+          "type": "boolean",
+          "description": "Whether there is a next page"
+        },
+        "hasPrevious": {
+          "type": "boolean",
+          "description": "Whether there is a previous page"
+        }
+      },
+      "required": ["page", "pageSize", "totalPages", "totalItems"]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "messages": {
+      "type": "array",
+      "description": "List of messages",
+      "items": {
+        "$ref": "#/$defs/Message"
+      }
+    },
+    "subscriptions": {
+      "type": "array",
+      "description": "Active subscriptions",
+      "items": {
+        "$ref": "#/$defs/Subscription"
+      }
+    },
+    "pagination": {
+      "$ref": "#/$defs/Pagination"
+    },
+    "errors": {
+      "type": "array",
+      "description": "Any errors encountered",
+      "items": {
+        "$ref": "#/$defs/Error"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Response metadata (inline object, not a $def)",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique request identifier for tracing"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the response was generated"
+        },
+        "version": {
+          "type": "string",
+          "description": "API version"
+        },
+        "region": {
+          "type": "string",
+          "description": "Server region that handled the request"
+        }
+      },
+      "required": ["requestId", "timestamp", "version"]
+    },
+    "stats": {
+      "type": "object",
+      "description": "Queue statistics (inline object)",
+      "properties": {
+        "totalMessages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pendingMessages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeSubscriptions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "throughput": {
+          "type": "object",
+          "description": "Nested inline object",
+          "properties": {
+            "messagesPerSecond": {
+              "type": "number",
+              "minimum": 0
+            },
+            "bytesPerSecond": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["metadata"]
+}

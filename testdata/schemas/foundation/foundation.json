@@ -1,0 +1,269 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Foundation",
+  "description": "Comprehensive test of all basic types, formats, constraints, and edge cases",
+  "type": "object",
+  "properties": {
+    "primitives": {
+      "type": "object",
+      "description": "All primitive types",
+      "properties": {
+        "stringVal": { "type": "string" },
+        "numberVal": { "type": "number" },
+        "integerVal": { "type": "integer" },
+        "booleanVal": { "type": "boolean" }
+      },
+      "required": ["stringVal", "numberVal", "integerVal", "booleanVal"]
+    },
+    "formats": {
+      "type": "object",
+      "description": "String formats for validation",
+      "properties": {
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "uri": { "type": "string", "format": "uri", "description": "Resource URL" },
+        "uuid": { "type": "string", "format": "uuid", "description": "Unique identifier" },
+        "dateTime": { "type": "string", "format": "date-time", "description": "Full timestamp with timezone" },
+        "date": { "type": "string", "format": "date", "description": "Date only (YYYY-MM-DD)" },
+        "time": { "type": "string", "format": "time", "description": "Time only (HH:MM:SS)" },
+        "ipv4": { "type": "string", "format": "ipv4", "description": "IPv4 address" },
+        "ipv6": { "type": "string", "format": "ipv6", "description": "IPv6 address" }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Validation constraints",
+      "properties": {
+        "strings": {
+          "type": "object",
+          "properties": {
+            "minMaxString": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 50,
+              "description": "String with length constraints"
+            },
+            "patternString": {
+              "type": "string",
+              "pattern": "^[A-Z][a-z]+$",
+              "description": "String matching regex pattern"
+            }
+          }
+        },
+        "numbers": {
+          "type": "object",
+          "properties": {
+            "minMaxNumber": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Number with inclusive bounds"
+            },
+            "exclusiveRange": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 100,
+              "description": "Number with exclusive bounds"
+            },
+            "minMaxInteger": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 999,
+              "description": "Integer with constraints"
+            }
+          }
+        },
+        "arrays": {
+          "type": "object",
+          "properties": {
+            "minMaxArray": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1,
+              "maxItems": 10,
+              "description": "Array with size constraints"
+            }
+          }
+        }
+      }
+    },
+    "enums": {
+      "type": "object",
+      "description": "Enumeration types",
+      "properties": {
+        "stringEnum": {
+          "type": "string",
+          "enum": ["option1", "option2", "option3"],
+          "description": "String enumeration"
+        },
+        "numberEnum": {
+          "type": "number",
+          "enum": [1, 2, 3],
+          "description": "Number enumeration"
+        },
+        "mixedEnum": {
+          "enum": ["string", 42, true, null],
+          "description": "Mixed type enumeration"
+        }
+      }
+    },
+    "arrays": {
+      "type": "object",
+      "description": "Array types",
+      "properties": {
+        "stringArray": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of strings"
+        },
+        "numberArray": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "Array of numbers"
+        },
+        "objectArray": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "value": { "type": "number" }
+            }
+          },
+          "description": "Array of objects"
+        }
+      }
+    },
+    "nested": {
+      "type": "object",
+      "description": "Nested object structure",
+      "properties": {
+        "level1": {
+          "type": "object",
+          "properties": {
+            "level2": {
+              "type": "object",
+              "properties": {
+                "level3": {
+                  "type": "string",
+                  "description": "Three levels deep"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nullable": {
+      "type": "object",
+      "description": "Required vs optional fields",
+      "properties": {
+        "requiredString": {
+          "type": "string",
+          "description": "This field is required"
+        },
+        "optionalString": {
+          "type": "string",
+          "description": "This field is optional"
+        },
+        "optionalNumber": {
+          "type": "number"
+        },
+        "optionalObject": {
+          "type": "object",
+          "properties": {
+            "field": { "type": "string" }
+          }
+        },
+        "optionalArray": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["requiredString"]
+    },
+    "additionalProps": {
+      "type": "object",
+      "description": "Additional properties patterns",
+      "properties": {
+        "strict": {
+          "type": "object",
+          "description": "No additional properties allowed",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" }
+          },
+          "required": ["id"],
+          "additionalProperties": false
+        },
+        "flexible": {
+          "type": "object",
+          "description": "Any additional properties allowed",
+          "properties": {
+            "version": { "type": "string" },
+            "enabled": { "type": "boolean" }
+          },
+          "required": ["version"],
+          "additionalProperties": true
+        },
+        "typedMap": {
+          "type": "object",
+          "description": "Additional properties must be numbers",
+          "properties": {
+            "timestamp": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "required": ["timestamp"],
+          "additionalProperties": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "edgeCases": {
+      "type": "object",
+      "description": "Edge cases: reserved keywords and special characters",
+      "properties": {
+        "reservedKeywords": {
+          "type": "object",
+          "description": "Reserved keywords in TypeScript and Python",
+          "properties": {
+            "class": { "type": "string" },
+            "type": { "type": "string" },
+            "interface": { "type": "string" },
+            "import": { "type": "string" },
+            "export": { "type": "string" },
+            "return": { "type": "string" },
+            "async": { "type": "string" },
+            "await": { "type": "string" },
+            "yield": { "type": "string" },
+            "from": { "type": "string" },
+            "as": { "type": "string" },
+            "def": { "type": "string" },
+            "lambda": { "type": "string" }
+          }
+        },
+        "specialChars": {
+          "type": "object",
+          "description": "Special characters in property names",
+          "properties": {
+            "kebab-case": { "type": "string" },
+            "snake_case": { "type": "string" },
+            "camelCase": { "type": "string" },
+            "PascalCase": { "type": "string" },
+            "with.dots": { "type": "string" },
+            "with spaces": { "type": "string" },
+            "@special": { "type": "string" },
+            "$dollar": { "type": "string" },
+            "123numeric": { "type": "string" }
+          }
+        },
+        "emptyConfig": {
+          "type": "object",
+          "description": "Empty object with no properties",
+          "properties": {}
+        }
+      }
+    }
+  },
+  "required": ["primitives"]
+}

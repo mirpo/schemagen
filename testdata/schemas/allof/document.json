@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document",
+  "description": "Document with multiple mixins - tests allOf with refs, inline objects, and field deduplication",
+  "$defs": {
+    "Entity": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "format": "uuid"}
+      },
+      "required": ["id"]
+    },
+    "Auditable": {
+      "type": "object",
+      "properties": {
+        "createdBy": {"type": "string"},
+        "createdAt": {"type": "string", "format": "date-time"},
+        "updatedAt": {"type": "string", "format": "date-time"}
+      },
+      "required": ["createdBy", "createdAt"]
+    }
+  },
+  "allOf": [
+    {"$ref": "#/$defs/Entity"},
+    {"$ref": "#/$defs/Auditable"},
+    {
+      "type": "object",
+      "properties": {
+        "title": {"type": "string", "description": "First title definition"},
+        "content": {"type": "string"}
+      },
+      "required": ["title", "content"]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "author": {"type": "string"},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {"type": "string", "description": "Override title - this description wins (last-wins semantics)"}
+      }
+    }
+  ]
+}
