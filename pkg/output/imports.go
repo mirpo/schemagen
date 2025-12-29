@@ -6,15 +6,20 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
+type ImportDependency struct {
+	TargetFile string
+	TypeNames  []string
+}
+
 type ImportTracker struct {
-	currentFile  string
-	dependencies map[string]map[string]bool
+	currentFile string
+	deps        map[string]map[string]struct{}
 }
 
 func NewImportTracker(currentFile string) *ImportTracker {
 	return &ImportTracker{
-		currentFile:  currentFile,
-		dependencies: make(map[string]map[string]bool),
+		currentFile: currentFile,
+		deps:        make(map[string]map[string]struct{}),
 	}
 }
 
@@ -23,36 +28,35 @@ func (it *ImportTracker) AddImport(targetFile, typeName string) {
 		return
 	}
 
-	if it.dependencies[targetFile] == nil {
-		it.dependencies[targetFile] = make(map[string]bool)
+	if it.deps[targetFile] == nil {
+		it.deps[targetFile] = make(map[string]struct{})
 	}
 
-	it.dependencies[targetFile][typeName] = true
+	it.deps[targetFile][typeName] = struct{}{}
 }
 
-func (it *ImportTracker) GetImports() []ImportSpec {
-	var imports []ImportSpec
+func (it *ImportTracker) GetDependencies() []ImportDependency {
+	result := make([]ImportDependency, 0, len(it.deps))
 
-	for targetFile, types := range it.dependencies {
-		typeNames := make([]string, 0, len(types))
-		for typeName := range types {
-			typeNames = append(typeNames, typeName)
+	for target, typeSet := range it.deps {
+		typeNames := make([]string, 0, len(typeSet))
+		for name := range typeSet {
+			typeNames = append(typeNames, name)
 		}
 
 		sort.Strings(typeNames)
 
-		imports = append(imports, ImportSpec{
-			FromPath:  it.currentFile,
-			ToPath:    targetFile,
-			TypeNames: typeNames,
+		result = append(result, ImportDependency{
+			TargetFile: target,
+			TypeNames:  typeNames,
 		})
 	}
 
-	sort.Slice(imports, func(i, j int) bool {
-		return imports[i].ToPath < imports[j].ToPath
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].TargetFile < result[j].TargetFile
 	})
 
-	return imports
+	return result
 }
 
 func ComputeImports(files []OutputFile, typeToFile map[string]string) []OutputFile {
@@ -63,12 +67,19 @@ func ComputeImports(files []OutputFile, typeToFile map[string]string) []OutputFi
 			collectTypeReferences(typ, tracker, typeToFile)
 		}
 
-		imports := tracker.GetImports()
-		for j := range imports {
-			imports[j].ImportPath = ComputeRelativeImport(
-				files[i].RelativePath,
-				imports[j].ToPath,
-			)
+		deps := tracker.GetDependencies()
+		imports := make([]ImportSpec, 0, len(deps))
+
+		for _, d := range deps {
+			imports = append(imports, ImportSpec{
+				FromPath:  files[i].RelativePath,
+				ToPath:    d.TargetFile,
+				TypeNames: d.TypeNames,
+				ImportPath: ComputeRelativeImport(
+					files[i].RelativePath,
+					d.TargetFile,
+				),
+			})
 		}
 
 		files[i].Imports = imports
@@ -82,57 +93,44 @@ func collectTypeReferences(typ *typegraph.Type, tracker *ImportTracker, typeToFi
 		collectTypeRefReferences(field.Type, tracker, typeToFile)
 	}
 
-	for _, baseName := range typ.Extends {
-		if targetFile, exists := typeToFile[baseName]; exists {
-			tracker.AddImport(targetFile, baseName)
+	for _, base := range typ.Extends {
+		if target, ok := typeToFile[base]; ok {
+			tracker.AddImport(target, base)
 		}
 	}
 
-	if typ.ItemType != nil {
-		collectTypeRefReferences(typ.ItemType, tracker, typeToFile)
-	}
-
-	if typ.ValueType != nil {
-		collectTypeRefReferences(typ.ValueType, tracker, typeToFile)
-	}
-
-	if typ.TargetType != nil {
-		collectTypeRefReferences(typ.TargetType, tracker, typeToFile)
-	}
+	collectTypeRefReferences(typ.ItemType, tracker, typeToFile)
+	collectTypeRefReferences(typ.ValueType, tracker, typeToFile)
+	collectTypeRefReferences(typ.TargetType, tracker, typeToFile)
 }
 
-func collectTypeRefReferences(typeRef *typegraph.TypeRef, tracker *ImportTracker, typeToFile map[string]string) {
-	if typeRef == nil {
+func collectTypeRefReferences(ref *typegraph.TypeRef, tracker *ImportTracker, typeToFile map[string]string) {
+	if ref == nil {
 		return
 	}
 
-	if typeRef.TypeName != "" {
-		if targetFile, exists := typeToFile[typeRef.TypeName]; exists {
-			tracker.AddImport(targetFile, typeRef.TypeName)
+	if ref.TypeName != "" {
+		if target, ok := typeToFile[ref.TypeName]; ok {
+			tracker.AddImport(target, ref.TypeName)
 		}
 	}
 
-	if typeRef.ItemType != nil {
-		collectTypeRefReferences(typeRef.ItemType, tracker, typeToFile)
-	}
+	collectTypeRefReferences(ref.ItemType, tracker, typeToFile)
+	collectTypeRefReferences(ref.ValueType, tracker, typeToFile)
 
-	if typeRef.ValueType != nil {
-		collectTypeRefReferences(typeRef.ValueType, tracker, typeToFile)
-	}
-
-	for _, member := range typeRef.UnionMembers {
-		collectTypeRefReferences(member, tracker, typeToFile)
+	for _, m := range ref.UnionMembers {
+		collectTypeRefReferences(m, tracker, typeToFile)
 	}
 }
 
 func BuildTypeToFileMap(files []OutputFile) map[string]string {
-	typeToFile := make(map[string]string)
+	result := make(map[string]string)
 
 	for _, file := range files {
 		for _, typ := range file.Types {
-			typeToFile[typ.Name] = file.RelativePath
+			result[typ.Name] = file.RelativePath
 		}
 	}
 
-	return typeToFile
+	return result
 }
