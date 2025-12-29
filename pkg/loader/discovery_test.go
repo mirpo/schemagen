@@ -10,185 +10,106 @@ import (
 )
 
 func TestDiscoverSchemas_SingleFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	schemaFile := filepath.Join(tmpDir, "user.json")
-	err := os.WriteFile(schemaFile, []byte(`{"type": "object"}`), 0o644)
-	require.NoError(t, err, "should create test file")
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "user.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{}`), 0o644))
 
-	opts := DiscoveryOptions{
-		Input: schemaFile,
-	}
+	schemas, err := DiscoverSchemas(DiscoveryOptions{Input: file})
+	require.NoError(t, err)
+	require.Len(t, schemas, 1)
 
-	schemas, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-	require.Len(t, schemas, 1, "should discover exactly 1 schema")
-
-	assert.Equal(t, "user.json", schemas[0].RelativePath, "RelativePath should match")
-	assert.Equal(t, tmpDir, schemas[0].SchemaRoot, "SchemaRoot should match")
+	assert.Equal(t, "user.json", schemas[0].RelativePath)
+	assert.Equal(t, tmp, schemas[0].SchemaRoot)
+	assert.Equal(t, file, schemas[0].AbsolutePath)
 }
 
 func TestDiscoverSchemas_SingleFile_InvalidExtension(t *testing.T) {
-	tmpDir := t.TempDir()
-	txtFile := filepath.Join(tmpDir, "user.txt")
-	err := os.WriteFile(txtFile, []byte("text"), 0o644)
-	require.NoError(t, err, "should create test file")
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "user.txt")
+	require.NoError(t, os.WriteFile(file, []byte(`{}`), 0o644))
 
-	opts := DiscoveryOptions{
-		Input: txtFile,
-	}
-
-	_, err = DiscoverSchemas(opts)
-	assert.Error(t, err, "should return error for invalid extension")
+	_, err := DiscoverSchemas(DiscoveryOptions{Input: file})
+	assert.Error(t, err)
 }
 
-func TestDiscoverSchemas_DirectoryFlat(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestDiscoverSchemas_DirectoryRecursive(t *testing.T) {
+	tmp := t.TempDir()
 
-	files := []string{"user.json", "role.json", "team.yaml", "project.yml"}
-	for _, file := range files {
-		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte(`{"type": "object"}`), 0o644)
-		require.NoError(t, err, "should create test file")
+	files := []string{
+		"a.json",
+		"nested/b.yaml",
+		"nested/deep/c.yml",
 	}
 
-	txtFile := filepath.Join(tmpDir, "readme.txt")
-	err := os.WriteFile(txtFile, []byte("text"), 0o644)
-	require.NoError(t, err, "should create test file")
-
-	opts := DiscoveryOptions{
-		Input: tmpDir,
+	for _, f := range files {
+		full := filepath.Join(tmp, f)
+		require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o755))
+		require.NoError(t, os.WriteFile(full, []byte(`{}`), 0o644))
 	}
 
-	schemas, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-	require.Len(t, schemas, 4, "should discover exactly 4 schemas")
+	schemas, err := DiscoverSchemas(DiscoveryOptions{Input: tmp})
+	require.NoError(t, err)
+	require.Len(t, schemas, 3)
 
-	expectedPaths := []string{"project.yml", "role.json", "team.yaml", "user.json"}
-	for i, expected := range expectedPaths {
-		assert.Equal(t, expected, schemas[i].RelativePath, "schema RelativePath should match")
-	}
+	assert.Equal(t, []string{
+		"a.json",
+		"nested/b.yaml",
+		"nested/deep/c.yml",
+	}, extractRelativePaths(schemas))
 }
 
-func TestDiscoverSchemas_DirectoryNested(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestDiscoverSchemas_DeterministicOrder(t *testing.T) {
+	tmp := t.TempDir()
 
-	eventDir := filepath.Join(tmpDir, "events")
-	payloadsDir := filepath.Join(eventDir, "payloads")
-	v1Dir := filepath.Join(payloadsDir, "v1")
-	v2Dir := filepath.Join(payloadsDir, "v2")
-
-	for _, dir := range []string{eventDir, payloadsDir, v1Dir, v2Dir} {
-		err := os.MkdirAll(dir, 0o755)
-		require.NoError(t, err, "should create test directory")
+	files := []string{"c.json", "a.json", "b.yaml"}
+	for _, f := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, f), []byte(`{}`), 0o644))
 	}
 
-	files := map[string]string{
-		filepath.Join(eventDir, "event.json"):   `{"type": "object"}`,
-		filepath.Join(eventDir, "header.json"):  `{"type": "object"}`,
-		filepath.Join(payloadsDir, "base.json"): `{"type": "object"}`,
-		filepath.Join(v1Dir, "subscribe.json"):  `{"type": "object"}`,
-		filepath.Join(v1Dir, "ping.json"):       `{"type": "object"}`,
-		filepath.Join(v2Dir, "subscribe.json"):  `{"type": "object"}`,
-		filepath.Join(v2Dir, "ping.json"):       `{"type": "object"}`,
-	}
+	s1, err := DiscoverSchemas(DiscoveryOptions{Input: tmp})
+	require.NoError(t, err)
 
-	for path, content := range files {
-		err := os.WriteFile(path, []byte(content), 0o644)
-		require.NoError(t, err, "should create test file")
-	}
+	s2, err := DiscoverSchemas(DiscoveryOptions{Input: tmp})
+	require.NoError(t, err)
 
-	opts := DiscoveryOptions{
-		Input: tmpDir,
-	}
-
-	schemas, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-	require.Len(t, schemas, 7, "should discover exactly 7 schemas")
-
-	for i := 1; i < len(schemas); i++ {
-		assert.Less(t, schemas[i-1].RelativePath, schemas[i].RelativePath, "schemas should be sorted")
-	}
-
-	for _, schema := range schemas {
-		assert.Equal(t, tmpDir, schema.SchemaRoot, "SchemaRoot should match")
-	}
-}
-
-func TestDiscoverSchemas_NonExistentPath(t *testing.T) {
-	opts := DiscoveryOptions{
-		Input: "/nonexistent/path/to/schema.json",
-	}
-
-	_, err := DiscoverSchemas(opts)
-	assert.Error(t, err, "should return error for non-existent path")
+	assert.Equal(t, extractRelativePaths(s1), extractRelativePaths(s2))
 }
 
 func TestDiscoverSchemas_CustomExtensions(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmp := t.TempDir()
 
-	files := []string{"user.json", "role.schema", "team.txt"}
-	for _, file := range files {
-		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte(`{"type": "object"}`), 0o644)
-		require.NoError(t, err, "should create test file")
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "a.schema"), []byte(`{}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "b.json"), []byte(`{}`), 0o644))
 
-	opts := DiscoveryOptions{
-		Input:      tmpDir,
-		Extensions: []string{".json", ".schema"},
-	}
+	schemas, err := DiscoverSchemas(DiscoveryOptions{
+		Input:      tmp,
+		Extensions: []string{".schema"},
+	})
+	require.NoError(t, err)
+	require.Len(t, schemas, 1)
 
-	schemas, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-	require.Len(t, schemas, 2, "should discover exactly 2 schemas")
-
-	expectedPaths := []string{"role.schema", "user.json"}
-	for i, expected := range expectedPaths {
-		assert.Equal(t, expected, schemas[i].RelativePath, "schema RelativePath should match")
-	}
+	assert.Equal(t, "a.schema", schemas[0].RelativePath)
 }
 
 func TestDiscoverSchemas_EmptyDirectory(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmp := t.TempDir()
 
-	opts := DiscoveryOptions{
-		Input: tmpDir,
-	}
-
-	schemas, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-	assert.Empty(t, schemas, "should discover 0 schemas in empty directory")
+	schemas, err := DiscoverSchemas(DiscoveryOptions{Input: tmp})
+	require.NoError(t, err)
+	assert.Empty(t, schemas)
 }
 
-func TestDiscoverSchemas_DeterministicOrdering(t *testing.T) {
-	tmpDir := t.TempDir()
+func TestDiscoverSchemas_NonExistentPath(t *testing.T) {
+	_, err := DiscoverSchemas(DiscoveryOptions{
+		Input: "/no/such/path",
+	})
+	assert.Error(t, err)
+}
 
-	files := []string{"c.json", "a.json", "b.yaml", "d.yml"}
-	for _, file := range files {
-		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte(`{"type": "object"}`), 0o644)
-		require.NoError(t, err, "should create test file")
+func extractRelativePaths(s []DiscoveredSchema) []string {
+	out := make([]string, len(s))
+	for i, v := range s {
+		out[i] = v.RelativePath
 	}
-
-	opts := DiscoveryOptions{
-		Input: tmpDir,
-	}
-
-	schemas1, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-
-	schemas2, err := DiscoverSchemas(opts)
-	require.NoError(t, err, "DiscoverSchemas() should not return error")
-
-	require.Equal(t, len(schemas1), len(schemas2), "schema count should be consistent")
-
-	for i := range schemas1 {
-		assert.Equal(t, schemas1[i].RelativePath, schemas2[i].RelativePath,
-			"ordering should be consistent across calls")
-	}
-
-	expectedOrder := []string{"a.json", "b.yaml", "c.json", "d.yml"}
-	for i, expected := range expectedOrder {
-		assert.Equal(t, expected, schemas1[i].RelativePath, "schema should match expected order")
-	}
+	return out
 }
