@@ -578,7 +578,3 @@ func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
 
 	return sb.String(), nil
 }
-
-// typeRefToPython converts a TypeRef to a Python type annotation.
-
-// primitiveToPython maps Go primitive types to Python types, considering format.
