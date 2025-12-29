@@ -2,7 +2,7 @@ package errors
 
 import "fmt"
 
-// SchemaError indicates a problem with schema loading or parsing
+// SchemaError indicates a problem with schema loading or parsing.
 type SchemaError struct {
 	Path    string
 	Message string
@@ -20,7 +20,7 @@ func (e *SchemaError) Unwrap() error {
 	return e.Cause
 }
 
-// GenerationError indicates a problem during code generation
+// GenerationError indicates a problem during code generation.
 type GenerationError struct {
 	Language string
 	File     string
@@ -30,16 +30,27 @@ type GenerationError struct {
 
 func (e *GenerationError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("generating %s %s: %s: %v", e.Language, e.File, e.Message, e.Cause)
+		return fmt.Sprintf(
+			"generating %s %s: %s: %v",
+			e.Language,
+			e.File,
+			e.Message,
+			e.Cause,
+		)
 	}
-	return fmt.Sprintf("generating %s %s: %s", e.Language, e.File, e.Message)
+	return fmt.Sprintf(
+		"generating %s %s: %s",
+		e.Language,
+		e.File,
+		e.Message,
+	)
 }
 
 func (e *GenerationError) Unwrap() error {
 	return e.Cause
 }
 
-// ValidationError indicates a config or input validation error
+// ValidationError indicates a config or input validation error.
 type ValidationError struct {
 	Field   string
 	Message string
