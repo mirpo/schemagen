@@ -50,7 +50,7 @@ func ToSnakeCase(s string) string {
 	runes := []rune(s)
 	var b strings.Builder
 
-	for i := range len(runes) {
+	for i := range runes {
 		r := runes[i]
 
 		if unicode.IsUpper(r) {
