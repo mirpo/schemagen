@@ -82,11 +82,15 @@ func buildTypeSourceMap(graph *typegraph.Graph, schemas []*schema.Schema) map[st
 func extractTypesFromSchema(s *schema.Schema) []string {
 	var types []string
 
+	if s == nil {
+		return types
+	}
+
 	if s.Name != "" {
 		types = append(types, s.Name)
 	}
 
-	if s.Compiled.Defs != nil {
+	if s.Compiled != nil && s.Compiled.Defs != nil {
 		for defName := range s.Compiled.Defs {
 			types = append(types, naming.ToPascalCase(defName))
 		}
