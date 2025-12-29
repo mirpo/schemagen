@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/mirpo/schemagen/pkg/logger"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +50,7 @@ var rootCmd = NewRootCmd()
 
 func Execute() error {
 	err := rootCmd.Execute()
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		os.Exit(exitErr.Code)
 	}
 	return err

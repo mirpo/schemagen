@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func TestDiffCommand_HasChanges(t *testing.T) {
 	assert.Error(t, err, "diff should fail when changes detected")
 
 	// Check exit code
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code, "exit code should be 2 for differences")
 	}
 }
@@ -63,7 +64,7 @@ func TestDiffCommand_NewFile(t *testing.T) {
 	assert.Error(t, err, "diff should detect new files")
 
 	// Check exit code
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code, "exit code should be 2 for differences")
 	}
 }
@@ -109,7 +110,7 @@ func TestDiffCommand_MultipleFiles(t *testing.T) {
 	err = cmd.Execute()
 	assert.Error(t, err, "diff should detect changes")
 
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code)
 	}
 }

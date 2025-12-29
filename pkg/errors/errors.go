@@ -59,3 +59,35 @@ type ValidationError struct {
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error for %s: %s", e.Field, e.Message)
 }
+
+// ExitCodeError is an error that carries an exit code for CLI commands.
+type ExitCodeError struct {
+	Message string
+	Code    int
+}
+
+func (e *ExitCodeError) Error() string {
+	return e.Message
+}
+
+// Common exit codes
+const (
+	ExitGeneral = 1 // General error
+	ExitUsage   = 2 // Invalid usage/arguments
+)
+
+// NewUsageError creates an error for invalid CLI usage.
+func NewUsageError(msg string) *ExitCodeError {
+	return &ExitCodeError{Message: msg, Code: ExitUsage}
+}
+
+// Wrap wraps an error with context and returns an ExitCodeError.
+func Wrap(err error, msg string) *ExitCodeError {
+	if err == nil {
+		return nil
+	}
+	return &ExitCodeError{
+		Message: msg + ": " + err.Error(),
+		Code:    ExitGeneral,
+	}
+}

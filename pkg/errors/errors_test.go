@@ -93,3 +93,18 @@ func TestErrorChaining(t *testing.T) {
 	var ve *ValidationError
 	assert.False(t, errors.As(genErr, &ve))
 }
+
+func TestExitCodeError(t *testing.T) {
+	err := &ExitCodeError{
+		Message: "missing argument",
+		Code:    2,
+	}
+	assert.Equal(t, "missing argument", err.Error())
+	assert.Equal(t, 2, err.Code)
+}
+
+func TestNewUsageError(t *testing.T) {
+	err := NewUsageError("invalid flag")
+	assert.Equal(t, "invalid flag", err.Error())
+	assert.Equal(t, ExitUsage, err.Code)
+}

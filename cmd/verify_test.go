@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func TestVerifyCommand_HasDrift(t *testing.T) {
 	assert.Error(t, err, "verify should fail when drift detected")
 
 	// Check exit code
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code, "exit code should be 2 for drift")
 	}
 }
@@ -72,7 +73,7 @@ func TestVerifyCommand_Quiet(t *testing.T) {
 	assert.Error(t, err, "verify should detect drift in quiet mode")
 
 	// Should still have correct exit code
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code)
 	}
 }
@@ -85,7 +86,7 @@ func TestVerifyCommand_MissingDirectory(t *testing.T) {
 	assert.Error(t, err, "verify should fail when directory doesn't exist")
 
 	// Check exit code
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code)
 	}
 }
@@ -127,7 +128,7 @@ func TestVerifyCommand_DeletedFile(t *testing.T) {
 	err = cmd.Execute()
 	assert.Error(t, err, "verify should detect extra files as drift")
 
-	if exitErr, ok := err.(ExitCodeError); ok {
+	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code)
 	}
 }

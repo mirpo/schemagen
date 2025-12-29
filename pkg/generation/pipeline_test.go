@@ -36,13 +36,13 @@ func createTestCompiler(t *testing.T) *jsonschema.Compiler {
 	return compiler
 }
 
-func createTestSchema(t *testing.T, name string) *schema.Schema {
+func createTestSchema(t *testing.T) *schema.Schema {
 	t.Helper()
 
 	compiler := createTestCompiler(t)
 	compiled, err := compiler.Compile([]byte(`{
 		"type": "object",
-		"title": "`+name+`",
+		"title": "User",
 		"properties": {
 			"id": {"type": "string"}
 		}
@@ -50,7 +50,7 @@ func createTestSchema(t *testing.T, name string) *schema.Schema {
 	require.NoError(t, err)
 
 	return &schema.Schema{
-		Name:         name,
+		Name:         "User",
 		Path:         "test.json",
 		RelativePath: "test.json",
 		Compiled:     compiled,
@@ -63,7 +63,7 @@ func createTestSchema(t *testing.T, name string) *schema.Schema {
 
 func TestValidateConfig(t *testing.T) {
 	validCompiler := createTestCompiler(t)
-	validSchema := createTestSchema(t, "User")
+	validSchema := createTestSchema(t)
 
 	tests := []struct {
 		name    string
@@ -173,7 +173,7 @@ func TestRun_SupportedLanguages(t *testing.T) {
 			outDir := t.TempDir()
 
 			cfg := &Config{
-				Schemas:        []*schema.Schema{createTestSchema(t, "User")},
+				Schemas:        []*schema.Schema{createTestSchema(t)},
 				Compiler:       createTestCompiler(t),
 				OutDir:         outDir,
 				Language:       tt.language,
@@ -194,7 +194,7 @@ func TestRun_MultiFileStrategy(t *testing.T) {
 	outDir := t.TempDir()
 
 	cfg := &Config{
-		Schemas:        []*schema.Schema{createTestSchema(t, "User")},
+		Schemas:        []*schema.Schema{createTestSchema(t)},
 		Compiler:       createTestCompiler(t),
 		OutDir:         outDir,
 		Language:       LanguageTypeScript,
@@ -213,7 +213,7 @@ func TestRun_DisableHeaders(t *testing.T) {
 	outDir := t.TempDir()
 
 	cfg := &Config{
-		Schemas:        []*schema.Schema{createTestSchema(t, "User")},
+		Schemas:        []*schema.Schema{createTestSchema(t)},
 		Compiler:       createTestCompiler(t),
 		OutDir:         outDir,
 		Language:       LanguageTypeScript,
@@ -237,7 +237,7 @@ func TestRun_GoAlwaysExtractsInline(t *testing.T) {
 	outDir := t.TempDir()
 
 	cfg := &Config{
-		Schemas:        []*schema.Schema{createTestSchema(t, "User")},
+		Schemas:        []*schema.Schema{createTestSchema(t)},
 		Compiler:       createTestCompiler(t),
 		OutDir:         outDir,
 		Language:       LanguageGo,
@@ -264,7 +264,7 @@ func TestRun_InvalidLanguage(t *testing.T) {
 	outDir := t.TempDir()
 
 	cfg := &Config{
-		Schemas:        []*schema.Schema{createTestSchema(t, "User")},
+		Schemas:        []*schema.Schema{createTestSchema(t)},
 		Compiler:       createTestCompiler(t),
 		OutDir:         outDir,
 		Language:       "rust",

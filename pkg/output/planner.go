@@ -20,6 +20,38 @@ const (
 	StrategyBundlePerDir OutputStrategy = "bundle-per-dir"
 )
 
+func (s *OutputStrategy) String() string {
+	return string(*s)
+}
+
+func (s *OutputStrategy) Set(v string) error {
+	switch v {
+	case "bundle":
+		*s = StrategyBundle
+	case "multifile", "multi-file":
+		*s = StrategyMultiFile
+	case "bundledeps", "bundle-deps":
+		*s = StrategyBundleDeps
+	case "bundle-per-dir":
+		*s = StrategyBundlePerDir
+	default:
+		return fmt.Errorf("invalid output strategy %q (must be bundle, multifile, bundledeps, or bundle-per-dir)", v)
+	}
+	return nil
+}
+
+func (s *OutputStrategy) Type() string {
+	return "strategy"
+}
+
+func ParseStrategy(v string) OutputStrategy {
+	var s OutputStrategy
+	if err := s.Set(v); err != nil {
+		return StrategyMultiFile
+	}
+	return s
+}
+
 type OutputPlan struct {
 	Strategy    OutputStrategy
 	Files       []OutputFile
@@ -52,7 +84,7 @@ type TypeSource struct {
 }
 
 func PlanOutput(graph *typegraph.Graph, schemas []*schema.Schema, strategy OutputStrategy, language string, bundleName string) (*OutputPlan, error) {
-	typeSourceMap := buildTypeSourceMap(graph, schemas)
+	typeSourceMap := buildTypeSourceMap(schemas)
 
 	switch strategy {
 	case StrategyBundle:
@@ -66,7 +98,7 @@ func PlanOutput(graph *typegraph.Graph, schemas []*schema.Schema, strategy Outpu
 	}
 }
 
-func buildTypeSourceMap(graph *typegraph.Graph, schemas []*schema.Schema) map[string]*schema.Schema {
+func buildTypeSourceMap(schemas []*schema.Schema) map[string]*schema.Schema {
 	typeSourceMap := make(map[string]*schema.Schema)
 
 	for _, s := range schemas {
