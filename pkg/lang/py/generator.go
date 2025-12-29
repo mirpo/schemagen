@@ -50,7 +50,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 
 	// Header
 	sb.WriteString(common.GenerateHeader(common.HeaderConfig{
-		CommentPrefix:    common.CommentPrefixPython,
+		CommentPrefix:    common.CommentPrefixHash,
 		DisableHeaders:   g.config.DisableHeaders,
 		DisableTimestamp: g.config.DisableTimestamp,
 	}))
@@ -578,7 +578,3 @@ func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
 
 	return sb.String(), nil
 }
-
-// typeRefToPython converts a TypeRef to a Python type annotation.
-
-// primitiveToPython maps Go primitive types to Python types, considering format.

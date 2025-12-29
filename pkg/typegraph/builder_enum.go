@@ -28,8 +28,8 @@ func hasComplexEnumValues(values []any) bool {
 	return false
 }
 
-// buildEnum builds an enum type from a schema.
-func (b *Builder) buildEnum(typ *Type, schema *jsonschema.Schema) error {
+// BuildEnum builds an enum type from a schema (implements TypeBuilder).
+func (b *Builder) BuildEnum(typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindEnum
 	typ.EnumValues = make([]EnumValue, 0)
 

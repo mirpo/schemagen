@@ -6,46 +6,41 @@ import (
 	"fmt"
 )
 
-// PropertyOrder tracks the insertion order of properties in a JSON schema.
+// PropertyOrder tracks insertion order of "properties" blocks in a schema.
 type PropertyOrder struct {
-	// Map from schema path to ordered property names
-	// Examples:
-	//   "simple.json" -> ["id", "name", "email"]
-	//   "simple.json#/allOf/0" -> ["createdAt", "updatedAt"]
-	//   "simple.json#/$defs/Address" -> ["street", "city", "zip"]
+	// key: schema path (e.g. "a.json#/allOf/0")
+	// val: ordered property names
 	orders map[string][]string
 }
 
-// NewPropertyOrder creates a new PropertyOrder.
+// NewPropertyOrder creates an empty PropertyOrder.
 func NewPropertyOrder() *PropertyOrder {
 	return &PropertyOrder{
 		orders: make(map[string][]string),
 	}
 }
 
-// GetOrder returns property names in order for a schema path.
-// Returns nil if the path is not found.
+// GetOrder returns ordered property names for a schema path.
 func (po *PropertyOrder) GetOrder(path string) []string {
 	return po.orders[path]
 }
 
-// OrderedField represents a JSON object field with its key and raw value.
+// OrderedField represents one JSON object field with preserved order.
 type OrderedField struct {
 	Key   string
 	Value json.RawMessage
 }
 
-// DecodeOrderedObject decodes a JSON object preserving field order.
+// DecodeOrderedObject decodes a JSON object while preserving field order.
 func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 
-	// Read opening `{`
 	tok, err := dec.Token()
 	if err != nil {
 		return nil, err
 	}
 	if tok != json.Delim('{') {
-		return nil, fmt.Errorf("expected object")
+		return nil, fmt.Errorf("expected JSON object")
 	}
 
 	var fields []OrderedField
@@ -56,7 +51,10 @@ func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
 			return nil, err
 		}
 
-		key := keyTok.(string)
+		key, ok := keyTok.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected string key")
+		}
 
 		var raw json.RawMessage
 		if err := dec.Decode(&raw); err != nil {
@@ -69,84 +67,84 @@ func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
 		})
 	}
 
-	// Read closing `}`
-	_, err = dec.Token()
+	_, err = dec.Token() // closing '}'
 	return fields, err
 }
 
-// ExtractPropertyOrder parses raw JSON to extract property order using recursive parsing.
-// The basePath parameter is the schema file path (e.g., "simple.json").
+// ExtractPropertyOrder extracts property order from raw JSON schema.
 func ExtractPropertyOrder(data []byte, basePath string) (*PropertyOrder, error) {
-	po := NewPropertyOrder()
-
-	// Decode the schema object preserving field order
 	fields, err := DecodeOrderedObject(data)
 	if err != nil {
 		return nil, fmt.Errorf("decode schema: %w", err)
 	}
 
-	// Process the schema fields recursively
+	po := NewPropertyOrder()
 	extractFromFields(fields, basePath, po)
 
 	return po, nil
 }
 
-// extractFromFields recursively extracts property order from schema fields.
-func extractFromFields(fields []OrderedField, currentPath string, po *PropertyOrder) {
-	for _, field := range fields {
-		switch field.Key {
+func extractFromFields(fields []OrderedField, path string, po *PropertyOrder) {
+	for _, f := range fields {
+		switch f.Key {
 		case "properties":
-			// Extract property names in order
-			propFields, err := DecodeOrderedObject(field.Value)
-			if err == nil {
-				propNames := make([]string, len(propFields))
-				for i, pf := range propFields {
-					propNames[i] = pf.Key
-				}
-				po.orders[currentPath] = propNames
-			}
+			extractProperties(f.Value, path, po)
 
 		case "allOf", "oneOf", "anyOf":
-			// Extract from array elements
-			extractFromArray(field.Value, currentPath+"#/"+field.Key, po)
+			extractFromArray(f.Value, path+"#/"+f.Key, po)
 
 		case "$defs", "definitions":
-			// Extract from definitions
-			extractFromDefs(field.Value, currentPath+"#/"+field.Key, po)
+			extractFromDefinitions(f.Value, path+"#/"+f.Key, po)
 		}
 	}
 }
 
-// extractFromArray extracts property order from an array (allOf/oneOf/anyOf).
-func extractFromArray(data json.RawMessage, arrayPath string, po *PropertyOrder) {
+func extractProperties(data json.RawMessage, path string, po *PropertyOrder) {
+	fields, err := DecodeOrderedObject(data)
+	if err != nil {
+		return
+	}
+
+	names := make([]string, 0, len(fields))
+	for _, f := range fields {
+		names = append(names, f.Key)
+	}
+
+	po.orders[path] = names
+}
+
+func extractFromArray(data json.RawMessage, basePath string, po *PropertyOrder) {
 	var arr []json.RawMessage
 	if err := json.Unmarshal(data, &arr); err != nil {
 		return
 	}
 
 	for i, elem := range arr {
-		elemPath := fmt.Sprintf("%s/%d", arrayPath, i)
+		elemPath := fmt.Sprintf("%s/%d", basePath, i)
+
 		fields, err := DecodeOrderedObject(elem)
 		if err != nil {
 			continue
 		}
+
 		extractFromFields(fields, elemPath, po)
 	}
 }
 
-// extractFromDefs extracts property order from $defs.
-func extractFromDefs(data json.RawMessage, defsPath string, po *PropertyOrder) {
+func extractFromDefinitions(data json.RawMessage, basePath string, po *PropertyOrder) {
 	fields, err := DecodeOrderedObject(data)
 	if err != nil {
 		return
 	}
 
-	for _, field := range fields {
-		defPath := fmt.Sprintf("%s/%s", defsPath, field.Key)
-		defFields, err := DecodeOrderedObject(field.Value)
+	for _, def := range fields {
+		defPath := fmt.Sprintf("%s/%s", basePath, def.Key)
+
+		defFields, err := DecodeOrderedObject(def.Value)
 		if err != nil {
 			continue
 		}
+
 		extractFromFields(defFields, defPath, po)
 	}
 }

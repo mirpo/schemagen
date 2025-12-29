@@ -50,7 +50,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 
 	// Header comment
 	sb.WriteString(common.GenerateHeader(common.HeaderConfig{
-		CommentPrefix:    common.CommentPrefixGo,
+		CommentPrefix:    common.CommentPrefixSlash,
 		DisableHeaders:   g.config.DisableHeaders,
 		DisableTimestamp: g.config.DisableTimestamp,
 	}))

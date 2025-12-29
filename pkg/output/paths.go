@@ -30,43 +30,22 @@ func (pm *PathMapper) InputPathToOutputPath(schemaPath string) string {
 	}
 
 	base := filepath.Base(relPath)
-	nameWithoutExt := base[:len(base)-len(filepath.Ext(base))]
+	name := stripExt(base)
 
-	// Sanitize filename for Python: convert hyphens to underscores
-	if pm.language == constants.LanguagePythonShort || pm.language == string(constants.LanguagePython) {
-		nameWithoutExt = strings.ReplaceAll(nameWithoutExt, "-", "_")
+	if isPython(pm.language) {
+		name = strings.ReplaceAll(name, "-", "_")
 	}
 
 	dir := filepath.Dir(relPath)
 	if dir == "." {
-		return nameWithoutExt + ext
+		return name + ext
 	}
 
-	return filepath.Join(dir, nameWithoutExt+ext)
+	return filepath.Join(dir, name+ext)
 }
 
 func (pm *PathMapper) ComputeImportPath(fromFile, toFile string) string {
-	fromDir := filepath.Dir(fromFile)
-	toDir := filepath.Dir(toFile)
-	toBase := filepath.Base(toFile)
-	toName := toBase[:len(toBase)-len(filepath.Ext(toBase))]
-
-	if fromDir == toDir {
-		return "./" + toName
-	}
-
-	relPath, err := filepath.Rel(fromDir, toDir)
-	if err != nil {
-		return toName
-	}
-
-	if relPath == "." {
-		return "./" + toName
-	}
-
-	relPath = filepath.ToSlash(relPath)
-
-	return relPath + "/" + toName
+	return ComputeRelativeImport(fromFile, toFile)
 }
 
 func (pm *PathMapper) BarrelFilePath(dir string) string {
@@ -76,14 +55,15 @@ func (pm *PathMapper) BarrelFilePath(dir string) string {
 			return "index.ts"
 		}
 		return filepath.Join(dir, "index.ts")
+
 	case constants.LanguagePythonShort, string(constants.LanguagePython):
 		if dir == "" || dir == "." {
 			return "__init__.py"
 		}
 		return filepath.Join(dir, "__init__.py")
-	default:
-		return ""
 	}
+
+	return ""
 }
 
 func ComputeRelativeImport(fromFile, toFile string) string {
@@ -105,7 +85,7 @@ func ComputeRelativeImport(fromFile, toFile string) string {
 	ext := filepath.Ext(relPath)
 	nameWithoutExt := relPath[:len(relPath)-len(ext)]
 
-	if !strings.HasPrefix(nameWithoutExt, ".") && !strings.HasPrefix(nameWithoutExt, "/") {
+	if !strings.HasPrefix(nameWithoutExt, ".") {
 		nameWithoutExt = "./" + nameWithoutExt
 	}
 
@@ -113,17 +93,25 @@ func ComputeRelativeImport(fromFile, toFile string) string {
 }
 
 func GetDirectoryLevels(path string) []string {
-	var levels []string
-
 	if path == "" || path == "." {
-		return levels
+		return nil
 	}
 
+	var levels []string
 	dir := filepath.Dir(path)
+
 	for dir != "" && dir != "." {
 		levels = append([]string{dir}, levels...)
 		dir = filepath.Dir(dir)
 	}
 
 	return levels
+}
+
+func stripExt(name string) string {
+	return strings.TrimSuffix(name, filepath.Ext(name))
+}
+
+func isPython(lang string) bool {
+	return lang == constants.LanguagePythonShort || lang == string(constants.LanguagePython)
 }
