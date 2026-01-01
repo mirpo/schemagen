@@ -7,7 +7,7 @@ Generate TypeScript, Python, and Go types from JSON Schema. One binary, zero dep
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew tap mirpo/tools
+brew tap mirpo/homebrew-tools
 brew install schemagen
 ```
 
