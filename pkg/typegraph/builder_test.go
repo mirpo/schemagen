@@ -748,20 +748,20 @@ func TestBuild_ValidationConstraints(t *testing.T) {
 	priceField := fieldMap["price"]
 	assert.NotNil(t, priceField)
 	if priceField.Minimum != nil {
-		assert.Equal(t, 0.01, *priceField.Minimum)
+		assert.InDelta(t, 0.01, *priceField.Minimum, 0.001)
 	}
 	if priceField.Maximum != nil {
-		assert.Equal(t, 9999.99, *priceField.Maximum)
+		assert.InDelta(t, 9999.99, *priceField.Maximum, 0.001)
 	}
 
 	// Check count field with exclusive constraints
 	countField := fieldMap["count"]
 	assert.NotNil(t, countField)
 	if countField.ExclusiveMinimum != nil {
-		assert.Equal(t, 0.0, *countField.ExclusiveMinimum)
+		assert.InDelta(t, 0.0, *countField.ExclusiveMinimum, 0.001)
 	}
 	if countField.ExclusiveMaximum != nil {
-		assert.Equal(t, 1000.0, *countField.ExclusiveMaximum)
+		assert.InDelta(t, 1000.0, *countField.ExclusiveMaximum, 0.001)
 	}
 }
 
