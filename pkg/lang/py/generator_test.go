@@ -191,5 +191,5 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	aIdx := strings.Index(out, "class A")
 	bIdx := strings.Index(out, "class B")
 
-	assert.True(t, aIdx < bIdx, "types must be ordered deterministically")
+	assert.Less(t, aIdx, bIdx, "types must be ordered deterministically")
 }

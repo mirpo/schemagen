@@ -358,8 +358,8 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	zebraPos := strings.Index(result, "export interface Zebra")
 
 	// Verify alphabetical ordering
-	assert.True(t, applePos < middlePos, "Apple should come before Middle")
-	assert.True(t, middlePos < zebraPos, "Middle should come before Zebra")
+	assert.Less(t, applePos, middlePos, "Apple should come before Middle")
+	assert.Less(t, middlePos, zebraPos, "Middle should come before Zebra")
 }
 
 func TestGenerateFile_BlankLinesBetweenTypes(t *testing.T) {
