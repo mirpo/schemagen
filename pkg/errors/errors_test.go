@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -29,7 +28,7 @@ func TestSchemaError(t *testing.T) {
 		"schema schema.json: invalid type: underlying error",
 		errWithCause.Error(),
 	)
-	assert.True(t, errors.Is(errWithCause, cause))
+	assert.ErrorIs(t, errWithCause, cause)
 }
 
 func TestGenerationError(t *testing.T) {
@@ -49,7 +48,7 @@ func TestGenerationError(t *testing.T) {
 		Cause:    cause,
 	}
 
-	assert.True(t, errors.Is(errWithCause, cause))
+	assert.ErrorIs(t, errWithCause, cause)
 }
 
 func TestValidationError(t *testing.T) {
@@ -65,7 +64,7 @@ func TestValidationError(t *testing.T) {
 	)
 
 	// ValidationError should not wrap anything
-	assert.False(t, errors.Is(err, fmt.Errorf("anything")))
+	assert.NotErrorIs(t, err, fmt.Errorf("anything"))
 }
 
 func TestErrorChaining(t *testing.T) {
@@ -84,14 +83,14 @@ func TestErrorChaining(t *testing.T) {
 		Cause:    schemaErr,
 	}
 
-	assert.True(t, errors.Is(genErr, rootCause))
+	assert.ErrorIs(t, genErr, rootCause)
 
 	var se *SchemaError
-	assert.True(t, errors.As(genErr, &se))
+	assert.ErrorAs(t, genErr, &se)
 	assert.Equal(t, "test.json", se.Path)
 
 	var ve *ValidationError
-	assert.False(t, errors.As(genErr, &ve))
+	assert.NotErrorAs(t, genErr, &ve)
 }
 
 func TestExitCodeError(t *testing.T) {
