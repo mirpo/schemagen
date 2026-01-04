@@ -70,7 +70,7 @@ func TestVerifyCommand_Quiet(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"verify", "../testdata/schemas/foundation", "--out-ts", tmpDir, "--quiet", "--disable-timestamp"})
 	err = cmd.Execute()
-	assert.Error(t, err, "verify should detect drift in quiet mode")
+	require.Error(t, err, "verify should detect drift in quiet mode")
 
 	// Should still have correct exit code
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
@@ -83,7 +83,7 @@ func TestVerifyCommand_MissingDirectory(t *testing.T) {
 	cmd := NewRootCmd()
 	cmd.SetArgs([]string{"verify", "../testdata/schemas/foundation", "--out-ts", "/path/that/does/not/exist"})
 	err := cmd.Execute()
-	assert.Error(t, err, "verify should fail when directory doesn't exist")
+	require.Error(t, err, "verify should fail when directory doesn't exist")
 
 	// Check exit code
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {

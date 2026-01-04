@@ -61,7 +61,7 @@ func TestDiffCommand_NewFile(t *testing.T) {
 	cmd := NewRootCmd()
 	cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDir})
 	err := cmd.Execute()
-	assert.Error(t, err, "diff should detect new files")
+	require.Error(t, err, "diff should detect new files")
 
 	// Check exit code
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
