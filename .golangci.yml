@@ -13,6 +13,7 @@ linters:
     - nilerr
     - nolintlint
     - nosprintfhostport
+    - testifylint
     - unconvert
     - usestdlibvars
     - wastedassign
