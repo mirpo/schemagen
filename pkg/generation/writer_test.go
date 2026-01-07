@@ -77,5 +77,5 @@ func TestDiskWriter_WriteFile_InvalidPath(t *testing.T) {
 
 	// attempt to write under a file
 	err := writer.WriteFile("blocker/file.txt", []byte("fail"))
-	assert.Error(t, err)
+	require.Error(t, err)
 }

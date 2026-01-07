@@ -37,7 +37,7 @@ func TestOutputStrategy_Set(t *testing.T) {
 			err := s.Set(tt.input)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), "invalid output strategy")
 			} else {
 				assert.NoError(t, err)

@@ -145,7 +145,7 @@ func TestValidateConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateConfig(tt.cfg)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -272,7 +272,7 @@ func TestRun_InvalidLanguage(t *testing.T) {
 	}
 
 	err := Run(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
 }
 
@@ -288,5 +288,5 @@ func TestRun_EmptySchemas(t *testing.T) {
 	}
 
 	err := Run(cfg)
-	assert.Error(t, err)
+	require.Error(t, err)
 }

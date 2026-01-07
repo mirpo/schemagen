@@ -44,7 +44,7 @@ func TestVerifyCommand_HasDrift(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"verify", "../testdata/schemas/foundation", "--out-ts", tmpDir, "--disable-timestamp"})
 	err = cmd.Execute()
-	assert.Error(t, err, "verify should fail when drift detected")
+	require.Error(t, err, "verify should fail when drift detected")
 
 	// Check exit code
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
@@ -126,7 +126,7 @@ func TestVerifyCommand_DeletedFile(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"verify", "../testdata/schemas/foundation", "--out-ts", tmpDir, "--disable-timestamp"})
 	err = cmd.Execute()
-	assert.Error(t, err, "verify should detect extra files as drift")
+	require.Error(t, err, "verify should detect extra files as drift")
 
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code)

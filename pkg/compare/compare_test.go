@@ -456,7 +456,7 @@ func TestRun_InvalidSchemaPath(t *testing.T) {
 
 	_, err := Run(cfg)
 
-	assert.Error(t, err, "Run should return error for invalid schema path")
+	require.Error(t, err, "Run should return error for invalid schema path")
 }
 
 // TestResult_HasDrift tests the Result struct
