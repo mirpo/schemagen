@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSchemaError(t *testing.T) {
@@ -83,10 +84,10 @@ func TestErrorChaining(t *testing.T) {
 		Cause:    schemaErr,
 	}
 
-	assert.ErrorIs(t, genErr, rootCause)
+	require.ErrorIs(t, genErr, rootCause)
 
 	var se *SchemaError
-	assert.ErrorAs(t, genErr, &se)
+	require.ErrorAs(t, genErr, &se)
 	assert.Equal(t, "test.json", se.Path)
 
 	var ve *ValidationError
