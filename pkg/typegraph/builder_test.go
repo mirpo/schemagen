@@ -443,7 +443,7 @@ func TestBuild_EmptySchemaList(t *testing.T) {
 
 	graph, err := builder.Build([]*schema.Schema{})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Empty(t, graph.Types)
 }
@@ -466,7 +466,7 @@ func TestBuild_SimpleObject(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "user.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "user.json",
@@ -479,7 +479,7 @@ func TestBuild_SimpleObject(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -517,7 +517,7 @@ func TestBuild_StringEnum(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "status.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "status.json",
@@ -530,7 +530,7 @@ func TestBuild_StringEnum(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -559,7 +559,7 @@ func TestBuild_NumberEnum(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "priority.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "priority.json",
@@ -572,7 +572,7 @@ func TestBuild_NumberEnum(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -621,7 +621,7 @@ func TestBuild_WithDefs(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "user.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "user.json",
@@ -634,7 +634,7 @@ func TestBuild_WithDefs(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 2) // Address (from $defs) + User
 
@@ -698,7 +698,7 @@ func TestBuild_ValidationConstraints(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "product.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "product.json",
@@ -711,7 +711,7 @@ func TestBuild_ValidationConstraints(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -790,7 +790,7 @@ func TestBuild_ArrayType(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "todolist.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "todolist.json",
@@ -803,7 +803,7 @@ func TestBuild_ArrayType(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -868,10 +868,10 @@ func TestBuild_MultipleSchemas(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
 
 	userCompiled, err := compiler.Compile(userSchemaJSON, "user.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	productCompiled, err := compiler.Compile(productSchemaJSON, "product.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	schemas := []*schema.Schema{
 		{
@@ -893,7 +893,7 @@ func TestBuild_MultipleSchemas(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build(schemas)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 2)
 
@@ -941,7 +941,7 @@ func TestBuild_ObjectWithAllOf(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "employee.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "employee.json",
@@ -954,7 +954,7 @@ func TestBuild_ObjectWithAllOf(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	// allOf handling may produce different results based on schema structure
 	assert.GreaterOrEqual(t, len(graph.Types), 1)
@@ -990,7 +990,7 @@ func TestBuild_ArrayWithConstraints(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "taglist.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "taglist.json",
@@ -1003,7 +1003,7 @@ func TestBuild_ArrayWithConstraints(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1053,7 +1053,7 @@ func TestBuild_WithAnyOf(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "response.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "response.json",
@@ -1066,7 +1066,7 @@ func TestBuild_WithAnyOf(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	// anyOf typically creates a union or merged struct
 	assert.GreaterOrEqual(t, len(graph.Types), 1)
@@ -1112,7 +1112,7 @@ func TestBuild_AllOfOnlyAtRoot(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "document.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "document.json",
@@ -1125,7 +1125,7 @@ func TestBuild_AllOfOnlyAtRoot(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 
 	// Should create at least 3 types: Document, Entity, Auditable
@@ -1190,7 +1190,7 @@ func TestBuild_AllOfInlineObjectsOnly(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "vehicle.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "vehicle.json",
@@ -1203,7 +1203,7 @@ func TestBuild_AllOfInlineObjectsOnly(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1259,7 +1259,7 @@ func TestBuild_AllOfMixedRefsAndInline(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "product.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "product.json",
@@ -1272,7 +1272,7 @@ func TestBuild_AllOfMixedRefsAndInline(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 
 	// Should create at least 2 types: Product and BaseItem
@@ -1317,7 +1317,7 @@ func TestBuild_EmptyAllOf(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "empty.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "empty.json",
@@ -1330,7 +1330,7 @@ func TestBuild_EmptyAllOf(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1362,7 +1362,7 @@ func TestBuild_AllOfWithDirectProperties(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "enhanced.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "enhanced.json",
@@ -1375,7 +1375,7 @@ func TestBuild_AllOfWithDirectProperties(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1404,7 +1404,7 @@ func TestBuild_MixedEnum(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "mixed.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "mixed.json",
@@ -1417,7 +1417,7 @@ func TestBuild_MixedEnum(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1469,7 +1469,7 @@ func TestBuild_AdditionalProperties(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "config.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "config.json",
@@ -1482,7 +1482,7 @@ func TestBuild_AdditionalProperties(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1509,7 +1509,7 @@ func TestBuild_NullableField(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "user.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "user.json",
@@ -1522,7 +1522,7 @@ func TestBuild_NullableField(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -1820,7 +1820,7 @@ func TestExtractDefinition_PrimitiveType(t *testing.T) {
 
 	err := builder.walker.ExtractDefinition("CustomString", schema)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, builder.registry.All(), 1)
 	assert.Equal(t, "CustomString", builder.registry.All()[0].Name)
 	assert.Equal(t, KindPrimitive, builder.registry.All()[0].Kind)
@@ -1897,7 +1897,7 @@ func TestProcessSchema_WithDefs(t *testing.T) {
 	}`)
 
 	compiled, err := compiler.Compile(schemaJSON, "test.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:         "test.json",
@@ -1909,7 +1909,7 @@ func TestProcessSchema_WithDefs(t *testing.T) {
 	builder := NewBuilder(compiler)
 	err = builder.walker.Process(testSchema)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Should have SubType from $defs + Root
 	assert.GreaterOrEqual(t, len(builder.registry.All()), 2)
 }
@@ -2057,7 +2057,7 @@ func TestBuildStruct_AllOfWithRef(t *testing.T) {
 
 	err := builder.BuildStruct(typ, schema)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, KindStruct, typ.Kind)
 	assert.Contains(t, typ.Extends, "BaseType")
 	// Should have field from inline allOf
@@ -2212,7 +2212,7 @@ func TestBuildStruct_WithAdditionalProperties(t *testing.T) {
 
 	err := builder.BuildStruct(typ, schema)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, KindStruct, typ.Kind)
 	assert.Len(t, typ.Fields, 1)
 	assert.NotNil(t, typ.AdditionalProps)
@@ -2371,7 +2371,7 @@ func TestBuild_PropertyNamesOnly(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "strict.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "strict.json",
@@ -2384,7 +2384,7 @@ func TestBuild_PropertyNamesOnly(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -2418,7 +2418,7 @@ func TestBuild_PropertyNamesTypedValues(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "config.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "config.json",
@@ -2431,7 +2431,7 @@ func TestBuild_PropertyNamesTypedValues(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -2468,7 +2468,7 @@ func TestBuild_PropertyNamesWithDirectProperties(t *testing.T) {
 
 	compiler := jsonschema.NewCompiler()
 	compiled, err := compiler.Compile(schemaJSON, "mixed.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
 		Path:          "mixed.json",
@@ -2481,7 +2481,7 @@ func TestBuild_PropertyNamesWithDirectProperties(t *testing.T) {
 	builder := NewBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, graph)
 	assert.Len(t, graph.Types, 1)
 
@@ -2614,7 +2614,7 @@ func TestBuildUnion(t *testing.T) {
 		}
 
 		err := builder.BuildUnion(typ, schema)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 3)
 	})
@@ -2633,7 +2633,7 @@ func TestBuildUnion(t *testing.T) {
 		}
 
 		err := builder.BuildUnion(typ, schema)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 2)
 	})
@@ -2660,7 +2660,7 @@ func TestProcessSchema_Union(t *testing.T) {
 	}
 
 	err := builder.walker.Process(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, builder.registry.All(), 1)
 
 	typ := builder.registry.All()[0]

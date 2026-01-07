@@ -61,7 +61,7 @@ func TestStructBuilder_Build_SimpleObject(t *testing.T) {
 	typ := &Type{ID: "1", Name: "Person"}
 	err := sb.Build(typ, schema)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, KindStruct, typ.Kind)
 	assert.Len(t, typ.Fields, 2)
 	assert.Equal(t, 2, mock.buildTypeRefCalls)
@@ -102,7 +102,7 @@ func TestStructBuilder_Build_AllOf_Ref(t *testing.T) {
 	typ := &Type{ID: "1", Name: "ExtendedType"}
 	err := sb.Build(typ, schema)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, KindStruct, typ.Kind)
 	assert.Contains(t, typ.Extends, "BaseType")
 	assert.Len(t, typ.Fields, 1) // Only the "extra" field, not inherited ones
@@ -236,7 +236,7 @@ func TestStructBuilder_GetOrderedPropertyNames_WithOrder(t *testing.T) {
 	// Set up property order using ExtractPropertyOrder
 	jsonData := []byte(`{"properties": {"z_first": {}, "a_second": {}, "m_third": {}}}`)
 	order, err := schema.ExtractPropertyOrder(jsonData, "test.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sb.SetCurrentOrder(order)
 	sb.SetCurrentPath("test.json")

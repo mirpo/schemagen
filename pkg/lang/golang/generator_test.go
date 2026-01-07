@@ -6,6 +6,7 @@ import (
 
 	"github.com/mirpo/schemagen/pkg/typegraph"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 /*
@@ -60,7 +61,7 @@ func TestGenerateFile_Struct(t *testing.T) {
 	)
 
 	out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, out, "package models")
 	assert.Contains(t, out, "type User struct")
@@ -83,7 +84,7 @@ func TestGenerateEnum_String(t *testing.T) {
 	)
 
 	out, err := g.generateEnum(status)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, out, "type Status string")
 	assert.Contains(t, out, "const (")
@@ -98,7 +99,7 @@ func TestGenerateEnum_Number(t *testing.T) {
 	)
 
 	out, err := g.generateEnum(priority)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, out, "type Priority int")
 	assert.Contains(t, out, "PriorityLow Priority = 1")
@@ -113,7 +114,7 @@ func TestGenerateEnum_Mixed(t *testing.T) {
 	)
 
 	out, err := g.generateEnum(mixed)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, out, "type Mixed any")
 	assert.Contains(t, out, "var MixedValues")
@@ -133,7 +134,7 @@ func TestGenerateFile_Imports(t *testing.T) {
 	)
 
 	out, err := g.GenerateFile([]*typegraph.Type{event}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, out, `"github.com/google/uuid"`)
 	assert.Contains(t, out, `"time"`)
@@ -154,7 +155,7 @@ func TestGenerateFile_ConfigFlags(t *testing.T) {
 	user := structType("User", field("name", "string", false))
 
 	out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.NotContains(t, out, "DO NOT EDIT")
 	assert.NotContains(t, out, "//")
@@ -174,7 +175,7 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 		structType("Apple"),
 		structType("Middle"),
 	}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	a := strings.Index(out, "type Apple")
 	m := strings.Index(out, "type Middle")
