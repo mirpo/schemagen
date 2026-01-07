@@ -7,6 +7,7 @@ import (
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractTypeNameFromRef_ExternalRefs(t *testing.T) {
