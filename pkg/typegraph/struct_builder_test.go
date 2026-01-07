@@ -177,9 +177,9 @@ func TestStructBuilder_ExtractConstraints_Number(t *testing.T) {
 	sb.ExtractConstraints(field, schema)
 
 	assert.NotNil(t, field.Minimum)
-	assert.Equal(t, 0.0, *field.Minimum)
+	assert.InDelta(t, 0.0, *field.Minimum, 0.0001)
 	assert.NotNil(t, field.Maximum)
-	assert.Equal(t, 100.0, *field.Maximum)
+	assert.InDelta(t, 100.0, *field.Maximum, 0.0001)
 }
 
 func TestStructBuilder_ExtractAdditionalProperties_Boolean(t *testing.T) {

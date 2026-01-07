@@ -800,7 +800,7 @@ func TestGenerateFile_MixedTypes(t *testing.T) {
 	// Status comes before User
 	statusPos := strings.Index(result, "export type Status")
 	userPos := strings.Index(result, "export interface User")
-	assert.True(t, statusPos < userPos, "Status should come before User")
+	assert.Less(t, statusPos, userPos, "Status should come before User")
 }
 
 func TestGenerateFile_WithImportsAndAdditionalProps(t *testing.T) {

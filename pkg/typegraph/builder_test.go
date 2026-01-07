@@ -1840,7 +1840,7 @@ func TestGetDescription_NoDescription(t *testing.T) {
 	schema := &jsonschema.Schema{}
 
 	result := getDescription(schema)
-	assert.Equal(t, "", result)
+	assert.Empty(t, result)
 }
 
 func TestBuildTypeRef_PrimitiveWithFormat(t *testing.T) {
