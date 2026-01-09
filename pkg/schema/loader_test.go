@@ -119,7 +119,7 @@ func TestLoader_InvalidInput_Errors(t *testing.T) {
 	loader := NewLoader()
 	_, err := loader.Load(filepath.Join(tmp, "broken.json"))
 
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestDeriveName(t *testing.T) {

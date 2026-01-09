@@ -6,6 +6,7 @@ import (
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockTypeBuilder implements TypeBuilder interface for testing
@@ -67,7 +68,7 @@ func TestSchemaWalker_Process_Object(t *testing.T) {
 
 	err := walker.Process(s)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, mock.buildStructCalled)
 	assert.Len(t, registry.All(), 1)
 	assert.Equal(t, "TestObject", registry.All()[0].Name)
@@ -92,7 +93,7 @@ func TestSchemaWalker_Process_Enum(t *testing.T) {
 
 	err := walker.Process(s)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, mock.buildEnumCalled)
 	assert.Len(t, registry.All(), 1)
 	assert.Equal(t, "Status", registry.All()[0].Name)
@@ -120,7 +121,7 @@ func TestSchemaWalker_Process_Union(t *testing.T) {
 
 	err := walker.Process(s)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, mock.buildUnionCalled)
 	assert.Len(t, registry.All(), 1)
 	assert.Equal(t, "StringOrNumber", registry.All()[0].Name)
@@ -145,7 +146,7 @@ func TestSchemaWalker_Process_Primitive(t *testing.T) {
 
 	err := walker.Process(s)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, mock.buildStructCalled)
 	assert.False(t, mock.buildEnumCalled)
 	assert.False(t, mock.buildUnionCalled)
@@ -184,7 +185,7 @@ func TestSchemaWalker_ExtractDefs(t *testing.T) {
 
 	err := walker.Process(s)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Should have SubType + Root
 	assert.Len(t, registry.All(), 2)
 

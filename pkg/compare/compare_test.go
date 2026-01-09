@@ -456,7 +456,7 @@ func TestRun_InvalidSchemaPath(t *testing.T) {
 
 	_, err := Run(cfg)
 
-	assert.Error(t, err, "Run should return error for invalid schema path")
+	require.Error(t, err, "Run should return error for invalid schema path")
 }
 
 // TestResult_HasDrift tests the Result struct
@@ -503,7 +503,7 @@ func TestResult_HasDrift(t *testing.T) {
 
 // TestFileStatus_Constants tests FileStatus constants
 func TestFileStatus_Constants(t *testing.T) {
-	assert.Equal(t, FileStatus("modified"), StatusModified, "StatusModified should match")
-	assert.Equal(t, FileStatus("new"), StatusNew, "StatusNew should match")
-	assert.Equal(t, FileStatus("deleted"), StatusDeleted, "StatusDeleted should match")
+	assert.Equal(t, StatusModified, FileStatus("modified"), "StatusModified should match")
+	assert.Equal(t, StatusNew, FileStatus("new"), "StatusNew should match")
+	assert.Equal(t, StatusDeleted, FileStatus("deleted"), "StatusDeleted should match")
 }

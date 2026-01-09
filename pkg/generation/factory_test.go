@@ -97,7 +97,7 @@ func TestCreateGenerator_UnsupportedLanguages(t *testing.T) {
 				Language: tt.language,
 			})
 
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Nil(t, gen)
 			assert.Contains(t, err.Error(), "unsupported language")
 			assert.Contains(t, err.Error(), string(tt.language))

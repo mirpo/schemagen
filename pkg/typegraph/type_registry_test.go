@@ -34,7 +34,7 @@ func TestTypeRegistry_All_Empty(t *testing.T) {
 
 	all := r.All()
 	assert.NotNil(t, all)
-	assert.Len(t, all, 0)
+	assert.Empty(t, all)
 }
 
 func TestTypeRegistry_EnsureUniqueName_NoConflict(t *testing.T) {

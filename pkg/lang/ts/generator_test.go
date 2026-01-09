@@ -6,6 +6,7 @@ import (
 
 	"github.com/mirpo/schemagen/pkg/typegraph"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Helper functions
@@ -51,7 +52,7 @@ func TestGenerateInterface_Simple(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export interface User {")
 	assert.Contains(t, result, "id: string;")
 	assert.Contains(t, result, "name: string;")
@@ -66,7 +67,7 @@ func TestGenerateInterface_WithDescription(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "/**")
 	assert.Contains(t, result, "* Represents a user in the system")
 	assert.Contains(t, result, "*/")
@@ -79,7 +80,7 @@ func TestGenerateInterface_EmptyFields(t *testing.T) {
 	typ.Fields = []*typegraph.Field{}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export interface Empty {")
 	assert.Contains(t, result, "}")
 }
@@ -95,7 +96,7 @@ func TestGenerateInterface_MultipleFields(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "id: string;")
 	assert.Contains(t, result, "name: string;")
 	assert.Contains(t, result, "price: number;")
@@ -111,7 +112,7 @@ func TestGenerateInterface_OptionalFields(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "id: string;")
 	assert.Contains(t, result, "email?: string;") // with ?
 }
@@ -128,7 +129,7 @@ func TestGenerateEnum_StringUnion(t *testing.T) {
 	}
 
 	result, err := g.generateEnum(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export type Status =")
 	assert.Contains(t, result, `"active"`)
 	assert.Contains(t, result, `"inactive"`)
@@ -145,7 +146,7 @@ func TestGenerateEnum_NumericEnum(t *testing.T) {
 	}
 
 	result, err := g.generateEnum(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export enum Priority {")
 	assert.Contains(t, result, "Low = 1")
 	assert.Contains(t, result, "High = 2")
@@ -161,7 +162,7 @@ func TestGenerateEnum_WithDescription(t *testing.T) {
 	}
 
 	result, err := g.generateEnum(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "/**")
 	assert.Contains(t, result, "* User status values")
 	assert.Contains(t, result, "*/")
@@ -179,7 +180,7 @@ func TestGenerateEnum_MixedTypes(t *testing.T) {
 	}
 
 	result, err := g.generateEnum(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export type Mixed =")
 	assert.Contains(t, result, `"text"`)
 	assert.Contains(t, result, "42")
@@ -311,7 +312,7 @@ func TestGenerateFile_WithHeader(t *testing.T) {
 	typ := createTestType("User", typegraph.KindStruct)
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "DO NOT EDIT")
 }
 
@@ -322,7 +323,7 @@ func TestGenerateFile_WithoutHeader(t *testing.T) {
 	typ := createTestType("User", typegraph.KindStruct)
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, result, "DO NOT EDIT")
 }
 
@@ -335,7 +336,7 @@ func TestGenerateFile_MultipleTypes(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile(types, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export interface User")
 	assert.Contains(t, result, "export interface Product")
 	assert.Contains(t, result, "export interface Order")
@@ -350,7 +351,7 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile(types, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Find positions
 	applePos := strings.Index(result, "export interface Apple")
@@ -358,8 +359,8 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	zebraPos := strings.Index(result, "export interface Zebra")
 
 	// Verify alphabetical ordering
-	assert.True(t, applePos < middlePos, "Apple should come before Middle")
-	assert.True(t, middlePos < zebraPos, "Middle should come before Zebra")
+	assert.Less(t, applePos, middlePos, "Apple should come before Middle")
+	assert.Less(t, middlePos, zebraPos, "Middle should come before Zebra")
 }
 
 func TestGenerateFile_BlankLinesBetweenTypes(t *testing.T) {
@@ -370,7 +371,7 @@ func TestGenerateFile_BlankLinesBetweenTypes(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile(types, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "}\n\nexport interface B")
 }
 
@@ -413,7 +414,7 @@ func TestGenerateInterface_QuotedPropertyNames(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "validName: string;")
 	assert.Contains(t, result, `"kebab-case": string;`)
 	assert.Contains(t, result, `"with space": string;`)
@@ -436,7 +437,7 @@ func TestGenerateInterface_FieldDescriptions(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "/** User email address */")
 }
 
@@ -468,7 +469,7 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "@format uuid")
 	assert.Contains(t, result, "@format date-time")
 	assert.Contains(t, result, "Event timestamp")
@@ -485,7 +486,7 @@ func TestGenerateInterface_WithExtends(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export type User = BaseModel & {")
 	assert.Contains(t, result, "name: string;")
 }
@@ -499,7 +500,7 @@ func TestGenerateInterface_MultipleExtends(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "BaseModel & Timestamped & Auditable & {")
 }
 
@@ -517,7 +518,7 @@ func TestGenerateFile_WithImports(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// TypeNames are sorted alphabetically
 	assert.Contains(t, result, "import type { Auditable, BaseModel } from './base';")
 }
@@ -538,7 +539,7 @@ func TestGenerateFile_MultipleImports(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "import type { BaseModel } from './base';")
 	assert.Contains(t, result, "import type { Timestamped } from './timestamps';")
 }
@@ -555,7 +556,7 @@ func TestGenerateFile_ImportsSorted(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "import type { Apple, Middle, Zebra } from './base';")
 }
 
@@ -617,7 +618,7 @@ func TestGenerateInterface_WithIndexSignature(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "name: string;")
 	assert.Contains(t, result, "[key: string]: number;")
 }
@@ -627,7 +628,7 @@ func TestGenerateInterface_WithIndexSignature(t *testing.T) {
 func TestGenerateFile_EmptyTypeList(t *testing.T) {
 	g := createTestGenerator(nil)
 	result, err := g.GenerateFile([]*typegraph.Type{}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, result, "export")
 }
 
@@ -638,7 +639,7 @@ func TestGenerateEnum_EmptyValues(t *testing.T) {
 	typ.EnumValues = []typegraph.EnumValue{}
 
 	result, err := g.generateEnum(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export type Status =")
 }
 
@@ -656,7 +657,7 @@ func TestGenerateInterface_FieldDescriptionWithQuotes(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, `This is a "quoted" description`)
 }
 
@@ -668,7 +669,7 @@ func TestGenerateInterface_UnicodeInNames(t *testing.T) {
 	}
 
 	result, err := g.generateInterface(typ)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, result, "export interface Café")
 	assert.Contains(t, result, "naïve: string;")
 }
@@ -731,7 +732,7 @@ func TestGenerateFile_CompleteInterface(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check header
 	assert.Contains(t, result, "DO NOT EDIT")
@@ -764,7 +765,7 @@ func TestGenerateFile_CompleteEnum(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check header
 	assert.Contains(t, result, "DO NOT EDIT")
@@ -790,7 +791,7 @@ func TestGenerateFile_MixedTypes(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{interfaceType, enumType}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Both types present, alphabetically ordered
 	assert.Contains(t, result, "export type Status =")
@@ -799,7 +800,7 @@ func TestGenerateFile_MixedTypes(t *testing.T) {
 	// Status comes before User
 	statusPos := strings.Index(result, "export type Status")
 	userPos := strings.Index(result, "export interface User")
-	assert.True(t, statusPos < userPos, "Status should come before User")
+	assert.Less(t, statusPos, userPos, "Status should come before User")
 }
 
 func TestGenerateFile_WithImportsAndAdditionalProps(t *testing.T) {
@@ -824,7 +825,7 @@ func TestGenerateFile_WithImportsAndAdditionalProps(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check import
 	assert.Contains(t, result, "import type { BaseConfig } from './base';")
@@ -855,7 +856,7 @@ func TestGenerateFile_AllConfigOptions(t *testing.T) {
 	}
 
 	result, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check no headers
 	assert.NotContains(t, result, "DO NOT EDIT")

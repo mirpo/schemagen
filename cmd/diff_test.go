@@ -44,7 +44,7 @@ func TestDiffCommand_HasChanges(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDir})
 	err = cmd.Execute()
-	assert.Error(t, err, "diff should fail when changes detected")
+	require.Error(t, err, "diff should fail when changes detected")
 
 	// Check exit code
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
@@ -61,7 +61,7 @@ func TestDiffCommand_NewFile(t *testing.T) {
 	cmd := NewRootCmd()
 	cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDir})
 	err := cmd.Execute()
-	assert.Error(t, err, "diff should detect new files")
+	require.Error(t, err, "diff should detect new files")
 
 	// Check exit code
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
@@ -87,7 +87,7 @@ func TestDiffCommand_NoColorFlag(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDir, "--no-color"})
 	err = cmd.Execute()
-	assert.Error(t, err, "diff should detect changes even with --no-color")
+	require.Error(t, err, "diff should detect changes even with --no-color")
 }
 
 func TestDiffCommand_MultipleFiles(t *testing.T) {
@@ -108,7 +108,7 @@ func TestDiffCommand_MultipleFiles(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"diff", "../testdata/schemas/events", "--out-ts", tmpDir, "--disable-timestamp"})
 	err = cmd.Execute()
-	assert.Error(t, err, "diff should detect changes")
+	require.Error(t, err, "diff should detect changes")
 
 	if exitErr, ok := err.(*errors.ExitCodeError); ok {
 		assert.Equal(t, 2, exitErr.Code)
@@ -134,5 +134,5 @@ func TestDiffCommand_BothLanguages(t *testing.T) {
 	cmd = NewRootCmd()
 	cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDirTS, "--out-py", tmpDirPY})
 	err = cmd.Execute()
-	assert.Error(t, err, "diff should detect TS changes")
+	require.Error(t, err, "diff should detect TS changes")
 }

@@ -16,7 +16,7 @@ func TestValidateCommandValidSchemas(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	assert.NoError(t, err, "Valid schemas should pass")
+	require.NoError(t, err, "Valid schemas should pass")
 }
 
 func TestValidateCommandSingleFile(t *testing.T) {
@@ -26,7 +26,7 @@ func TestValidateCommandSingleFile(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	assert.NoError(t, err, "Valid single file should pass")
+	require.NoError(t, err, "Valid single file should pass")
 }
 
 func TestValidateCommandInvalidFile(t *testing.T) {
@@ -50,7 +50,7 @@ func TestValidateCommandYAML(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	assert.NoError(t, err, "Valid YAML schema should pass")
+	require.NoError(t, err, "Valid YAML schema should pass")
 }
 
 func TestValidateCommandInvalidJSON(t *testing.T) {
@@ -83,7 +83,7 @@ func TestValidateCommandWithExternalRefs(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	assert.NoError(t, err, "Schema with external refs should validate successfully")
+	require.NoError(t, err, "Schema with external refs should validate successfully")
 }
 
 func TestValidateCommandMultipleFilesWithErrors(t *testing.T) {

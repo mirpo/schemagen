@@ -88,7 +88,7 @@ func TestDecodeOrderedObject_InvalidJSON(t *testing.T) {
 
 	_, err := DecodeOrderedObject(data)
 
-	assert.Error(t, err, "DecodeOrderedObject should return error for invalid JSON")
+	require.Error(t, err, "DecodeOrderedObject should return error for invalid JSON")
 }
 
 // TestDecodeOrderedObject_NotAnObject tests decoding non-object JSON
@@ -97,7 +97,7 @@ func TestDecodeOrderedObject_NotAnObject(t *testing.T) {
 
 	_, err := DecodeOrderedObject(data)
 
-	assert.Error(t, err, "DecodeOrderedObject should return error for non-object")
+	require.Error(t, err, "DecodeOrderedObject should return error for non-object")
 }
 
 // TestExtractPropertyOrder_SimpleObject tests extracting property order from simple object
@@ -401,7 +401,7 @@ func TestExtractPropertyOrder_InvalidJSON(t *testing.T) {
 
 	_, err := ExtractPropertyOrder(invalidJSON, "invalid.json")
 
-	assert.Error(t, err, "ExtractPropertyOrder should return error for invalid JSON")
+	require.Error(t, err, "ExtractPropertyOrder should return error for invalid JSON")
 }
 
 // TestExtractPropertyOrder_OrderPreserved tests that actual insertion order is preserved

@@ -28,7 +28,7 @@ func TestPythonGenerator_Generate_InvalidImports(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := gen.Generate(nil, tt.imports)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), "invalid imports type")
 		})
 	}
