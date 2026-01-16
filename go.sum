@@ -19,6 +19,8 @@ github.com/kaptinlin/jsonpointer v0.4.8 h1:HocHcXrOBfP/nUJw0YYjed/TlQvuCAY6uRs3Q
 github.com/kaptinlin/jsonpointer v0.4.8/go.mod h1:9y0LgXavlmVE5FSHShY5LRlURJJVhbyVJSRWkilrTqA=
 github.com/kaptinlin/jsonschema v0.6.5 h1:hC7upwWlvamWqeTVQ3ab20F4w0XKNKR1drY9apoqGOU=
 github.com/kaptinlin/jsonschema v0.6.5/go.mod h1:EbhSbdxZ4QjzIORdMWOrRXJeCHrLTJqXDA8JzNaeFc8=
+github.com/kaptinlin/jsonschema v0.6.6 h1:UmIF1amA5ijCGSk4tl4ViNlgYL4jzHHvY+Nd5cnkfDI=
+github.com/kaptinlin/jsonschema v0.6.6/go.mod h1:EbhSbdxZ4QjzIORdMWOrRXJeCHrLTJqXDA8JzNaeFc8=
 github.com/kaptinlin/messageformat-go v0.4.7 h1:HQ/OvFUSU7+fAHWkZnP2ug9y+A/ZyTE8j33jfWr8O3Q=
 github.com/kaptinlin/messageformat-go v0.4.7/go.mod h1:DusKpv8CIybczGvwIVn3j13hbR3psr5mOwhFudkiq1c=
 github.com/kaptinlin/messageformat-go v0.4.8 h1:HMRfJAfTJ7ccPNd4CbQx6OYUf9+XMtfIqMQg30i+kgA=
