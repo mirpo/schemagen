@@ -7,6 +7,20 @@ import (
 	"time"
 )
 
+type Currency string
+
+const (
+	CurrencyUSD Currency = "USD"
+	CurrencyEUR Currency = "EUR"
+	CurrencyGBP Currency = "GBP"
+	CurrencyJPY Currency = "JPY"
+)
+
+type Money struct {
+	Amount float64 `json:"amount" validate:"required,gte=0"`
+	Currency Currency `json:"currency" validate:"required"`
+}
+
 type Address struct {
 	Name string `json:"name" validate:"required"`
 	Street string `json:"street" validate:"required"`
@@ -16,13 +30,22 @@ type Address struct {
 	Country string `json:"country" validate:"required"`
 }
 
-type Currency string
+type LineItem struct {
+	ProductId string `json:"productId" validate:"required"`
+	ProductName string `json:"productName" validate:"required"`
+	Quantity int `json:"quantity" validate:"required,gte=1"`
+	UnitPrice Money `json:"unitPrice" validate:"required"`
+	TotalPrice Money `json:"totalPrice" validate:"required"`
+}
+
+type Status string
 
 const (
-	CurrencyUSD Currency = "USD"
-	CurrencyEUR Currency = "EUR"
-	CurrencyGBP Currency = "GBP"
-	CurrencyJPY Currency = "JPY"
+	StatusPENDING Status = "pending"
+	StatusPROCESSING Status = "processing"
+	StatusSHIPPED Status = "shipped"
+	StatusDELIVERED Status = "delivered"
+	StatusCANCELLED Status = "cancelled"
 )
 
 // EcommerceOrder Production-like ecommerce order schema
@@ -39,26 +62,3 @@ type EcommerceOrder struct {
 	Shipping *Money `json:"shipping,omitempty"`
 	Total Money `json:"total" validate:"required"`
 }
-
-type LineItem struct {
-	ProductId string `json:"productId" validate:"required"`
-	ProductName string `json:"productName" validate:"required"`
-	Quantity int `json:"quantity" validate:"required,gte=1"`
-	UnitPrice Money `json:"unitPrice" validate:"required"`
-	TotalPrice Money `json:"totalPrice" validate:"required"`
-}
-
-type Money struct {
-	Amount float64 `json:"amount" validate:"required,gte=0"`
-	Currency Currency `json:"currency" validate:"required"`
-}
-
-type Status string
-
-const (
-	StatusPENDING Status = "pending"
-	StatusPROCESSING Status = "processing"
-	StatusSHIPPED Status = "shipped"
-	StatusDELIVERED Status = "delivered"
-	StatusCANCELLED Status = "cancelled"
-)

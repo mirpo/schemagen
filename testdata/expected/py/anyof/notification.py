@@ -8,38 +8,6 @@ from enum import Enum
 from pydantic import BaseModel, Field, EmailStr
 
 
-class Format(str, Enum):
-    TEXT = "text"
-
-
-class Content(BaseModel):
-    """Plain text content"""
-
-    body: str
-    format: Format
-
-
-class Format2(str, Enum):
-    HTML = "html"
-
-
-class Content1(BaseModel):
-    """HTML content"""
-
-    body: str
-    css: str | None = None
-    format: Format2
-
-
-class Priority(str, Enum):
-    """Notification priority level"""
-
-    LOW = "low"
-    NORMAL = "normal"
-    HIGH = "high"
-    URGENT = "urgent"
-
-
 class Type(str, Enum):
     EMAIL = "email"
 
@@ -74,6 +42,38 @@ class Channel2(BaseModel):
     badge: float | None = None
     deviceId: str
     type: Type3
+
+
+class Format(str, Enum):
+    TEXT = "text"
+
+
+class Content(BaseModel):
+    """Plain text content"""
+
+    body: str
+    format: Format
+
+
+class Format2(str, Enum):
+    HTML = "html"
+
+
+class Content1(BaseModel):
+    """HTML content"""
+
+    body: str
+    css: str | None = None
+    format: Format2
+
+
+class Priority(str, Enum):
+    """Notification priority level"""
+
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
 
 
 class Notification(BaseModel):

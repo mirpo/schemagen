@@ -6,23 +6,33 @@ import (
 	"fmt"
 )
 
-// PropertyOrder tracks insertion order of "properties" blocks in a schema.
+// PropertyOrder tracks insertion order of "properties" and "$defs" blocks in a schema.
 type PropertyOrder struct {
 	// key: schema path (e.g. "a.json#/allOf/0")
 	// val: ordered property names
 	orders map[string][]string
+
+	// key: schema path (e.g. "a.json")
+	// val: ordered $defs names
+	defsOrders map[string][]string
 }
 
 // NewPropertyOrder creates an empty PropertyOrder.
 func NewPropertyOrder() *PropertyOrder {
 	return &PropertyOrder{
-		orders: make(map[string][]string),
+		orders:     make(map[string][]string),
+		defsOrders: make(map[string][]string),
 	}
 }
 
 // GetOrder returns ordered property names for a schema path.
 func (po *PropertyOrder) GetOrder(path string) []string {
 	return po.orders[path]
+}
+
+// GetDefsOrder returns ordered $defs names for a schema path.
+func (po *PropertyOrder) GetDefsOrder(path string) []string {
+	return po.defsOrders[path]
 }
 
 // OrderedField represents one JSON object field with preserved order.
@@ -136,6 +146,13 @@ func extractFromDefinitions(data json.RawMessage, basePath string, po *PropertyO
 	if err != nil {
 		return
 	}
+
+	// Store the order of $defs names
+	defNames := make([]string, 0, len(fields))
+	for _, def := range fields {
+		defNames = append(defNames, def.Key)
+	}
+	po.defsOrders[basePath] = defNames
 
 	for _, def := range fields {
 		defPath := fmt.Sprintf("%s/%s", basePath, def.Key)

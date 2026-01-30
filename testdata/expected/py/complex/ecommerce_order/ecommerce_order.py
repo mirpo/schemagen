@@ -8,15 +8,6 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
-class Address(BaseModel):
-    name: str
-    street: str
-    city: str
-    state: str | None = None
-    zipCode: str | None = None
-    country: str
-
-
 class Currency(str, Enum):
     USD = "USD"
     EUR = "EUR"
@@ -27,6 +18,15 @@ class Currency(str, Enum):
 class Money(BaseModel):
     amount: float = Field(..., ge=0)
     currency: Currency
+
+
+class Address(BaseModel):
+    name: str
+    street: str
+    city: str
+    state: str | None = None
+    zipCode: str | None = None
+    country: str
 
 
 class LineItem(BaseModel):

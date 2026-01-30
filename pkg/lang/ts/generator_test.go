@@ -354,13 +354,13 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	require.NoError(t, err)
 
 	// Find positions
+	zebraPos := strings.Index(result, "export interface Zebra")
 	applePos := strings.Index(result, "export interface Apple")
 	middlePos := strings.Index(result, "export interface Middle")
-	zebraPos := strings.Index(result, "export interface Zebra")
 
-	// Verify alphabetical ordering
-	assert.Less(t, applePos, middlePos, "Apple should come before Middle")
-	assert.Less(t, middlePos, zebraPos, "Middle should come before Zebra")
+	// Verify input order is preserved (types appear in same order as input)
+	assert.Less(t, zebraPos, applePos, "Zebra should come before Apple (input order)")
+	assert.Less(t, applePos, middlePos, "Apple should come before Middle (input order)")
 }
 
 func TestGenerateFile_BlankLinesBetweenTypes(t *testing.T) {
@@ -793,14 +793,14 @@ func TestGenerateFile_MixedTypes(t *testing.T) {
 	result, err := g.GenerateFile([]*typegraph.Type{interfaceType, enumType}, nil)
 	require.NoError(t, err)
 
-	// Both types present, alphabetically ordered
+	// Both types present
 	assert.Contains(t, result, "export type Status =")
 	assert.Contains(t, result, "export interface User")
 
-	// Status comes before User
-	statusPos := strings.Index(result, "export type Status")
+	// User comes before Status (input order preserved)
 	userPos := strings.Index(result, "export interface User")
-	assert.Less(t, statusPos, userPos, "Status should come before User")
+	statusPos := strings.Index(result, "export type Status")
+	assert.Less(t, userPos, statusPos, "User should come before Status (input order)")
 }
 
 func TestGenerateFile_WithImportsAndAdditionalProps(t *testing.T) {

@@ -12,22 +12,27 @@ type IdObject struct {
 	Id uuid.UUID `json:"id" validate:"required,uuid"`
 }
 
-// MegaTest One schema to test everything
-type MegaTest struct {
-	IdObject
-	Timestamped
-	Tags []string `json:"tags" validate:"required,min=1"`
-	Owner *Person `json:"owner,omitempty"`
-	Status Status `json:"status" validate:"required"`
-	Meta *map[string]string `json:"meta,omitempty"`
-	// Can be one of: Payload, Payload1
-	Payload *any `json:"payload,omitempty"`
-	Node *Node `json:"node,omitempty"`
+type Timestamped struct {
+	CreatedAt time.Time `json:"createdAt" validate:"required"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+}
+
+type Person struct {
+	Email *string `json:"email,omitempty" validate:"email"`
+	Name *string `json:"name,omitempty"`
 }
 
 type Node struct {
 	Value *string `json:"value,omitempty"`
 	Next *Node `json:"next,omitempty"`
+}
+
+type Status any
+
+var StatusValues = []Status{
+	"active",
+	"paused",
+	map[string]any{"complex": true},
 }
 
 type Payload struct {
@@ -40,20 +45,15 @@ type Payload1 struct {
 	Type string `json:"type" validate:"required,oneof=B"`
 }
 
-type Person struct {
-	Email *string `json:"email,omitempty" validate:"email"`
-	Name *string `json:"name,omitempty"`
-}
-
-type Status any
-
-var StatusValues = []Status{
-	"active",
-	"paused",
-	map[string]any{"complex": true},
-}
-
-type Timestamped struct {
-	CreatedAt time.Time `json:"createdAt" validate:"required"`
-	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+// MegaTest One schema to test everything
+type MegaTest struct {
+	IdObject
+	Timestamped
+	Tags []string `json:"tags" validate:"required,min=1"`
+	Owner *Person `json:"owner,omitempty"`
+	Status Status `json:"status" validate:"required"`
+	Meta *map[string]string `json:"meta,omitempty"`
+	// Can be one of: Payload, Payload1
+	Payload *any `json:"payload,omitempty"`
+	Node *Node `json:"node,omitempty"`
 }

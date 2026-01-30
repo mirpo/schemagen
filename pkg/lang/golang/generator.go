@@ -87,15 +87,8 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 		sb.WriteString(")\n\n")
 	}
 
-	// Sort types by name for deterministic output
-	sortedTypes := make([]*typegraph.Type, len(types))
-	copy(sortedTypes, types)
-	sort.Slice(sortedTypes, func(i, j int) bool {
-		return sortedTypes[i].Name < sortedTypes[j].Name
-	})
-
-	// Generate types
-	for i, typ := range sortedTypes {
+	// Generate types (preserving input order for correct schema references)
+	for i, typ := range types {
 		if i > 0 {
 			sb.WriteString("\n\n")
 		}

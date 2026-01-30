@@ -7,24 +7,27 @@ import (
 	"github.com/google/uuid"
 )
 
+type Status string
+
+const (
+	StatusDRAFT Status = "draft"
+	StatusPUBLISHED Status = "published"
+	StatusARCHIVED Status = "archived"
+)
+
+type Role string
+
+const (
+	RoleADMIN Role = "admin"
+	RoleEDITOR Role = "editor"
+	RoleCONTRIBUTOR Role = "contributor"
+)
+
 // Author Inline author object (should be extracted)
 type Author struct {
 	Email string `json:"email" validate:"required,email"`
 	Name string `json:"name" validate:"required"`
 	Role *Role `json:"role,omitempty"`
-}
-
-// BlogPost Blog post with deeply nested inline types for extraction testing
-type BlogPost struct {
-	Id uuid.UUID `json:"id" validate:"required,uuid"`
-	Title string `json:"title" validate:"required"`
-	Content *string `json:"content,omitempty"`
-	Status Status `json:"status" validate:"required"`
-	// Inline author object (should be extracted)
-	Author Author `json:"author" validate:"required"`
-	Tags *[]string `json:"tags,omitempty"`
-	// Array of inline comment objects
-	Comments *[]CommentsItem `json:"comments,omitempty"`
 }
 
 // Commenter Nested inline commenter object (should be extracted)
@@ -41,18 +44,15 @@ type CommentsItem struct {
 	Text string `json:"text" validate:"required"`
 }
 
-type Role string
-
-const (
-	RoleADMIN Role = "admin"
-	RoleEDITOR Role = "editor"
-	RoleCONTRIBUTOR Role = "contributor"
-)
-
-type Status string
-
-const (
-	StatusDRAFT Status = "draft"
-	StatusPUBLISHED Status = "published"
-	StatusARCHIVED Status = "archived"
-)
+// BlogPost Blog post with deeply nested inline types for extraction testing
+type BlogPost struct {
+	Id uuid.UUID `json:"id" validate:"required,uuid"`
+	Title string `json:"title" validate:"required"`
+	Content *string `json:"content,omitempty"`
+	Status Status `json:"status" validate:"required"`
+	// Inline author object (should be extracted)
+	Author Author `json:"author" validate:"required"`
+	Tags *[]string `json:"tags,omitempty"`
+	// Array of inline comment objects
+	Comments *[]CommentsItem `json:"comments,omitempty"`
+}

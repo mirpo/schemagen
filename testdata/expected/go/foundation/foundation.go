@@ -8,62 +8,12 @@ import (
 	"time"
 )
 
-// AdditionalProps Additional properties patterns
-type AdditionalProps struct {
-	// Any additional properties allowed
-	Flexible *Flexible `json:"flexible,omitempty"`
-	// No additional properties allowed
-	Strict *Strict `json:"strict,omitempty"`
-	// Additional properties must be numbers
-	TypedMap *TypedMap `json:"typedMap,omitempty"`
-}
-
-type Arrays struct {
-	// Array with size constraints
-	MinMaxArray *[]string `json:"minMaxArray,omitempty" validate:"min=1,max=10"`
-}
-
-// Arrays2 Array types
-type Arrays2 struct {
-	// Array of numbers
-	NumberArray *[]float64 `json:"numberArray,omitempty"`
-	// Array of objects
-	ObjectArray *[]ObjectArrayItem `json:"objectArray,omitempty"`
-	// Array of strings
-	StringArray *[]string `json:"stringArray,omitempty"`
-}
-
-// Constraints Validation constraints
-type Constraints struct {
-	Arrays *Arrays `json:"arrays,omitempty"`
-	Numbers *Numbers `json:"numbers,omitempty"`
-	Strings *Strings `json:"strings,omitempty"`
-}
-
-// EdgeCases Edge cases: reserved keywords and special characters
-type EdgeCases struct {
-	// Empty object with no properties
-	EmptyConfig *map[string]interface{} `json:"emptyConfig,omitempty"`
-	// Reserved keywords in TypeScript and Python
-	ReservedKeywords *ReservedKeywords `json:"reservedKeywords,omitempty"`
-	// Special characters in property names
-	SpecialChars *SpecialChars `json:"specialChars,omitempty"`
-}
-
-// Enums Enumeration types
-type Enums struct {
-	// Mixed type enumeration
-	MixedEnum *MixedEnum `json:"mixedEnum,omitempty"`
-	// Number enumeration
-	NumberEnum *NumberEnum `json:"numberEnum,omitempty"`
-	// String enumeration
-	StringEnum *StringEnum `json:"stringEnum,omitempty"`
-}
-
-// Flexible Any additional properties allowed
-type Flexible struct {
-	Enabled *bool `json:"enabled,omitempty"`
-	Version string `json:"version" validate:"required"`
+// Primitives All primitive types
+type Primitives struct {
+	BooleanVal bool `json:"booleanVal" validate:"required"`
+	IntegerVal int `json:"integerVal" validate:"required"`
+	NumberVal float64 `json:"numberVal" validate:"required"`
+	StringVal string `json:"stringVal" validate:"required"`
 }
 
 // Formats String formats for validation
@@ -86,35 +36,32 @@ type Formats struct {
 	Uuid *uuid.UUID `json:"uuid,omitempty" validate:"uuid"`
 }
 
-// Foundation Comprehensive test of all basic types, formats, constraints, and edge cases
-type Foundation struct {
-	// All primitive types
-	Primitives Primitives `json:"primitives" validate:"required"`
-	// String formats for validation
-	Formats *Formats `json:"formats,omitempty"`
-	// Validation constraints
-	Constraints *Constraints `json:"constraints,omitempty"`
-	// Enumeration types
-	Enums *Enums `json:"enums,omitempty"`
-	// Array types
-	Arrays *Arrays2 `json:"arrays,omitempty"`
-	// Nested object structure
-	Nested *Nested `json:"nested,omitempty"`
-	// Required vs optional fields
-	Nullable *Nullable `json:"nullable,omitempty"`
-	// Additional properties patterns
-	AdditionalProps *AdditionalProps `json:"additionalProps,omitempty"`
-	// Edge cases: reserved keywords and special characters
-	EdgeCases *EdgeCases `json:"edgeCases,omitempty"`
+type Arrays struct {
+	// Array with size constraints
+	MinMaxArray *[]string `json:"minMaxArray,omitempty" validate:"min=1,max=10"`
 }
 
-type Level1 struct {
-	Level2 *Level2 `json:"level2,omitempty"`
+type Numbers struct {
+	// Number with exclusive bounds
+	ExclusiveRange *float64 `json:"exclusiveRange,omitempty"`
+	// Integer with constraints
+	MinMaxInteger *int `json:"minMaxInteger,omitempty" validate:"gte=1,lte=999"`
+	// Number with inclusive bounds
+	MinMaxNumber *float64 `json:"minMaxNumber,omitempty" validate:"gte=0,lte=100"`
 }
 
-type Level2 struct {
-	// Three levels deep
-	Level3 *string `json:"level3,omitempty"`
+type Strings struct {
+	// String with length constraints
+	MinMaxString *string `json:"minMaxString,omitempty" validate:"min=5,max=50"`
+	// String matching regex pattern
+	PatternString *string `json:"patternString,omitempty"`
+}
+
+// Constraints Validation constraints
+type Constraints struct {
+	Arrays *Arrays `json:"arrays,omitempty"`
+	Numbers *Numbers `json:"numbers,omitempty"`
+	Strings *Strings `json:"strings,omitempty"`
 }
 
 // MixedEnum Mixed type enumeration
@@ -127,9 +74,65 @@ var MixedEnumValues = []MixedEnum{
 	nil,
 }
 
+// NumberEnum Number enumeration
+type NumberEnum int
+
+const (
+	NumberEnum1 NumberEnum = 1
+	NumberEnum2 NumberEnum = 2
+	NumberEnum3 NumberEnum = 3
+)
+
+// StringEnum String enumeration
+type StringEnum string
+
+const (
+	StringEnumOPTION1 StringEnum = "option1"
+	StringEnumOPTION2 StringEnum = "option2"
+	StringEnumOPTION3 StringEnum = "option3"
+)
+
+// Enums Enumeration types
+type Enums struct {
+	// Mixed type enumeration
+	MixedEnum *MixedEnum `json:"mixedEnum,omitempty"`
+	// Number enumeration
+	NumberEnum *NumberEnum `json:"numberEnum,omitempty"`
+	// String enumeration
+	StringEnum *StringEnum `json:"stringEnum,omitempty"`
+}
+
+type ObjectArrayItem struct {
+	Id *string `json:"id,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+}
+
+// Arrays2 Array types
+type Arrays2 struct {
+	// Array of numbers
+	NumberArray *[]float64 `json:"numberArray,omitempty"`
+	// Array of objects
+	ObjectArray *[]ObjectArrayItem `json:"objectArray,omitempty"`
+	// Array of strings
+	StringArray *[]string `json:"stringArray,omitempty"`
+}
+
+type Level2 struct {
+	// Three levels deep
+	Level3 *string `json:"level3,omitempty"`
+}
+
+type Level1 struct {
+	Level2 *Level2 `json:"level2,omitempty"`
+}
+
 // Nested Nested object structure
 type Nested struct {
 	Level1 *Level1 `json:"level1,omitempty"`
+}
+
+type OptionalObject struct {
+	Field *string `json:"field,omitempty"`
 }
 
 // Nullable Required vs optional fields
@@ -143,39 +146,32 @@ type Nullable struct {
 	RequiredString string `json:"requiredString" validate:"required"`
 }
 
-// NumberEnum Number enumeration
-type NumberEnum int
-
-const (
-	NumberEnum1 NumberEnum = 1
-	NumberEnum2 NumberEnum = 2
-	NumberEnum3 NumberEnum = 3
-)
-
-type Numbers struct {
-	// Number with exclusive bounds
-	ExclusiveRange *float64 `json:"exclusiveRange,omitempty"`
-	// Integer with constraints
-	MinMaxInteger *int `json:"minMaxInteger,omitempty" validate:"gte=1,lte=999"`
-	// Number with inclusive bounds
-	MinMaxNumber *float64 `json:"minMaxNumber,omitempty" validate:"gte=0,lte=100"`
+// Flexible Any additional properties allowed
+type Flexible struct {
+	Enabled *bool `json:"enabled,omitempty"`
+	Version string `json:"version" validate:"required"`
 }
 
-type ObjectArrayItem struct {
-	Id *string `json:"id,omitempty"`
-	Value *float64 `json:"value,omitempty"`
+// Strict No additional properties allowed
+type Strict struct {
+	Id string `json:"id" validate:"required"`
+	Name *string `json:"name,omitempty"`
 }
 
-type OptionalObject struct {
-	Field *string `json:"field,omitempty"`
+// TypedMap Additional properties must be numbers
+type TypedMap struct {
+	Source *string `json:"source,omitempty"`
+	Timestamp string `json:"timestamp" validate:"required"`
 }
 
-// Primitives All primitive types
-type Primitives struct {
-	BooleanVal bool `json:"booleanVal" validate:"required"`
-	IntegerVal int `json:"integerVal" validate:"required"`
-	NumberVal float64 `json:"numberVal" validate:"required"`
-	StringVal string `json:"stringVal" validate:"required"`
+// AdditionalProps Additional properties patterns
+type AdditionalProps struct {
+	// Any additional properties allowed
+	Flexible *Flexible `json:"flexible,omitempty"`
+	// No additional properties allowed
+	Strict *Strict `json:"strict,omitempty"`
+	// Additional properties must be numbers
+	TypedMap *TypedMap `json:"typedMap,omitempty"`
 }
 
 // ReservedKeywords Reserved keywords in TypeScript and Python
@@ -208,30 +204,34 @@ type SpecialChars struct {
 	WithDots *string `json:"with.dots,omitempty"`
 }
 
-// Strict No additional properties allowed
-type Strict struct {
-	Id string `json:"id" validate:"required"`
-	Name *string `json:"name,omitempty"`
+// EdgeCases Edge cases: reserved keywords and special characters
+type EdgeCases struct {
+	// Empty object with no properties
+	EmptyConfig *map[string]interface{} `json:"emptyConfig,omitempty"`
+	// Reserved keywords in TypeScript and Python
+	ReservedKeywords *ReservedKeywords `json:"reservedKeywords,omitempty"`
+	// Special characters in property names
+	SpecialChars *SpecialChars `json:"specialChars,omitempty"`
 }
 
-// StringEnum String enumeration
-type StringEnum string
-
-const (
-	StringEnumOPTION1 StringEnum = "option1"
-	StringEnumOPTION2 StringEnum = "option2"
-	StringEnumOPTION3 StringEnum = "option3"
-)
-
-type Strings struct {
-	// String with length constraints
-	MinMaxString *string `json:"minMaxString,omitempty" validate:"min=5,max=50"`
-	// String matching regex pattern
-	PatternString *string `json:"patternString,omitempty"`
-}
-
-// TypedMap Additional properties must be numbers
-type TypedMap struct {
-	Source *string `json:"source,omitempty"`
-	Timestamp string `json:"timestamp" validate:"required"`
+// Foundation Comprehensive test of all basic types, formats, constraints, and edge cases
+type Foundation struct {
+	// All primitive types
+	Primitives Primitives `json:"primitives" validate:"required"`
+	// String formats for validation
+	Formats *Formats `json:"formats,omitempty"`
+	// Validation constraints
+	Constraints *Constraints `json:"constraints,omitempty"`
+	// Enumeration types
+	Enums *Enums `json:"enums,omitempty"`
+	// Array types
+	Arrays *Arrays2 `json:"arrays,omitempty"`
+	// Nested object structure
+	Nested *Nested `json:"nested,omitempty"`
+	// Required vs optional fields
+	Nullable *Nullable `json:"nullable,omitempty"`
+	// Additional properties patterns
+	AdditionalProps *AdditionalProps `json:"additionalProps,omitempty"`
+	// Edge cases: reserved keywords and special characters
+	EdgeCases *EdgeCases `json:"edgeCases,omitempty"`
 }

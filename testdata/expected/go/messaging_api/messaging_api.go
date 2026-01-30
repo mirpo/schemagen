@@ -8,26 +8,15 @@ import (
 	"time"
 )
 
-// DeliveryMode Delivery guarantee level
-type DeliveryMode string
+// Priority Message priority level
+type Priority string
 
 const (
-	DeliveryModeAT_MOST_ONCE DeliveryMode = "at-most-once"
-	DeliveryModeAT_LEAST_ONCE DeliveryMode = "at-least-once"
-	DeliveryModeEXACTLY_ONCE DeliveryMode = "exactly-once"
+	PriorityLOW Priority = "low"
+	PriorityNORMAL Priority = "normal"
+	PriorityHIGH Priority = "high"
+	PriorityCRITICAL Priority = "critical"
 )
-
-// Error API error details
-type Error struct {
-	// Error code
-	Code string `json:"code" validate:"required"`
-	// Human-readable error message
-	Message string `json:"message" validate:"required"`
-	// Field that caused the error
-	Field *string `json:"field,omitempty"`
-	// Additional error context
-	Details *map[string]interface{} `json:"details,omitempty"`
-}
 
 // Message Message in a queue or topic
 type Message struct {
@@ -47,31 +36,38 @@ type Message struct {
 	Priority *Priority `json:"priority,omitempty"`
 }
 
-// MessagingAPI Real-world messaging API with pagination, errors, and message queue concepts
-type MessagingAPI struct {
-	// List of messages
-	Messages *[]Message `json:"messages,omitempty"`
-	// Active subscriptions
-	Subscriptions *[]Subscription `json:"subscriptions,omitempty"`
-	Pagination *Pagination `json:"pagination,omitempty"`
-	// Any errors encountered
-	Errors *[]Error `json:"errors,omitempty"`
-	// Response metadata (inline object, not a $def)
-	Metadata Metadata `json:"metadata" validate:"required"`
-	// Queue statistics (inline object)
-	Stats *Stats `json:"stats,omitempty"`
+// DeliveryMode Delivery guarantee level
+type DeliveryMode string
+
+const (
+	DeliveryModeAT_MOST_ONCE DeliveryMode = "at-most-once"
+	DeliveryModeAT_LEAST_ONCE DeliveryMode = "at-least-once"
+	DeliveryModeEXACTLY_ONCE DeliveryMode = "exactly-once"
+)
+
+// Subscription Subscription to a topic
+type Subscription struct {
+	Id uuid.UUID `json:"id" validate:"required,uuid"`
+	// Topic pattern to subscribe to
+	Topic string `json:"topic" validate:"required"`
+	// Message filtering rules
+	Filters *map[string]string `json:"filters,omitempty"`
+	// Delivery guarantee level
+	DeliveryMode DeliveryMode `json:"deliveryMode" validate:"required"`
+	// Webhook URL for message delivery
+	Endpoint *string `json:"endpoint,omitempty" validate:"url"`
 }
 
-// Metadata Response metadata (inline object, not a $def)
-type Metadata struct {
-	// Server region that handled the request
-	Region *string `json:"region,omitempty"`
-	// Unique request identifier for tracing
-	RequestId uuid.UUID `json:"requestId" validate:"required,uuid"`
-	// When the response was generated
-	Timestamp time.Time `json:"timestamp" validate:"required"`
-	// API version
-	Version string `json:"version" validate:"required"`
+// Error API error details
+type Error struct {
+	// Error code
+	Code string `json:"code" validate:"required"`
+	// Human-readable error message
+	Message string `json:"message" validate:"required"`
+	// Field that caused the error
+	Field *string `json:"field,omitempty"`
+	// Additional error context
+	Details *map[string]interface{} `json:"details,omitempty"`
 }
 
 // Pagination Pagination information
@@ -90,15 +86,23 @@ type Pagination struct {
 	HasPrevious *bool `json:"hasPrevious,omitempty"`
 }
 
-// Priority Message priority level
-type Priority string
+// Metadata Response metadata (inline object, not a $def)
+type Metadata struct {
+	// Server region that handled the request
+	Region *string `json:"region,omitempty"`
+	// Unique request identifier for tracing
+	RequestId uuid.UUID `json:"requestId" validate:"required,uuid"`
+	// When the response was generated
+	Timestamp time.Time `json:"timestamp" validate:"required"`
+	// API version
+	Version string `json:"version" validate:"required"`
+}
 
-const (
-	PriorityLOW Priority = "low"
-	PriorityNORMAL Priority = "normal"
-	PriorityHIGH Priority = "high"
-	PriorityCRITICAL Priority = "critical"
-)
+// Throughput Nested inline object
+type Throughput struct {
+	BytesPerSecond *float64 `json:"bytesPerSecond,omitempty" validate:"gte=0"`
+	MessagesPerSecond *float64 `json:"messagesPerSecond,omitempty" validate:"gte=0"`
+}
 
 // Stats Queue statistics (inline object)
 type Stats struct {
@@ -109,21 +113,17 @@ type Stats struct {
 	TotalMessages *int `json:"totalMessages,omitempty" validate:"gte=0"`
 }
 
-// Subscription Subscription to a topic
-type Subscription struct {
-	Id uuid.UUID `json:"id" validate:"required,uuid"`
-	// Topic pattern to subscribe to
-	Topic string `json:"topic" validate:"required"`
-	// Message filtering rules
-	Filters *map[string]string `json:"filters,omitempty"`
-	// Delivery guarantee level
-	DeliveryMode DeliveryMode `json:"deliveryMode" validate:"required"`
-	// Webhook URL for message delivery
-	Endpoint *string `json:"endpoint,omitempty" validate:"url"`
-}
-
-// Throughput Nested inline object
-type Throughput struct {
-	BytesPerSecond *float64 `json:"bytesPerSecond,omitempty" validate:"gte=0"`
-	MessagesPerSecond *float64 `json:"messagesPerSecond,omitempty" validate:"gte=0"`
+// MessagingAPI Real-world messaging API with pagination, errors, and message queue concepts
+type MessagingAPI struct {
+	// List of messages
+	Messages *[]Message `json:"messages,omitempty"`
+	// Active subscriptions
+	Subscriptions *[]Subscription `json:"subscriptions,omitempty"`
+	Pagination *Pagination `json:"pagination,omitempty"`
+	// Any errors encountered
+	Errors *[]Error `json:"errors,omitempty"`
+	// Response metadata (inline object, not a $def)
+	Metadata Metadata `json:"metadata" validate:"required"`
+	// Queue statistics (inline object)
+	Stats *Stats `json:"stats,omitempty"`
 }

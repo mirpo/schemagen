@@ -7,22 +7,31 @@ export interface IdObject {
   id: string;
 }
 
-/**
- * One schema to test everything
- */
-export type MegaTest = IdObject & Timestamped & {
-  tags: string[];
-  owner?: Person;
-  status: Status;
-  meta?: Record<string, string>;
-  payload?: Payload | Payload1;
-  node?: Node;
-};
+export interface Timestamped {
+  /**
+   * @format date-time
+   */
+  createdAt: string;
+  /**
+   * @format date-time
+   */
+  updatedAt?: string;
+}
+
+export interface Person {
+  /**
+   * @format email
+   */
+  email?: string;
+  name?: string;
+}
 
 export interface Node {
   value?: string;
   next?: Node;
 }
+
+export type Status = "active" | "paused";
 
 export interface Payload {
   data: string;
@@ -34,23 +43,14 @@ export interface Payload1 {
   type: "B";
 }
 
-export interface Person {
-  /**
-   * @format email
-   */
-  email?: string;
-  name?: string;
-}
-
-export type Status = "active" | "paused";
-
-export interface Timestamped {
-  /**
-   * @format date-time
-   */
-  createdAt: string;
-  /**
-   * @format date-time
-   */
-  updatedAt?: string;
-}
+/**
+ * One schema to test everything
+ */
+export type MegaTest = IdObject & Timestamped & {
+  tags: string[];
+  owner?: Person;
+  status: Status;
+  meta?: Record<string, string>;
+  payload?: Payload | Payload1;
+  node?: Node;
+};

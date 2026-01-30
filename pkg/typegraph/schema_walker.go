@@ -9,6 +9,48 @@ import (
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
+// getOrderedDefNames returns $defs names in original schema order.
+func (w *SchemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jsonschema.Schema) []string {
+	// PropertyOrder may be nil in tests that create schemas manually
+	if s.PropertyOrder == nil {
+		names := make([]string, 0, len(defs))
+		for name := range defs {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		return names
+	}
+
+	defsPath := s.RelativePath + "#/$defs"
+	ordered := s.PropertyOrder.GetDefsOrder(defsPath)
+
+	// Filter to only include keys that exist in defs (defensive)
+	mapKeys := make(map[string]bool)
+	for key := range defs {
+		mapKeys[key] = true
+	}
+
+	result := make([]string, 0, len(ordered))
+	for _, key := range ordered {
+		if mapKeys[key] {
+			result = append(result, key)
+			delete(mapKeys, key)
+		}
+	}
+
+	// Add any keys not in order (shouldn't happen, but be safe)
+	if len(mapKeys) > 0 {
+		extra := make([]string, 0, len(mapKeys))
+		for key := range mapKeys {
+			extra = append(extra, key)
+		}
+		sort.Strings(extra)
+		result = append(result, extra...)
+	}
+
+	return result
+}
+
 // TypeBuilder interface for building specific type kinds.
 // Used to break circular dependency between SchemaWalker and type builders.
 type TypeBuilder interface {
@@ -74,12 +116,8 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 
 	// First, extract $defs as separate types
 	if compiled.Defs != nil {
-		// Sort $defs keys for deterministic iteration
-		defNames := make([]string, 0, len(compiled.Defs))
-		for defName := range compiled.Defs {
-			defNames = append(defNames, defName)
-		}
-		sort.Strings(defNames)
+		// Get $defs in original schema order (preserves JSON file order)
+		defNames := w.getOrderedDefNames(s, compiled.Defs)
 
 		// Process each $def with correct path for order lookup
 		for _, defName := range defNames {

@@ -7,15 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Address Address with country reference
-type Address struct {
-	Street string `json:"street" validate:"required"`
-	City string `json:"city" validate:"required"`
-	ZipCode *string `json:"zipCode,omitempty"`
-	// Reference to Country
-	Country Country `json:"country" validate:"required"`
-}
-
 type Code string
 
 const (
@@ -31,6 +22,15 @@ const (
 type Country struct {
 	Name string `json:"name" validate:"required"`
 	Code Code `json:"code" validate:"required"`
+}
+
+// Address Address with country reference
+type Address struct {
+	Street string `json:"street" validate:"required"`
+	City string `json:"city" validate:"required"`
+	ZipCode *string `json:"zipCode,omitempty"`
+	// Reference to Country
+	Country Country `json:"country" validate:"required"`
 }
 
 // Office Office with address reference

@@ -13,9 +13,22 @@ class IdObject(BaseModel):
     id: UUID
 
 
+class Timestamped(BaseModel):
+    createdAt: datetime
+    updatedAt: datetime | None = None
+
+
+class Person(BaseModel):
+    email: EmailStr | None = None
+    name: str | None = None
+
+
 class Node(BaseModel):
     value: str | None = None
     next: Node | None = None
+
+
+Status = Literal["active", "paused"]
 
 
 class Payload(BaseModel):
@@ -26,19 +39,6 @@ class Payload(BaseModel):
 class Payload1(BaseModel):
     data: float
     type: Literal["B"]
-
-
-class Person(BaseModel):
-    email: EmailStr | None = None
-    name: str | None = None
-
-
-Status = Literal["active", "paused"]
-
-
-class Timestamped(BaseModel):
-    createdAt: datetime
-    updatedAt: datetime | None = None
 
 
 class MegaTest(IdObject, Timestamped):
