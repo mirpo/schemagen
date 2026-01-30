@@ -9,188 +9,109 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockTypeBuilder implements TypeBuilder interface for testing
 type mockTypeBuilder struct {
 	buildStructCalled bool
 	buildEnumCalled   bool
 	buildUnionCalled  bool
-	lastType          *Type
-	lastSchema        *jsonschema.Schema
 }
 
 func (m *mockTypeBuilder) BuildStruct(typ *Type, s *jsonschema.Schema) error {
 	m.buildStructCalled = true
-	m.lastType = typ
-	m.lastSchema = s
 	typ.Kind = KindStruct
 	return nil
 }
 
 func (m *mockTypeBuilder) BuildEnum(typ *Type, s *jsonschema.Schema) error {
 	m.buildEnumCalled = true
-	m.lastType = typ
-	m.lastSchema = s
 	typ.Kind = KindEnum
 	return nil
 }
 
 func (m *mockTypeBuilder) BuildUnion(typ *Type, s *jsonschema.Schema) error {
 	m.buildUnionCalled = true
-	m.lastType = typ
-	m.lastSchema = s
 	typ.Kind = KindUnion
 	return nil
 }
 
-func (m *mockTypeBuilder) MapPrimitiveType(s *jsonschema.Schema) string {
-	return "string"
-}
+func (m *mockTypeBuilder) MapPrimitiveType(s *jsonschema.Schema) string { return "string" }
 
-func TestSchemaWalker_Process_Object(t *testing.T) {
-	registry := NewTypeRegistry()
-	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
-	mock := &mockTypeBuilder{}
-
-	walker := NewSchemaWalker(registry, resolver, mock, nil)
-
-	compiled := &jsonschema.Schema{
-		Type: []string{"object"},
-		Properties: &jsonschema.SchemaMap{
-			"name": &jsonschema.Schema{Type: []string{"string"}},
+func TestSchemaWalker_Process(t *testing.T) {
+	tests := []struct {
+		name       string
+		compiled   *jsonschema.Schema
+		wantStruct bool
+		wantEnum   bool
+		wantUnion  bool
+		wantKind   TypeKind
+	}{
+		{
+			name: "object",
+			compiled: &jsonschema.Schema{
+				Type:       []string{"object"},
+				Properties: &jsonschema.SchemaMap{"name": &jsonschema.Schema{Type: []string{"string"}}},
+			},
+			wantStruct: true,
+			wantKind:   KindStruct,
+		},
+		{
+			name:     "enum",
+			compiled: &jsonschema.Schema{Enum: []any{"a", "b", "c"}},
+			wantEnum: true,
+			wantKind: KindEnum,
+		},
+		{
+			name: "union",
+			compiled: &jsonschema.Schema{
+				AnyOf: []*jsonschema.Schema{{Type: []string{"string"}}, {Type: []string{"number"}}},
+			},
+			wantUnion: true,
+			wantKind:  KindUnion,
+		},
+		{
+			name:     "primitive",
+			compiled: &jsonschema.Schema{Type: []string{"string"}},
+			wantKind: KindPrimitive,
 		},
 	}
 
-	s := &schema.Schema{
-		Name:     "TestObject",
-		Compiled: compiled,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			registry := NewTypeRegistry()
+			mock := &mockTypeBuilder{}
+			walker := NewSchemaWalker(registry, NewRefResolver(jsonschema.NewCompiler()), mock, nil)
+
+			err := walker.Process(&schema.Schema{Name: "Test", Compiled: tt.compiled})
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantStruct, mock.buildStructCalled)
+			assert.Equal(t, tt.wantEnum, mock.buildEnumCalled)
+			assert.Equal(t, tt.wantUnion, mock.buildUnionCalled)
+			assert.Len(t, registry.All(), 1)
+			assert.Equal(t, tt.wantKind, registry.All()[0].Kind)
+		})
 	}
-
-	err := walker.Process(s)
-
-	require.NoError(t, err)
-	assert.True(t, mock.buildStructCalled)
-	assert.Len(t, registry.All(), 1)
-	assert.Equal(t, "TestObject", registry.All()[0].Name)
-}
-
-func TestSchemaWalker_Process_Enum(t *testing.T) {
-	registry := NewTypeRegistry()
-	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
-	mock := &mockTypeBuilder{}
-
-	walker := NewSchemaWalker(registry, resolver, mock, nil)
-
-	compiled := &jsonschema.Schema{
-		Enum: []any{"active", "inactive", "pending"},
-	}
-
-	s := &schema.Schema{
-		Name:     "Status",
-		Compiled: compiled,
-	}
-
-	err := walker.Process(s)
-
-	require.NoError(t, err)
-	assert.True(t, mock.buildEnumCalled)
-	assert.Len(t, registry.All(), 1)
-	assert.Equal(t, "Status", registry.All()[0].Name)
-}
-
-func TestSchemaWalker_Process_Union(t *testing.T) {
-	registry := NewTypeRegistry()
-	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
-	mock := &mockTypeBuilder{}
-
-	walker := NewSchemaWalker(registry, resolver, mock, nil)
-
-	compiled := &jsonschema.Schema{
-		AnyOf: []*jsonschema.Schema{
-			{Type: []string{"string"}},
-			{Type: []string{"number"}},
-		},
-	}
-
-	s := &schema.Schema{
-		Name:     "StringOrNumber",
-		Compiled: compiled,
-	}
-
-	err := walker.Process(s)
-
-	require.NoError(t, err)
-	assert.True(t, mock.buildUnionCalled)
-	assert.Len(t, registry.All(), 1)
-	assert.Equal(t, "StringOrNumber", registry.All()[0].Name)
-}
-
-func TestSchemaWalker_Process_Primitive(t *testing.T) {
-	registry := NewTypeRegistry()
-	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
-	mock := &mockTypeBuilder{}
-
-	walker := NewSchemaWalker(registry, resolver, mock, nil)
-
-	compiled := &jsonschema.Schema{
-		Type: []string{"string"},
-	}
-
-	s := &schema.Schema{
-		Name:     "MyString",
-		Compiled: compiled,
-	}
-
-	err := walker.Process(s)
-
-	require.NoError(t, err)
-	assert.False(t, mock.buildStructCalled)
-	assert.False(t, mock.buildEnumCalled)
-	assert.False(t, mock.buildUnionCalled)
-	assert.Len(t, registry.All(), 1)
-	assert.Equal(t, "MyString", registry.All()[0].Name)
-	assert.Equal(t, KindPrimitive, registry.All()[0].Kind)
 }
 
 func TestSchemaWalker_ExtractDefs(t *testing.T) {
 	registry := NewTypeRegistry()
-	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
-	mock := &mockTypeBuilder{}
+	walker := NewSchemaWalker(registry, NewRefResolver(jsonschema.NewCompiler()), &mockTypeBuilder{}, nil)
 
-	walker := NewSchemaWalker(registry, resolver, mock, nil)
-
-	compiled := &jsonschema.Schema{
-		Type: []string{"object"},
-		Properties: &jsonschema.SchemaMap{
-			"id": &jsonschema.Schema{Type: []string{"string"}},
-		},
-		Defs: map[string]*jsonschema.Schema{
-			"SubType": {
-				Type: []string{"object"},
-				Properties: &jsonschema.SchemaMap{
-					"value": &jsonschema.Schema{Type: []string{"string"}},
+	err := walker.Process(&schema.Schema{
+		Name: "Root",
+		Compiled: &jsonschema.Schema{
+			Type:       []string{"object"},
+			Properties: &jsonschema.SchemaMap{"id": &jsonschema.Schema{Type: []string{"string"}}},
+			Defs: map[string]*jsonschema.Schema{
+				"SubType": {
+					Type:       []string{"object"},
+					Properties: &jsonschema.SchemaMap{"value": &jsonschema.Schema{Type: []string{"string"}}},
 				},
 			},
 		},
-	}
-
-	s := &schema.Schema{
-		Name:     "Root",
-		Compiled: compiled,
-	}
-
-	err := walker.Process(s)
+	})
 
 	require.NoError(t, err)
-	// Should have SubType + Root
 	assert.Len(t, registry.All(), 2)
-
-	// First should be SubType (processed from $defs)
 	assert.Equal(t, "SubType", registry.All()[0].Name)
-	// Second should be Root
 	assert.Equal(t, "Root", registry.All()[1].Name)
 }

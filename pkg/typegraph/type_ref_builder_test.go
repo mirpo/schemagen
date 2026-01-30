@@ -7,165 +7,79 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTypeRefBuilder_Ref(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
+func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
+	t.Run("ref", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Ref: "#/$defs/MyType"}, "")
+		assert.Equal(t, KindRef, ref.Kind)
+		assert.Equal(t, "MyType", ref.TypeName)
+	})
 
-	trb := NewTypeRefBuilder(registry, resolver, config)
+	t.Run("enum inline", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{ExtractInlined: false})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
+		assert.Equal(t, KindEnum, ref.Kind)
+		assert.Len(t, ref.EnumValues, 3)
+	})
 
-	schema := &jsonschema.Schema{
-		Ref: "#/$defs/MyType",
-	}
+	t.Run("enum extracted", func(t *testing.T) {
+		registry := NewTypeRegistry()
+		trb := NewTypeRefBuilder(registry, NewRefResolver(nil), &BuildConfig{ExtractInlined: true})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
+		assert.Equal(t, KindRef, ref.Kind)
+		assert.Equal(t, "Status", ref.TypeName)
+		assert.Len(t, registry.All(), 1)
+	})
 
-	ref := trb.BuildTypeRef(schema, "")
+	t.Run("union oneOf", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{
+			OneOf: []*jsonschema.Schema{{Type: []string{"string"}}, {Type: []string{"integer"}}},
+		}, "")
+		assert.Equal(t, KindUnion, ref.Kind)
+		assert.Len(t, ref.UnionMembers, 2)
+	})
 
-	assert.Equal(t, KindRef, ref.Kind)
-	assert.Equal(t, "MyType", ref.TypeName)
-}
+	t.Run("array", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{
+			Type:  []string{"array"},
+			Items: &jsonschema.Schema{Type: []string{"string"}},
+		}, "tags")
+		assert.Equal(t, KindArray, ref.Kind)
+		assert.Equal(t, KindPrimitive, ref.ItemType.Kind)
+	})
 
-func TestTypeRefBuilder_Enum(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{ExtractInlined: false}
+	t.Run("object as map", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"object"}}, "")
+		assert.Equal(t, KindMap, ref.Kind)
+	})
 
-	trb := NewTypeRefBuilder(registry, resolver, config)
+	t.Run("primitive", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string"}}, "")
+		assert.Equal(t, KindPrimitive, ref.Kind)
+		assert.Equal(t, "string", ref.GoType)
+	})
 
-	schema := &jsonschema.Schema{
-		Enum: []interface{}{"active", "inactive", "pending"},
-	}
+	t.Run("primitive with format", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		format := "email"
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string"}, Format: &format}, "")
+		assert.Equal(t, "email", ref.Format)
+	})
 
-	ref := trb.BuildTypeRef(schema, "status")
-
-	// With ExtractInlined=false, should remain inline
-	assert.Equal(t, KindEnum, ref.Kind)
-	assert.Len(t, ref.EnumValues, 3)
-	assert.Equal(t, "string", ref.GoType)
-}
-
-func TestTypeRefBuilder_EnumExtracted(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{ExtractInlined: true}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	schema := &jsonschema.Schema{
-		Enum: []interface{}{"active", "inactive", "pending"},
-	}
-
-	ref := trb.BuildTypeRef(schema, "status")
-
-	// With ExtractInlined=true, should be extracted as separate type
-	assert.Equal(t, KindRef, ref.Kind)
-	assert.Equal(t, "Status", ref.TypeName)
-	assert.Len(t, registry.All(), 1)
-}
-
-func TestTypeRefBuilder_Union_OneOf(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	schema := &jsonschema.Schema{
-		OneOf: []*jsonschema.Schema{
-			{Type: []string{"string"}},
-			{Type: []string{"integer"}},
-		},
-	}
-
-	ref := trb.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindUnion, ref.Kind)
-	assert.Len(t, ref.UnionMembers, 2)
-}
-
-func TestTypeRefBuilder_Array(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	schema := &jsonschema.Schema{
-		Type: []string{"array"},
-		Items: &jsonschema.Schema{
-			Type: []string{"string"},
-		},
-	}
-
-	ref := trb.BuildTypeRef(schema, "tags")
-
-	assert.Equal(t, KindArray, ref.Kind)
-	assert.NotNil(t, ref.ItemType)
-	assert.Equal(t, KindPrimitive, ref.ItemType.Kind)
-	assert.Equal(t, "string", ref.ItemType.GoType)
-}
-
-func TestTypeRefBuilder_ObjectAsMap(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	// Object without properties becomes a map
-	schema := &jsonschema.Schema{
-		Type: []string{"object"},
-	}
-
-	ref := trb.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindMap, ref.Kind)
-	assert.NotNil(t, ref.ValueType)
-}
-
-func TestTypeRefBuilder_Primitive(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	schema := &jsonschema.Schema{
-		Type: []string{"string"},
-	}
-
-	ref := trb.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindPrimitive, ref.Kind)
-	assert.Equal(t, "string", ref.GoType)
-}
-
-func TestTypeRefBuilder_PrimitiveWithFormat(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	format := "email"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
-	}
-
-	ref := trb.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindPrimitive, ref.Kind)
-	assert.Equal(t, "string", ref.GoType)
-	assert.Equal(t, "email", ref.Format)
+	t.Run("nullable", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string", "null"}}, "")
+		assert.True(t, ref.Nullable)
+		assert.Equal(t, KindPrimitive, ref.Kind)
+	})
 }
 
 func TestTypeRefBuilder_MapPrimitiveType(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
+	trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
 	tests := []struct {
 		schemaType []string
 		format     *string
@@ -178,63 +92,21 @@ func TestTypeRefBuilder_MapPrimitiveType(t *testing.T) {
 		{[]string{"string"}, strPtr("uuid"), "uuid.UUID"},
 		{[]string{"string"}, strPtr("date-time"), "time.Time"},
 	}
-
 	for _, tt := range tests {
-		schema := &jsonschema.Schema{
-			Type:   tt.schemaType,
-			Format: tt.format,
-		}
-		result := trb.MapPrimitiveType(schema)
-		assert.Equal(t, tt.expected, result)
+		schema := &jsonschema.Schema{Type: tt.schemaType, Format: tt.format}
+		assert.Equal(t, tt.expected, trb.MapPrimitiveType(schema))
 	}
 }
 
 func TestTypeRefBuilder_ShouldExtractInlineObject(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
+	trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
 
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	// Object with properties should be extracted
-	schemaWithProps := &jsonschema.Schema{
-		Type: []string{"object"},
-		Properties: &jsonschema.SchemaMap{
-			"name": &jsonschema.Schema{Type: []string{"string"}},
-		},
-	}
-	assert.True(t, trb.ShouldExtractInlineObject(schemaWithProps))
-
-	// Object without properties should not be extracted
-	schemaNoProps := &jsonschema.Schema{
-		Type: []string{"object"},
-	}
-	assert.False(t, trb.ShouldExtractInlineObject(schemaNoProps))
-
-	// $ref should not be extracted
-	schemaRef := &jsonschema.Schema{
-		Ref: "#/$defs/SomeType",
-	}
-	assert.False(t, trb.ShouldExtractInlineObject(schemaRef))
+	assert.True(t, trb.ShouldExtractInlineObject(&jsonschema.Schema{
+		Type:       []string{"object"},
+		Properties: &jsonschema.SchemaMap{"name": &jsonschema.Schema{Type: []string{"string"}}},
+	}))
+	assert.False(t, trb.ShouldExtractInlineObject(&jsonschema.Schema{Type: []string{"object"}}))
+	assert.False(t, trb.ShouldExtractInlineObject(&jsonschema.Schema{Ref: "#/$defs/SomeType"}))
 }
 
-func TestTypeRefBuilder_Nullable(t *testing.T) {
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(nil)
-	config := &BuildConfig{}
-
-	trb := NewTypeRefBuilder(registry, resolver, config)
-
-	schema := &jsonschema.Schema{
-		Type: []string{"string", "null"},
-	}
-
-	ref := trb.BuildTypeRef(schema, "")
-
-	assert.True(t, ref.Nullable)
-	assert.Equal(t, KindPrimitive, ref.Kind)
-}
-
-func strPtr(s string) *string {
-	return &s
-}
+func strPtr(s string) *string { return &s }

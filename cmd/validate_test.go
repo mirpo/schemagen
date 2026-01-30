@@ -4,113 +4,62 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateCommandValidSchemas(t *testing.T) {
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", "../testdata/schemas/events/",
+func TestValidateCommand(t *testing.T) {
+	t.Run("valid schemas", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", "../testdata/schemas/events/"})
+		require.NoError(t, cmd.Execute())
 	})
 
-	err := cmd.Execute()
-	require.NoError(t, err, "Valid schemas should pass")
-}
-
-func TestValidateCommandSingleFile(t *testing.T) {
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", "../testdata/schemas/foundation",
+	t.Run("single file", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", "../testdata/schemas/foundation"})
+		require.NoError(t, cmd.Execute())
 	})
 
-	err := cmd.Execute()
-	require.NoError(t, err, "Valid single file should pass")
-}
-
-func TestValidateCommandInvalidFile(t *testing.T) {
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", "nonexistent.json",
+	t.Run("invalid file", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", "nonexistent.json"})
+		requireExitCode(t, cmd.Execute(), 1)
 	})
 
-	err := cmd.Execute()
-	require.Error(t, err)
-
-	exitErr, ok := err.(*errors.ExitCodeError)
-	require.True(t, ok, "Should return ExitCodeError")
-	assert.Equal(t, 1, exitErr.Code, "Should exit with code 1 for validation failure")
-}
-
-func TestValidateCommandYAML(t *testing.T) {
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", "../testdata/schemas/basic/simple.yaml",
+	t.Run("yaml", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", "../testdata/schemas/basic/simple.yaml"})
+		require.NoError(t, cmd.Execute())
 	})
 
-	err := cmd.Execute()
-	require.NoError(t, err, "Valid YAML schema should pass")
-}
+	t.Run("invalid json", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "invalid-*.json")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		_, _ = tmpFile.Write([]byte(`{invalid json}`))
+		tmpFile.Close()
 
-func TestValidateCommandInvalidJSON(t *testing.T) {
-	// Create a temporary invalid schema file
-	tmpFile, err := os.CreateTemp("", "invalid-*.json")
-	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
-
-	_, err = tmpFile.Write([]byte(`{invalid json}`))
-	require.NoError(t, err)
-	tmpFile.Close()
-
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", tmpFile.Name(),
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", tmpFile.Name()})
+		requireExitCode(t, cmd.Execute(), 1)
 	})
 
-	err = cmd.Execute()
-	require.Error(t, err)
-
-	exitErr, ok := err.(*errors.ExitCodeError)
-	require.True(t, ok, "Should return ExitCodeError")
-	assert.Equal(t, 1, exitErr.Code, "Should exit with code 1 for validation error")
-}
-
-func TestValidateCommandWithExternalRefs(t *testing.T) {
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", "../testdata/schemas/events/event.json",
+	t.Run("with external refs", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", "../testdata/schemas/events/event.json"})
+		require.NoError(t, cmd.Execute())
 	})
 
-	err := cmd.Execute()
-	require.NoError(t, err, "Schema with external refs should validate successfully")
-}
+	t.Run("multiple files with errors", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "validate-test-*")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpDir)
 
-func TestValidateCommandMultipleFilesWithErrors(t *testing.T) {
-	// Create temp dir with mixed valid/invalid files
-	tmpDir, err := os.MkdirTemp("", "validate-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+		_ = os.WriteFile(tmpDir+"/valid.json", []byte(`{"type": "object"}`), 0o644)
+		_ = os.WriteFile(tmpDir+"/invalid.json", []byte(`{bad json}`), 0o644)
 
-	// Valid file
-	validFile := tmpDir + "/valid.json"
-	err = os.WriteFile(validFile, []byte(`{"type": "object", "properties": {"name": {"type": "string"}}}`), 0o644)
-	require.NoError(t, err)
-
-	// Invalid file
-	invalidFile := tmpDir + "/invalid.json"
-	err = os.WriteFile(invalidFile, []byte(`{bad json}`), 0o644)
-	require.NoError(t, err)
-
-	cmd := NewRootCmd()
-	cmd.SetArgs([]string{
-		"validate", tmpDir,
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", tmpDir})
+		requireExitCode(t, cmd.Execute(), 1)
 	})
-
-	err = cmd.Execute()
-	require.Error(t, err)
-
-	exitErr, ok := err.(*errors.ExitCodeError)
-	require.True(t, ok, "Should return ExitCodeError")
-	assert.Equal(t, 1, exitErr.Code, "Should exit with code 1 for validation errors")
 }

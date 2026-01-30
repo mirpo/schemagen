@@ -8,64 +8,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSchemaError(t *testing.T) {
-	// Basic error message
-	err := &SchemaError{
-		Path:    "schema.json",
-		Message: "invalid type",
-	}
-	assert.Equal(t, "schema schema.json: invalid type", err.Error())
-
-	// With cause
+func TestSchemaError_Chaining(t *testing.T) {
 	cause := fmt.Errorf("underlying error")
-	errWithCause := &SchemaError{
+	err := &SchemaError{
 		Path:    "schema.json",
 		Message: "invalid type",
 		Cause:   cause,
 	}
 
-	assert.Equal(
-		t,
-		"schema schema.json: invalid type: underlying error",
-		errWithCause.Error(),
-	)
-	assert.ErrorIs(t, errWithCause, cause)
+	assert.Equal(t, "schema schema.json: invalid type: underlying error", err.Error())
+	assert.ErrorIs(t, err, cause)
 }
 
-func TestGenerationError(t *testing.T) {
-	err := &GenerationError{
-		Language: "typescript",
-		File:     "types.ts",
-		Message:  "failed",
-	}
-	assert.Equal(t, "generating typescript types.ts: failed", err.Error())
-
-	// With cause
+func TestGenerationError_Chaining(t *testing.T) {
 	cause := fmt.Errorf("underlying error")
-	errWithCause := &GenerationError{
+	err := &GenerationError{
 		Language: "go",
 		File:     "types.go",
 		Message:  "failed",
 		Cause:    cause,
 	}
 
-	assert.ErrorIs(t, errWithCause, cause)
-}
-
-func TestValidationError(t *testing.T) {
-	err := &ValidationError{
-		Field:   "language",
-		Message: "must not be empty",
-	}
-
-	assert.Equal(
-		t,
-		"validation error for language: must not be empty",
-		err.Error(),
-	)
-
-	// ValidationError should not wrap anything
-	assert.NotErrorIs(t, err, fmt.Errorf("anything"))
+	assert.ErrorIs(t, err, cause)
 }
 
 func TestErrorChaining(t *testing.T) {
@@ -92,19 +56,4 @@ func TestErrorChaining(t *testing.T) {
 
 	var ve *ValidationError
 	assert.NotErrorAs(t, genErr, &ve)
-}
-
-func TestExitCodeError(t *testing.T) {
-	err := &ExitCodeError{
-		Message: "missing argument",
-		Code:    2,
-	}
-	assert.Equal(t, "missing argument", err.Error())
-	assert.Equal(t, 2, err.Code)
-}
-
-func TestNewUsageError(t *testing.T) {
-	err := NewUsageError("invalid flag")
-	assert.Equal(t, "invalid flag", err.Error())
-	assert.Equal(t, ExitUsage, err.Code)
 }

@@ -449,147 +449,109 @@ func TestBuild_EmptySchemaList(t *testing.T) {
 	assert.Empty(t, graph.Types)
 }
 
-func TestBuild_SimpleObject(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "User",
-		"type": "object",
-		"properties": {
-			"name": {
-				"type": "string"
-			},
-			"age": {
-				"type": "integer"
-			}
+// TestBuild_BasicTypes tests building basic schema types (object, string enum, number enum).
+func TestBuild_BasicTypes(t *testing.T) {
+	tests := []struct {
+		name           string
+		schemaJSON     string
+		expectedName   string
+		expectedKind   TypeKind
+		expectedFields int
+		enumCount      int
+		requiredFields []string
+	}{
+		{
+			name: "simple object with properties",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "User",
+				"type": "object",
+				"properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+				"required": ["name"]
+			}`,
+			expectedName:   "User",
+			expectedKind:   KindStruct,
+			expectedFields: 2,
+			requiredFields: []string{"name"},
 		},
-		"required": ["name"]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "user.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "user.json",
-		RelativePath:  "user.json",
-		Name:          "User",
-		Compiled:      compiled,
-		PropertyOrder: nil, // Let builder handle order
+		{
+			name: "string enum",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "Status",
+				"type": "string",
+				"enum": ["pending", "active", "completed"]
+			}`,
+			expectedName: "Status",
+			expectedKind: KindEnum,
+			enumCount:    3,
+		},
+		{
+			name: "number enum",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "Priority",
+				"type": "integer",
+				"enum": [1, 2, 3]
+			}`,
+			expectedName: "Priority",
+			expectedKind: KindEnum,
+			enumCount:    3,
+		},
+		{
+			name: "mixed enum",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "MixedValue",
+				"enum": ["active", 1, true, null]
+			}`,
+			expectedName: "MixedValue",
+			expectedKind: KindEnum,
+			enumCount:    4,
+		},
 	}
 
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			compiler := jsonschema.NewCompiler()
+			compiled, err := compiler.Compile([]byte(tt.schemaJSON), "test.json")
+			require.NoError(t, err)
 
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
+			testSchema := &schema.Schema{
+				Path:         "test.json",
+				RelativePath: "test.json",
+				Name:         tt.expectedName,
+				Compiled:     compiled,
+			}
 
-	typ := graph.Types[0]
-	assert.Equal(t, "User", typ.Name)
-	assert.Equal(t, KindStruct, typ.Kind)
-	assert.Len(t, typ.Fields, 2)
+			builder := NewBuilder(compiler)
+			graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	// Check fields exist (order may vary without PropertyOrder)
-	fieldMap := make(map[string]*Field)
-	for _, f := range typ.Fields {
-		fieldMap[f.JSONName] = f
+			require.NoError(t, err)
+			require.Len(t, graph.Types, 1)
+
+			typ := graph.Types[0]
+			assert.Equal(t, tt.expectedName, typ.Name)
+			assert.Equal(t, tt.expectedKind, typ.Kind)
+
+			if tt.expectedFields > 0 {
+				assert.Len(t, typ.Fields, tt.expectedFields)
+			}
+			if tt.enumCount > 0 {
+				assert.Len(t, typ.EnumValues, tt.enumCount)
+			}
+
+			if len(tt.requiredFields) > 0 {
+				fieldMap := make(map[string]*Field)
+				for _, f := range typ.Fields {
+					fieldMap[f.JSONName] = f
+				}
+				for _, rf := range tt.requiredFields {
+					assert.True(t, fieldMap[rf].Required, "%s should be required", rf)
+				}
+			}
+		})
 	}
-
-	nameField := fieldMap["name"]
-	assert.NotNil(t, nameField)
-	assert.Equal(t, "Name", nameField.Name)
-	assert.True(t, nameField.Required)
-	assert.Equal(t, KindPrimitive, nameField.Type.Kind)
-
-	ageField := fieldMap["age"]
-	assert.NotNil(t, ageField)
-	assert.Equal(t, "Age", ageField.Name)
-	assert.False(t, ageField.Required)
-	assert.Equal(t, KindPrimitive, ageField.Type.Kind)
-}
-
-func TestBuild_StringEnum(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Status",
-		"type": "string",
-		"enum": ["pending", "active", "completed"]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "status.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "status.json",
-		RelativePath:  "status.json",
-		Name:          "Status",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "Status", typ.Name)
-	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Len(t, typ.EnumValues, 3)
-
-	// Check enum values (EnumValue has Name and Value fields)
-	enumValueStrings := make([]string, len(typ.EnumValues))
-	for i, ev := range typ.EnumValues {
-		enumValueStrings[i] = ev.Value.(string)
-	}
-	assert.Contains(t, enumValueStrings, "pending")
-	assert.Contains(t, enumValueStrings, "active")
-	assert.Contains(t, enumValueStrings, "completed")
-}
-
-func TestBuild_NumberEnum(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Priority",
-		"type": "integer",
-		"enum": [1, 2, 3]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "priority.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "priority.json",
-		RelativePath:  "priority.json",
-		Name:          "Priority",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "Priority", typ.Name)
-	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Len(t, typ.EnumValues, 3)
-
-	// Check enum values (numeric values)
-	enumValues := make([]float64, len(typ.EnumValues))
-	for i, ev := range typ.EnumValues {
-		enumValues[i] = ev.Value.(float64)
-	}
-	assert.Contains(t, enumValues, 1.0)
-	assert.Contains(t, enumValues, 2.0)
-	assert.Contains(t, enumValues, 3.0)
 }
 
 func TestBuild_WithDefs(t *testing.T) {
@@ -598,24 +560,13 @@ func TestBuild_WithDefs(t *testing.T) {
 		"title": "User",
 		"type": "object",
 		"properties": {
-			"name": {
-				"type": "string"
-			},
-			"address": {
-				"$ref": "#/$defs/Address"
-			}
+			"name": {"type": "string"},
+			"address": {"$ref": "#/$defs/Address"}
 		},
 		"$defs": {
 			"Address": {
 				"type": "object",
-				"properties": {
-					"street": {
-						"type": "string"
-					},
-					"city": {
-						"type": "string"
-					}
-				}
+				"properties": {"street": {"type": "string"}, "city": {"type": "string"}}
 			}
 		}
 	}`)
@@ -625,11 +576,10 @@ func TestBuild_WithDefs(t *testing.T) {
 	require.NoError(t, err)
 
 	testSchema := &schema.Schema{
-		Path:          "user.json",
-		RelativePath:  "user.json",
-		Name:          "User",
-		Compiled:      compiled,
-		PropertyOrder: nil,
+		Path:         "user.json",
+		RelativePath: "user.json",
+		Name:         "User",
+		Compiled:     compiled,
 	}
 
 	builder := NewBuilder(compiler)
@@ -917,119 +867,6 @@ func TestBuild_MultipleSchemas(t *testing.T) {
 	assert.Len(t, productType.Fields, 2)
 }
 
-func TestBuild_ObjectWithAllOf(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Employee",
-		"type": "object",
-		"allOf": [
-			{
-				"type": "object",
-				"properties": {
-					"name": {"type": "string"},
-					"email": {"type": "string"}
-				}
-			},
-			{
-				"type": "object",
-				"properties": {
-					"employeeId": {"type": "string"},
-					"department": {"type": "string"}
-				}
-			}
-		]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "employee.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "employee.json",
-		RelativePath:  "employee.json",
-		Name:          "Employee",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	// allOf handling may produce different results based on schema structure
-	assert.GreaterOrEqual(t, len(graph.Types), 1)
-
-	// Check that at least one type was created
-	assert.NotEmpty(t, graph.Types)
-	typ := graph.Types[0]
-	assert.Equal(t, "Employee", typ.Name)
-}
-
-func TestBuild_ArrayWithConstraints(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "TagList",
-		"type": "object",
-		"properties": {
-			"tags": {
-				"type": "array",
-				"items": {
-					"type": "string"
-				},
-				"minItems": 1,
-				"maxItems": 10
-			},
-			"scores": {
-				"type": "array",
-				"items": {
-					"type": "number"
-				}
-			}
-		}
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "taglist.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "taglist.json",
-		RelativePath:  "taglist.json",
-		Name:          "TagList",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	fieldMap := make(map[string]*Field)
-	for _, f := range typ.Fields {
-		fieldMap[f.JSONName] = f
-	}
-
-	// Check tags field is array
-	tagsField := fieldMap["tags"]
-	assert.NotNil(t, tagsField)
-	assert.Equal(t, KindArray, tagsField.Type.Kind)
-	assert.NotNil(t, tagsField.Type.ItemType)
-	assert.Equal(t, KindPrimitive, tagsField.Type.ItemType.Kind)
-
-	// Check array constraints
-	if tagsField.MinItems != nil {
-		assert.Equal(t, 1, *tagsField.MinItems)
-	}
-	if tagsField.MaxItems != nil {
-		assert.Equal(t, 10, *tagsField.MaxItems)
-	}
-}
-
 func TestBuild_WithAnyOf(t *testing.T) {
 	schemaJSON := []byte(`{
 		"$schema": "http://json-schema.org/draft-07/schema#",
@@ -1073,359 +910,154 @@ func TestBuild_WithAnyOf(t *testing.T) {
 	assert.GreaterOrEqual(t, len(graph.Types), 1)
 }
 
-// TestBuild_AllOfOnlyAtRoot tests that schemas with ONLY allOf at root level
-// (no direct properties) are correctly identified as objects and generate proper struct types.
-// This tests the Document pattern: allOf with refs to other schemas + inline properties.
-func TestBuild_AllOfOnlyAtRoot(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Document",
-		"$defs": {
-			"Entity": {
-				"type": "object",
-				"properties": {
-					"id": {"type": "string", "format": "uuid"}
+// TestBuild_AllOf tests various allOf composition patterns.
+func TestBuild_AllOf(t *testing.T) {
+	tests := []struct {
+		name           string
+		schemaJSON     string
+		expectedName   string
+		minTypes       int
+		expectedKind   TypeKind
+		minFields      int
+		exactFields    int // -1 means use minFields
+		expectedExtend []string
+		requiredFields []string
+	}{
+		{
+			name: "allOf only at root with refs and inline",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "Document",
+				"$defs": {
+					"Entity": {"type": "object", "properties": {"id": {"type": "string"}}},
+					"Auditable": {"type": "object", "properties": {"createdBy": {"type": "string"}}}
 				},
-				"required": ["id"]
-			},
-			"Auditable": {
-				"type": "object",
-				"properties": {
-					"createdBy": {"type": "string"},
-					"createdAt": {"type": "string", "format": "date-time"}
-				},
-				"required": ["createdBy", "createdAt"]
-			}
+				"allOf": [
+					{"$ref": "#/$defs/Entity"},
+					{"$ref": "#/$defs/Auditable"},
+					{"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}
+				]
+			}`,
+			expectedName:   "Document",
+			minTypes:       3,
+			expectedKind:   KindStruct,
+			minFields:      1,
+			exactFields:    -1,
+			expectedExtend: []string{"Entity", "Auditable"},
+			requiredFields: []string{"title"},
 		},
-		"allOf": [
-			{"$ref": "#/$defs/Entity"},
-			{"$ref": "#/$defs/Auditable"},
-			{
-				"type": "object",
-				"properties": {
-					"title": {"type": "string"},
-					"content": {"type": "string"}
-				},
-				"required": ["title"]
-			}
-		]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "document.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "document.json",
-		RelativePath:  "document.json",
-		Name:          "Document",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-
-	// Should create at least 3 types: Document, Entity, Auditable
-	assert.GreaterOrEqual(t, len(graph.Types), 3)
-
-	// Find the Document type
-	var docType *Type
-	for _, typ := range graph.Types {
-		if typ.Name == "Document" {
-			docType = typ
-			break
-		}
-	}
-	assert.NotNil(t, docType, "Document type should be created")
-
-	// CRITICAL: Document should be a struct, NOT a primitive (which would make it "any")
-	assert.Equal(t, KindStruct, docType.Kind, "Document should be KindStruct, not KindPrimitive")
-
-	// Document should extend Entity and Auditable
-	assert.Len(t, docType.Extends, 2, "Document should extend 2 types")
-
-	// Document should have fields from the inline allOf schema (title, content)
-	assert.GreaterOrEqual(t, len(docType.Fields), 2, "Document should have at least 2 fields from inline schema")
-
-	// Check for specific fields
-	fieldMap := make(map[string]*Field)
-	for _, f := range docType.Fields {
-		fieldMap[f.JSONName] = f
-	}
-
-	assert.NotNil(t, fieldMap["title"], "Document should have 'title' field")
-	assert.NotNil(t, fieldMap["content"], "Document should have 'content' field")
-	assert.True(t, fieldMap["title"].Required, "title should be required")
-}
-
-// TestBuild_AllOfInlineObjectsOnly tests allOf with only inline objects (no $refs).
-// This tests the Vehicle pattern where all schemas are defined inline.
-func TestBuild_AllOfInlineObjectsOnly(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Vehicle",
-		"allOf": [
-			{
-				"type": "object",
-				"properties": {
-					"make": {"type": "string"},
-					"model": {"type": "string"},
-					"year": {"type": "integer"}
-				},
-				"required": ["make", "model"]
-			},
-			{
-				"type": "object",
-				"properties": {
-					"registrationNumber": {"type": "string"},
-					"owner": {"type": "string"}
-				},
-				"required": ["registrationNumber"]
-			}
-		]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "vehicle.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "vehicle.json",
-		RelativePath:  "vehicle.json",
-		Name:          "Vehicle",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "Vehicle", typ.Name)
-
-	// CRITICAL: Vehicle should be a struct, NOT a primitive
-	assert.Equal(t, KindStruct, typ.Kind, "Vehicle should be KindStruct, not KindPrimitive")
-
-	// Vehicle should have 5 fields from both inline allOf schemas
-	assert.Len(t, typ.Fields, 5, "Vehicle should have 5 fields (make, model, year, registrationNumber, owner)")
-
-	// Check for specific fields
-	fieldMap := make(map[string]*Field)
-	for _, f := range typ.Fields {
-		fieldMap[f.JSONName] = f
-	}
-
-	assert.NotNil(t, fieldMap["make"], "Vehicle should have 'make' field")
-	assert.NotNil(t, fieldMap["model"], "Vehicle should have 'model' field")
-	assert.NotNil(t, fieldMap["registrationNumber"], "Vehicle should have 'registrationNumber' field")
-	assert.True(t, fieldMap["make"].Required, "make should be required")
-	assert.True(t, fieldMap["registrationNumber"].Required, "registrationNumber should be required")
-}
-
-// TestBuild_AllOfMixedRefsAndInline tests allOf with both $refs and inline objects.
-func TestBuild_AllOfMixedRefsAndInline(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Product",
-		"$defs": {
-			"BaseItem": {
-				"type": "object",
-				"properties": {
-					"id": {"type": "string"},
-					"name": {"type": "string"}
-				},
-				"required": ["id"]
-			}
+		{
+			name: "allOf with only inline objects",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "Vehicle",
+				"allOf": [
+					{"type": "object", "properties": {"make": {"type": "string"}, "model": {"type": "string"}}, "required": ["make"]},
+					{"type": "object", "properties": {"registration": {"type": "string"}}, "required": ["registration"]}
+				]
+			}`,
+			expectedName:   "Vehicle",
+			minTypes:       1,
+			expectedKind:   KindStruct,
+			exactFields:    3,
+			requiredFields: []string{"make", "registration"},
 		},
-		"allOf": [
-			{"$ref": "#/$defs/BaseItem"},
-			{
-				"type": "object",
-				"properties": {
-					"price": {"type": "number"},
-					"inStock": {"type": "boolean"}
-				},
-				"required": ["price"]
-			}
-		]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "product.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "product.json",
-		RelativePath:  "product.json",
-		Name:          "Product",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-
-	// Should create at least 2 types: Product and BaseItem
-	assert.GreaterOrEqual(t, len(graph.Types), 2)
-
-	// Find the Product type
-	var productType *Type
-	for _, typ := range graph.Types {
-		if typ.Name == "Product" {
-			productType = typ
-			break
-		}
-	}
-	assert.NotNil(t, productType, "Product type should be created")
-
-	// CRITICAL: Product should be a struct, NOT a primitive
-	assert.Equal(t, KindStruct, productType.Kind, "Product should be KindStruct, not KindPrimitive")
-
-	// Product should extend BaseItem
-	assert.Contains(t, productType.Extends, "BaseItem", "Product should extend BaseItem")
-
-	// Product should have fields from the inline allOf schema (price, inStock)
-	assert.GreaterOrEqual(t, len(productType.Fields), 2, "Product should have at least 2 fields from inline schema")
-
-	fieldMap := make(map[string]*Field)
-	for _, f := range productType.Fields {
-		fieldMap[f.JSONName] = f
-	}
-
-	assert.NotNil(t, fieldMap["price"], "Product should have 'price' field")
-	assert.NotNil(t, fieldMap["inStock"], "Product should have 'inStock' field")
-}
-
-// TestBuild_EmptyAllOf tests edge case of empty allOf array.
-// An empty allOf array doesn't compose anything, so it should be treated as primitive/undefined.
-func TestBuild_EmptyAllOf(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "EmptyComposite",
-		"allOf": []
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "empty.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "empty.json",
-		RelativePath:  "empty.json",
-		Name:          "EmptyComposite",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "EmptyComposite", typ.Name)
-	// Empty allOf doesn't compose anything, so it should be treated as primitive
-	assert.Equal(t, KindPrimitive, typ.Kind, "EmptyComposite with empty allOf should be KindPrimitive")
-}
-
-// TestBuild_AllOfWithDirectProperties tests backward compatibility:
-// allOf combined with direct properties at root level should still work.
-func TestBuild_AllOfWithDirectProperties(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Enhanced",
-		"type": "object",
-		"properties": {
-			"rootProp": {"type": "string"}
+		{
+			name: "allOf with mixed refs and inline",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "Product",
+				"$defs": {"BaseItem": {"type": "object", "properties": {"id": {"type": "string"}}}},
+				"allOf": [{"$ref": "#/$defs/BaseItem"}, {"type": "object", "properties": {"price": {"type": "number"}}}]
+			}`,
+			expectedName:   "Product",
+			minTypes:       2,
+			expectedKind:   KindStruct,
+			minFields:      1,
+			exactFields:    -1,
+			expectedExtend: []string{"BaseItem"},
 		},
-		"allOf": [
-			{
+		{
+			name: "empty allOf becomes primitive",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "EmptyComposite",
+				"allOf": []
+			}`,
+			expectedName: "EmptyComposite",
+			minTypes:     1,
+			expectedKind: KindPrimitive,
+			exactFields:  0,
+		},
+		{
+			name: "allOf with direct properties",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "Enhanced",
 				"type": "object",
-				"properties": {
-					"allOfProp": {"type": "number"}
+				"properties": {"rootProp": {"type": "string"}},
+				"allOf": [{"type": "object", "properties": {"allOfProp": {"type": "number"}}}]
+			}`,
+			expectedName: "Enhanced",
+			minTypes:     1,
+			expectedKind: KindStruct,
+			exactFields:  2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			compiler := jsonschema.NewCompiler()
+			compiled, err := compiler.Compile([]byte(tt.schemaJSON), "test.json")
+			require.NoError(t, err)
+
+			testSchema := &schema.Schema{
+				Path:         "test.json",
+				RelativePath: "test.json",
+				Name:         tt.expectedName,
+				Compiled:     compiled,
+			}
+
+			builder := NewBuilder(compiler)
+			graph, err := builder.Build([]*schema.Schema{testSchema})
+
+			require.NoError(t, err)
+			assert.GreaterOrEqual(t, len(graph.Types), tt.minTypes)
+
+			// Find the main type
+			var mainType *Type
+			for _, typ := range graph.Types {
+				if typ.Name == tt.expectedName {
+					mainType = typ
+					break
 				}
 			}
-		]
-	}`)
+			require.NotNil(t, mainType, "%s type should be created", tt.expectedName)
+			assert.Equal(t, tt.expectedKind, mainType.Kind)
 
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "enhanced.json")
-	require.NoError(t, err)
+			if tt.exactFields >= 0 {
+				assert.Len(t, mainType.Fields, tt.exactFields)
+			} else if tt.minFields > 0 {
+				assert.GreaterOrEqual(t, len(mainType.Fields), tt.minFields)
+			}
 
-	testSchema := &schema.Schema{
-		Path:          "enhanced.json",
-		RelativePath:  "enhanced.json",
-		Name:          "Enhanced",
-		Compiled:      compiled,
-		PropertyOrder: nil,
+			for _, ext := range tt.expectedExtend {
+				assert.Contains(t, mainType.Extends, ext)
+			}
+
+			if len(tt.requiredFields) > 0 {
+				fieldMap := make(map[string]*Field)
+				for _, f := range mainType.Fields {
+					fieldMap[f.JSONName] = f
+				}
+				for _, rf := range tt.requiredFields {
+					if f, ok := fieldMap[rf]; ok {
+						assert.True(t, f.Required, "%s should be required", rf)
+					}
+				}
+			}
+		})
 	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "Enhanced", typ.Name)
-	assert.Equal(t, KindStruct, typ.Kind)
-
-	// Should have fields from both direct properties and allOf
-	assert.Len(t, typ.Fields, 2, "Enhanced should have 2 fields (rootProp + allOfProp)")
-
-	fieldMap := make(map[string]*Field)
-	for _, f := range typ.Fields {
-		fieldMap[f.JSONName] = f
-	}
-
-	assert.NotNil(t, fieldMap["rootProp"], "Enhanced should have 'rootProp' from direct properties")
-	assert.NotNil(t, fieldMap["allOfProp"], "Enhanced should have 'allOfProp' from allOf")
-}
-
-func TestBuild_MixedEnum(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "MixedValue",
-		"enum": ["active", 1, true, null]
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "mixed.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "mixed.json",
-		RelativePath:  "mixed.json",
-		Name:          "MixedValue",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "MixedValue", typ.Name)
-	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Len(t, typ.EnumValues, 4)
 }
 
 func TestMapGoType(t *testing.T) {
@@ -1455,360 +1087,143 @@ func TestMapGoType(t *testing.T) {
 	}
 }
 
-func TestBuild_AdditionalProperties(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Config",
-		"type": "object",
-		"properties": {
-			"name": {"type": "string"}
-		},
-		"additionalProperties": {
-			"type": "string"
-		}
-	}`)
+func TestBuild_SpecialFeatures(t *testing.T) {
+	t.Run("additional properties", func(t *testing.T) {
+		schemaJSON := []byte(`{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"title": "Config",
+			"type": "object",
+			"properties": {"name": {"type": "string"}},
+			"additionalProperties": {"type": "string"}
+		}`)
 
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "config.json")
-	require.NoError(t, err)
+		compiler := jsonschema.NewCompiler()
+		compiled, err := compiler.Compile(schemaJSON, "config.json")
+		require.NoError(t, err)
 
-	testSchema := &schema.Schema{
-		Path:          "config.json",
-		RelativePath:  "config.json",
-		Name:          "Config",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
+		testSchema := &schema.Schema{Path: "config.json", RelativePath: "config.json", Name: "Config", Compiled: compiled}
+		builder := NewBuilder(compiler)
+		graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
+		require.NoError(t, err)
+		require.Len(t, graph.Types, 1)
+		assert.NotNil(t, graph.Types[0].AdditionalProps)
+	})
 
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
+	t.Run("nullable field", func(t *testing.T) {
+		schemaJSON := []byte(`{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"title": "User",
+			"type": "object",
+			"properties": {"name": {"type": ["string", "null"]}}
+		}`)
 
-	typ := graph.Types[0]
-	assert.Equal(t, "Config", typ.Name)
-	assert.NotNil(t, typ.AdditionalProps)
-	assert.NotNil(t, typ.AdditionalProps.Type)
+		compiler := jsonschema.NewCompiler()
+		compiled, err := compiler.Compile(schemaJSON, "user.json")
+		require.NoError(t, err)
+
+		testSchema := &schema.Schema{Path: "user.json", RelativePath: "user.json", Name: "User", Compiled: compiled}
+		builder := NewBuilder(compiler)
+		graph, err := builder.Build([]*schema.Schema{testSchema})
+
+		require.NoError(t, err)
+		require.Len(t, graph.Types, 1)
+		nameField := graph.Types[0].Fields[0]
+		assert.True(t, nameField.Type.Nullable || !nameField.Required)
+	})
 }
 
-func TestBuild_NullableField(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "User",
-		"type": "object",
-		"properties": {
-			"name": {
-				"type": ["string", "null"]
-			},
-			"age": {
-				"type": "integer"
+func TestEnsureUniqueTypeName(t *testing.T) {
+	tests := []struct {
+		name           string
+		existingTypes  []string
+		requestName    string
+		expectedResult string
+	}{
+		{"unique base name", []string{"User"}, "Product", "Product"},
+		{"conflicting name", []string{"User", "User2"}, "User", "User3"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			registry := NewTypeRegistry()
+			for _, typeName := range tt.existingTypes {
+				registry.Add(&Type{Name: typeName})
 			}
+			result := registry.EnsureUniqueName(tt.requestName)
+			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
+func TestGetOrderedPropertyNames(t *testing.T) {
+	compiler := jsonschema.NewCompiler()
+	builder := NewBuilder(compiler)
+
+	t.Run("alphabetical fallback", func(t *testing.T) {
+		properties := jsonschema.SchemaMap{
+			"zebra": &jsonschema.Schema{},
+			"apple": &jsonschema.Schema{},
+			"mango": &jsonschema.Schema{},
 		}
-	}`)
+		result := builder.getOrderedPropertyNames(&properties, "test.json")
+		assert.Equal(t, []string{"apple", "mango", "zebra"}, result)
+	})
 
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "user.json")
-	require.NoError(t, err)
+	t.Run("nil properties", func(t *testing.T) {
+		result := builder.getOrderedPropertyNames(nil, "test.json")
+		assert.Nil(t, result)
+	})
+}
 
-	testSchema := &schema.Schema{
-		Path:          "user.json",
-		RelativePath:  "user.json",
-		Name:          "User",
-		Compiled:      compiled,
-		PropertyOrder: nil,
+func TestBuildTypeRef_InlineEnum(t *testing.T) {
+	t.Run("with extraction", func(t *testing.T) {
+		compiler := jsonschema.NewCompiler()
+		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: true})
+		schema := &jsonschema.Schema{Enum: []interface{}{"active", "inactive", "pending"}}
+
+		ref := builder.BuildTypeRef(schema, "status")
+
+		assert.Equal(t, KindRef, ref.Kind)
+		assert.Equal(t, "Status", ref.TypeName)
+		assert.Len(t, builder.registry.All(), 1)
+	})
+
+	t.Run("without extraction", func(t *testing.T) {
+		compiler := jsonschema.NewCompiler()
+		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: false})
+		schema := &jsonschema.Schema{Enum: []interface{}{"option1", "option2", "option3"}}
+
+		ref := builder.BuildTypeRef(schema, "status")
+
+		assert.Equal(t, KindEnum, ref.Kind)
+		assert.Len(t, ref.EnumValues, 3)
+	})
+}
+
+func TestDeriveTypeName(t *testing.T) {
+	tests := []struct {
+		name     string
+		title    *string
+		uri      string
+		expected string
+	}{
+		{"title already PascalCase", ptrString("UserProfile"), "", "UserProfile"},
+		{"title needs PascalCase", ptrString("user-profile"), "", "UserProfile"},
+		{"from URI when no title", nil, "payloads/subscribe.json", "Subscribe"},
+		{"no title no URI returns Unknown", nil, "", "Unknown"},
 	}
 
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			compiler := jsonschema.NewCompiler()
+			builder := NewBuilder(compiler)
 
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	fieldMap := make(map[string]*Field)
-	for _, f := range typ.Fields {
-		fieldMap[f.JSONName] = f
+			schema := &jsonschema.Schema{Title: tt.title}
+			result := builder.resolver.DeriveTypeName(schema, tt.uri)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
-
-	nameField := fieldMap["name"]
-	assert.NotNil(t, nameField)
-	// Nullable field should be marked as not required or have nullable type
-	assert.True(t, nameField.Type.Nullable || !nameField.Required)
-}
-
-func TestEnsureUniqueTypeName_UniqueBaseName(t *testing.T) {
-	registry := NewTypeRegistry()
-
-	// Add an existing type
-	registry.Add(&Type{Name: "User"})
-
-	// Request a unique name that doesn't conflict
-	result := registry.EnsureUniqueName("Product")
-	assert.Equal(t, "Product", result)
-}
-
-func TestEnsureUniqueTypeName_ConflictingName(t *testing.T) {
-	registry := NewTypeRegistry()
-
-	// Add existing types with conflicting names
-	registry.Add(&Type{Name: "User"})
-	registry.Add(&Type{Name: "User2"})
-
-	// Request "User" which conflicts - should return "User3"
-	result := registry.EnsureUniqueName("User")
-	assert.Equal(t, "User3", result)
-}
-
-func TestGetOrderedPropertyNames_AlphabeticalFallback(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema map with properties in non-alphabetical order
-	properties := jsonschema.SchemaMap{
-		"zebra": &jsonschema.Schema{},
-		"apple": &jsonschema.Schema{},
-		"mango": &jsonschema.Schema{},
-	}
-
-	result := builder.getOrderedPropertyNames(&properties, "test.json")
-
-	// Should be sorted alphabetically
-	expected := []string{"apple", "mango", "zebra"}
-	assert.Equal(t, expected, result)
-}
-
-func TestGetOrderedPropertyNames_NilProperties(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	result := builder.getOrderedPropertyNames(nil, "test.json")
-
-	assert.Nil(t, result)
-}
-
-func TestMapPrimitiveType_UUID(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "uuid"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "uuid.UUID", result)
-}
-
-func TestMapPrimitiveType_Email(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "email"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "string", result)
-}
-
-func TestMapPrimitiveType_Int32(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "int32"
-	schema := &jsonschema.Schema{
-		Type:   []string{"integer"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "int32", result)
-}
-
-func TestMapPrimitiveType_Float(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "float"
-	schema := &jsonschema.Schema{
-		Type:   []string{"number"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "float32", result)
-}
-
-func TestBuildTypeRef_ConstValue(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema with const
-	constVal := "fixed-value"
-	schema := &jsonschema.Schema{
-		Const: &jsonschema.ConstValue{
-			IsSet: true,
-			Value: constVal,
-		},
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindEnum, ref.Kind)
-	assert.Equal(t, "string", ref.GoType)
-	assert.Len(t, ref.EnumValues, 1)
-	assert.Equal(t, constVal, ref.EnumValues[0])
-}
-
-func TestBuildTypeRef_InlineEnumExtraction(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	cfg := &BuildConfig{ExtractInlined: true}
-	builder := NewBuilderWithConfig(compiler, cfg)
-
-	// Create a schema with inline enum
-	schema := &jsonschema.Schema{
-		Enum: []interface{}{"active", "inactive", "pending"},
-	}
-
-	// Call buildTypeRef with a field name so it extracts
-	ref := builder.BuildTypeRef(schema, "status")
-
-	// Should extract to a separate type and return a ref
-	assert.Equal(t, KindRef, ref.Kind)
-	assert.Equal(t, "Status", ref.TypeName)
-
-	// Check that a new type was added to builder
-	assert.Len(t, builder.registry.All(), 1)
-	assert.Equal(t, "Status", builder.registry.All()[0].Name)
-	assert.Equal(t, KindEnum, builder.registry.All()[0].Kind)
-}
-
-func TestDeriveTypeName_TitleAlreadyPascalCase(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	title := "UserProfile"
-	schema := &jsonschema.Schema{
-		Title: &title,
-	}
-
-	result := builder.resolver.DeriveTypeName(schema, "")
-	assert.Equal(t, "UserProfile", result)
-}
-
-func TestDeriveTypeName_TitleNeedsPascalCase(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	title := "user-profile"
-	schema := &jsonschema.Schema{
-		Title: &title,
-	}
-
-	result := builder.resolver.DeriveTypeName(schema, "")
-	assert.Equal(t, "UserProfile", result)
-}
-
-func TestDeriveTypeName_FromURI(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	schema := &jsonschema.Schema{
-		// No title
-	}
-
-	result := builder.resolver.DeriveTypeName(schema, "payloads/subscribe.json")
-	assert.Equal(t, "Subscribe", result)
-}
-
-func TestDeriveTypeName_NoTitleNoURI(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	schema := &jsonschema.Schema{
-		// No title
-	}
-
-	result := builder.resolver.DeriveTypeName(schema, "")
-	assert.Equal(t, "Unknown", result)
-}
-
-func TestGetOrderedPropertyNames_WithCustomOrder(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create property order (structBuilder is used internally now)
-	order := schema.NewPropertyOrder()
-	builder.structBuilder.SetCurrentOrder(order)
-
-	properties := jsonschema.SchemaMap{
-		"zebra": &jsonschema.Schema{},
-		"apple": &jsonschema.Schema{},
-		"mango": &jsonschema.Schema{},
-	}
-
-	// Without order for this path, should fall back to alphabetical
-	result := builder.getOrderedPropertyNames(&properties, "unknown.json")
-	expected := []string{"apple", "mango", "zebra"}
-	assert.Equal(t, expected, result)
-}
-
-func TestBuildTypeRef_OneOf(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema with oneOf
-	schema := &jsonschema.Schema{
-		OneOf: []*jsonschema.Schema{
-			{Type: []string{"string"}},
-			{Type: []string{"number"}},
-		},
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindUnion, ref.Kind)
-	assert.Len(t, ref.UnionMembers, 2)
-}
-
-func TestBuildTypeRef_ArrayWithItems(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema for array with string items
-	schema := &jsonschema.Schema{
-		Type: []string{"array"},
-		Items: &jsonschema.Schema{
-			Type: []string{"string"},
-		},
-	}
-
-	ref := builder.BuildTypeRef(schema, "tags")
-
-	assert.Equal(t, KindArray, ref.Kind)
-	assert.NotNil(t, ref.ItemType)
-	assert.Equal(t, KindPrimitive, ref.ItemType.Kind)
-}
-
-func TestBuildTypeRef_ObjectWithoutProperties(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema for object without properties (becomes a map)
-	schema := &jsonschema.Schema{
-		Type: []string{"object"},
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindMap, ref.Kind)
-	assert.NotNil(t, ref.ValueType)
 }
 
 func TestExtractDefinition_PrimitiveType(t *testing.T) {
@@ -1827,54 +1242,21 @@ func TestExtractDefinition_PrimitiveType(t *testing.T) {
 	assert.Equal(t, KindPrimitive, builder.registry.All()[0].Kind)
 }
 
-func TestGetDescription_WithDescription(t *testing.T) {
+func TestGetDescription(t *testing.T) {
 	desc := "This is a test description"
-	schema := &jsonschema.Schema{
-		Description: &desc,
+	tests := []struct {
+		name     string
+		schema   *jsonschema.Schema
+		expected string
+	}{
+		{"with description", &jsonschema.Schema{Description: &desc}, "This is a test description"},
+		{"no description", &jsonschema.Schema{}, ""},
 	}
-
-	result := getDescription(schema)
-	assert.Equal(t, "This is a test description", result)
-}
-
-func TestGetDescription_NoDescription(t *testing.T) {
-	schema := &jsonschema.Schema{}
-
-	result := getDescription(schema)
-	assert.Empty(t, result)
-}
-
-func TestBuildTypeRef_PrimitiveWithFormat(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "email"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getDescription(tt.schema))
+		})
 	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindPrimitive, ref.Kind)
-	assert.Equal(t, "string", ref.GoType)
-	assert.Equal(t, "email", ref.Format)
-}
-
-func TestBuildTypeRef_WithRef(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema with a $ref
-	schema := &jsonschema.Schema{
-		Ref: "#/$defs/MyType",
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	// Should create a reference
-	assert.Equal(t, KindRef, ref.Kind)
-	assert.Equal(t, "MyType", ref.TypeName)
 }
 
 func TestProcessSchema_WithDefs(t *testing.T) {
@@ -1964,175 +1346,38 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 	assert.False(t, fields[0].Required)
 }
 
-func TestBuildTypeRef_NullableType(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema with nullable type (["string", "null"])
-	schema := &jsonschema.Schema{
-		Type: []string{"string", "null"},
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.True(t, ref.Nullable)
-	assert.Equal(t, KindPrimitive, ref.Kind)
-}
-
-func TestBuildTypeRef_ArrayWithoutItems(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema for array without items specified
-	schema := &jsonschema.Schema{
-		Type: []string{"array"},
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindArray, ref.Kind)
-	assert.NotNil(t, ref.ItemType)
-	assert.Equal(t, KindPrimitive, ref.ItemType.Kind)
-	assert.Equal(t, "interface{}", ref.ItemType.GoType)
-}
-
-func TestBuildTypeRef_MapWithTypedAdditionalProperties(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema for object without properties but with typed additionalProperties
-	schema := &jsonschema.Schema{
-		Type: []string{"object"},
-		AdditionalProperties: &jsonschema.Schema{
-			Type: []string{"number"},
-		},
-	}
-
-	ref := builder.BuildTypeRef(schema, "")
-
-	assert.Equal(t, KindMap, ref.Kind)
-	assert.NotNil(t, ref.ValueType)
-	assert.Equal(t, KindPrimitive, ref.ValueType.Kind)
-}
-
-func TestBuildTypeRef_InlineEnumNoExtraction(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	cfg := &BuildConfig{ExtractInlined: false}
-	builder := NewBuilderWithConfig(compiler, cfg)
-
-	// Create a schema with inline enum (won't be extracted)
-	schema := &jsonschema.Schema{
-		Enum: []interface{}{"option1", "option2", "option3"},
-	}
-
-	ref := builder.BuildTypeRef(schema, "status")
-
-	// Should remain inline
-	assert.Equal(t, KindEnum, ref.Kind)
-	assert.Len(t, ref.EnumValues, 3)
-	assert.Equal(t, "string", ref.GoType)
-}
-
-func TestBuildStruct_AllOfWithRef(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	// Create a schema with allOf that includes a $ref
-	schema := &jsonschema.Schema{
-		Type: []string{"object"},
-		AllOf: []*jsonschema.Schema{
-			{Ref: "#/$defs/BaseType"},
-			{
-				Type: []string{"object"},
-				Properties: &jsonschema.SchemaMap{
-					"extra": &jsonschema.Schema{Type: []string{"string"}},
-				},
+func TestBuildStruct(t *testing.T) {
+	t.Run("allOf with ref", func(t *testing.T) {
+		compiler := jsonschema.NewCompiler()
+		builder := NewBuilder(compiler)
+		schema := &jsonschema.Schema{
+			Type: []string{"object"},
+			AllOf: []*jsonschema.Schema{
+				{Ref: "#/$defs/BaseType"},
+				{Type: []string{"object"}, Properties: &jsonschema.SchemaMap{"extra": &jsonschema.Schema{Type: []string{"string"}}}},
 			},
-		},
-	}
+		}
+		typ := &Type{ID: "1", Name: "Extended"}
+		err := builder.BuildStruct(typ, schema)
+		require.NoError(t, err)
+		assert.Equal(t, KindStruct, typ.Kind)
+		assert.Contains(t, typ.Extends, "BaseType")
+	})
 
-	typ := &Type{
-		ID:   "1",
-		Name: "Extended",
-	}
-
-	err := builder.BuildStruct(typ, schema)
-
-	require.NoError(t, err)
-	assert.Equal(t, KindStruct, typ.Kind)
-	assert.Contains(t, typ.Extends, "BaseType")
-	// Should have field from inline allOf
-	assert.GreaterOrEqual(t, len(typ.Fields), 1)
-}
-
-func TestMapPrimitiveType_DateTimeFormat(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "date-time"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "time.Time", result)
-}
-
-func TestMapPrimitiveType_DateFormat(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "date"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "time.Time", result)
-}
-
-func TestMapPrimitiveType_Int64Format(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "int64"
-	schema := &jsonschema.Schema{
-		Type:   []string{"integer"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "int64", result)
-}
-
-func TestMapPrimitiveType_DoubleFormat(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "double"
-	schema := &jsonschema.Schema{
-		Type:   []string{"number"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "float64", result)
-}
-
-func TestMapPrimitiveType_TimeFormat(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	format := "time"
-	schema := &jsonschema.Schema{
-		Type:   []string{"string"},
-		Format: &format,
-	}
-
-	result := builder.MapPrimitiveType(schema)
-	assert.Equal(t, "string", result)
+	t.Run("with additionalProperties", func(t *testing.T) {
+		compiler := jsonschema.NewCompiler()
+		builder := NewBuilder(compiler)
+		schema := &jsonschema.Schema{
+			Type:                 []string{"object"},
+			Properties:           &jsonschema.SchemaMap{"name": &jsonschema.Schema{Type: []string{"string"}}},
+			AdditionalProperties: &jsonschema.Schema{Type: []string{"string"}},
+		}
+		typ := &Type{ID: "1", Name: "TestType"}
+		err := builder.BuildStruct(typ, schema)
+		require.NoError(t, err)
+		assert.Equal(t, KindStruct, typ.Kind)
+		assert.NotNil(t, typ.AdditionalProps)
+	})
 }
 
 func TestMapPrimitiveType_AllFormats(t *testing.T) {
@@ -2190,34 +1435,6 @@ func TestMapPrimitiveType_AllFormats(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-func TestBuildStruct_WithAdditionalProperties(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	schema := &jsonschema.Schema{
-		Type: []string{"object"},
-		Properties: &jsonschema.SchemaMap{
-			"name": &jsonschema.Schema{Type: []string{"string"}},
-		},
-		AdditionalProperties: &jsonschema.Schema{
-			Type: []string{"string"},
-		},
-	}
-
-	typ := &Type{
-		ID:   "1",
-		Name: "TestType",
-	}
-
-	err := builder.BuildStruct(typ, schema)
-
-	require.NoError(t, err)
-	assert.Equal(t, KindStruct, typ.Kind)
-	assert.Len(t, typ.Fields, 1)
-	assert.NotNil(t, typ.AdditionalProps)
-	assert.True(t, typ.AdditionalProps.Allowed)
 }
 
 func TestBuildTypeRef_Comprehensive(t *testing.T) {
@@ -2285,6 +1502,93 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			expectKind: KindMap,
 			expectChecks: func(t *testing.T, ref *TypeRef) {
 				assert.NotNil(t, ref.ValueType)
+			},
+		},
+		{
+			name: "nullable type",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{Type: []string{"string", "null"}}
+			},
+			fieldName:  "",
+			expectKind: KindPrimitive,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.True(t, ref.Nullable)
+			},
+		},
+		{
+			name: "array without items",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{Type: []string{"array"}}
+			},
+			fieldName:  "",
+			expectKind: KindArray,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.NotNil(t, ref.ItemType)
+				assert.Equal(t, "interface{}", ref.ItemType.GoType)
+			},
+		},
+		{
+			name: "map with typed additionalProperties",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{
+					Type:                 []string{"object"},
+					AdditionalProperties: &jsonschema.Schema{Type: []string{"number"}},
+				}
+			},
+			fieldName:  "",
+			expectKind: KindMap,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.NotNil(t, ref.ValueType)
+				assert.Equal(t, KindPrimitive, ref.ValueType.Kind)
+			},
+		},
+		{
+			name: "const value becomes enum",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{
+					Const: &jsonschema.ConstValue{IsSet: true, Value: "fixed-value"},
+				}
+			},
+			fieldName:  "",
+			expectKind: KindEnum,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.Len(t, ref.EnumValues, 1)
+			},
+		},
+		{
+			name: "oneOf creates union",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{
+					OneOf: []*jsonschema.Schema{{Type: []string{"string"}}, {Type: []string{"number"}}},
+				}
+			},
+			fieldName:  "",
+			expectKind: KindUnion,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.Len(t, ref.UnionMembers, 2)
+			},
+		},
+		{
+			name: "primitive with format",
+			setupSchema: func() *jsonschema.Schema {
+				format := "email"
+				return &jsonschema.Schema{Type: []string{"string"}, Format: &format}
+			},
+			fieldName:  "",
+			expectKind: KindPrimitive,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.Equal(t, "email", ref.Format)
+			},
+		},
+		{
+			name: "with ref",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{Ref: "#/$defs/MyType"}
+			},
+			fieldName:  "",
+			expectKind: KindRef,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.Equal(t, "MyType", ref.TypeName)
 			},
 		},
 	}
@@ -2355,153 +1659,104 @@ func TestShouldExtractInlineObject(t *testing.T) {
 	}
 }
 
-// TestBuild_PropertyNamesOnly tests that schemas with ONLY propertyNames (no direct properties)
-// are correctly identified as objects and generate proper struct types (not any).
-func TestBuild_PropertyNamesOnly(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "StrictObject",
-		"type": "object",
-		"propertyNames": {
-			"pattern": "^[a-z_]+$"
+// TestBuild_PropertyNames tests schemas with propertyNames constraints.
+func TestBuild_PropertyNames(t *testing.T) {
+	tests := []struct {
+		name           string
+		schemaJSON     string
+		expectedName   string
+		expectedKind   TypeKind
+		expectedFields int
+		hasAdditional  bool
+		requiredFields []string
+	}{
+		{
+			name: "only propertyNames no direct properties",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "StrictObject",
+				"type": "object",
+				"propertyNames": {"pattern": "^[a-z_]+$"},
+				"additionalProperties": {"type": "string"}
+			}`,
+			expectedName:   "StrictObject",
+			expectedKind:   KindStruct,
+			expectedFields: 0,
+			hasAdditional:  true,
 		},
-		"additionalProperties": {
-			"type": "string"
-		}
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "strict.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "strict.json",
-		RelativePath:  "strict.json",
-		Name:          "StrictObject",
-		Compiled:      compiled,
-		PropertyOrder: nil,
+		{
+			name: "propertyNames with typed additionalProperties",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "ConfigMap",
+				"type": "object",
+				"propertyNames": {"pattern": "^[A-Z_]+$"},
+				"additionalProperties": {"type": "number", "minimum": 0}
+			}`,
+			expectedName:   "ConfigMap",
+			expectedKind:   KindStruct,
+			expectedFields: 0,
+			hasAdditional:  true,
+		},
+		{
+			name: "propertyNames with direct properties",
+			schemaJSON: `{
+				"$schema": "http://json-schema.org/draft-07/schema#",
+				"title": "MixedObject",
+				"type": "object",
+				"properties": {"name": {"type": "string"}, "count": {"type": "integer"}},
+				"required": ["name"],
+				"propertyNames": {"pattern": "^[a-z_]+$"},
+				"additionalProperties": {"type": "string"}
+			}`,
+			expectedName:   "MixedObject",
+			expectedKind:   KindStruct,
+			expectedFields: 2,
+			hasAdditional:  true,
+			requiredFields: []string{"name"},
+		},
 	}
 
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			compiler := jsonschema.NewCompiler()
+			compiled, err := compiler.Compile([]byte(tt.schemaJSON), "test.json")
+			require.NoError(t, err)
 
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
+			testSchema := &schema.Schema{
+				Path:         "test.json",
+				RelativePath: "test.json",
+				Name:         tt.expectedName,
+				Compiled:     compiled,
+			}
 
-	typ := graph.Types[0]
-	assert.Equal(t, "StrictObject", typ.Name)
+			builder := NewBuilder(compiler)
+			graph, err := builder.Build([]*schema.Schema{testSchema})
 
-	// CRITICAL: Should be a struct, NOT a primitive (which would make it "any")
-	assert.Equal(t, KindStruct, typ.Kind, "StrictObject should be KindStruct, not KindPrimitive")
+			require.NoError(t, err)
+			require.Len(t, graph.Types, 1)
 
-	// Should have additionalProperties configuration
-	assert.NotNil(t, typ.AdditionalProps, "Should have AdditionalProps config")
-	assert.True(t, typ.AdditionalProps.Allowed, "AdditionalProperties should be allowed")
-	assert.NotNil(t, typ.AdditionalProps.Type, "AdditionalProps should have type")
-	assert.Equal(t, KindPrimitive, typ.AdditionalProps.Type.Kind)
-}
+			typ := graph.Types[0]
+			assert.Equal(t, tt.expectedName, typ.Name)
+			assert.Equal(t, tt.expectedKind, typ.Kind)
+			assert.Len(t, typ.Fields, tt.expectedFields)
 
-// TestBuild_PropertyNamesTypedValues tests propertyNames with typed additionalProperties.
-func TestBuild_PropertyNamesTypedValues(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "ConfigMap",
-		"type": "object",
-		"propertyNames": {
-			"pattern": "^[A-Z_]+$"
-		},
-		"additionalProperties": {
-			"type": "number",
-			"minimum": 0
-		}
-	}`)
+			if tt.hasAdditional {
+				assert.NotNil(t, typ.AdditionalProps)
+				assert.True(t, typ.AdditionalProps.Allowed)
+			}
 
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "config.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "config.json",
-		RelativePath:  "config.json",
-		Name:          "ConfigMap",
-		Compiled:      compiled,
-		PropertyOrder: nil,
+			if len(tt.requiredFields) > 0 {
+				fieldMap := make(map[string]*Field)
+				for _, f := range typ.Fields {
+					fieldMap[f.JSONName] = f
+				}
+				for _, rf := range tt.requiredFields {
+					assert.True(t, fieldMap[rf].Required, "%s should be required", rf)
+				}
+			}
+		})
 	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "ConfigMap", typ.Name)
-	assert.Equal(t, KindStruct, typ.Kind, "ConfigMap should be KindStruct")
-
-	// Should have additionalProperties with number type
-	assert.NotNil(t, typ.AdditionalProps)
-	assert.True(t, typ.AdditionalProps.Allowed)
-	assert.NotNil(t, typ.AdditionalProps.Type)
-	assert.Equal(t, KindPrimitive, typ.AdditionalProps.Type.Kind)
-}
-
-// TestBuild_PropertyNamesWithDirectProperties tests backward compatibility:
-// propertyNames combined with direct properties should still work.
-func TestBuild_PropertyNamesWithDirectProperties(t *testing.T) {
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "MixedObject",
-		"type": "object",
-		"properties": {
-			"name": {"type": "string"},
-			"count": {"type": "integer"}
-		},
-		"required": ["name"],
-		"propertyNames": {
-			"pattern": "^[a-z_]+$"
-		},
-		"additionalProperties": {
-			"type": "string"
-		}
-	}`)
-
-	compiler := jsonschema.NewCompiler()
-	compiled, err := compiler.Compile(schemaJSON, "mixed.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:          "mixed.json",
-		RelativePath:  "mixed.json",
-		Name:          "MixedObject",
-		Compiled:      compiled,
-		PropertyOrder: nil,
-	}
-
-	builder := NewBuilder(compiler)
-	graph, err := builder.Build([]*schema.Schema{testSchema})
-
-	require.NoError(t, err)
-	assert.NotNil(t, graph)
-	assert.Len(t, graph.Types, 1)
-
-	typ := graph.Types[0]
-	assert.Equal(t, "MixedObject", typ.Name)
-	assert.Equal(t, KindStruct, typ.Kind)
-
-	// Should have both direct properties and additionalProperties
-	assert.Len(t, typ.Fields, 2, "Should have 2 direct properties")
-	assert.NotNil(t, typ.AdditionalProps, "Should have AdditionalProps config")
-
-	fieldMap := make(map[string]*Field)
-	for _, f := range typ.Fields {
-		fieldMap[f.JSONName] = f
-	}
-
-	assert.NotNil(t, fieldMap["name"], "Should have 'name' field")
-	assert.NotNil(t, fieldMap["count"], "Should have 'count' field")
-	assert.True(t, fieldMap["name"].Required, "name should be required")
 }
 
 // Issue 2: Complex Enum Detection

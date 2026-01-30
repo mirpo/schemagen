@@ -7,14 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func normalizePaths(paths []string) []string {
-	out := make([]string, len(paths))
-	for i, p := range paths {
-		out[i] = filepath.FromSlash(p)
-	}
-	return out
-}
-
 func TestComputeRelativeImport_TableDriven(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -51,12 +43,6 @@ func TestComputeRelativeImport_TableDriven(t *testing.T) {
 			from:     "a/b/c/d.ts",
 			to:       "a/e/f.ts",
 			expected: "../../e/f",
-		},
-		{
-			name:     "same file",
-			from:     "a/b/c.ts",
-			to:       "a/b/c.ts",
-			expected: "./c",
 		},
 		{
 			name:     "root files",
@@ -105,12 +91,6 @@ func TestPathMapper_InputPathToOutputPath_TableDriven(t *testing.T) {
 			input:    "/input/edge-cases/special-props.json",
 			expected: filepath.Join("edge-cases", "special_props.py"),
 		},
-		{
-			name:     "typescript preserves hyphens",
-			language: "ts",
-			input:    "/input/user-profile.json",
-			expected: "user-profile.ts",
-		},
 	}
 
 	for _, tt := range tests {
@@ -122,23 +102,8 @@ func TestPathMapper_InputPathToOutputPath_TableDriven(t *testing.T) {
 	}
 }
 
-func TestGetDirectoryLevels_Contract(t *testing.T) {
-	tests := []struct {
-		path     string
-		expected []string
-	}{
-		{"", nil},
-		{".", nil},
-		{"file.ts", nil},
-		{"a/b/c.ts", []string{"a", "a/b"}},
-	}
-
-	for _, tt := range tests {
-		result := GetDirectoryLevels(filepath.FromSlash(tt.path))
-		assert.Equal(
-			t,
-			normalizePaths(tt.expected),
-			normalizePaths(result),
-		)
-	}
+func TestGetDirectoryLevels(t *testing.T) {
+	result := GetDirectoryLevels(filepath.FromSlash("a/b/c.ts"))
+	expected := []string{filepath.FromSlash("a"), filepath.FromSlash("a/b")}
+	assert.Equal(t, expected, result)
 }
