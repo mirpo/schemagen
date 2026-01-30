@@ -79,6 +79,9 @@ func (e *Emitter) generateSchemaInternal(typ *typegraph.Type, withInfer bool) st
 func (e *Emitter) generateObjectSchema(typ *typegraph.Type, schemaName string) string {
 	var sb strings.Builder
 
+	// Determine object constructor and catchall based on additionalProperties
+	objectFunc, catchall := e.determineObjectMode(typ.AdditionalProps)
+
 	// Handle allOf (inheritance via merge/extend)
 	if len(typ.Extends) > 0 {
 		baseSchema := typ.Extends[0] + "Schema"
@@ -95,18 +98,16 @@ func (e *Emitter) generateObjectSchema(typ *typegraph.Type, schemaName string) s
 		} else {
 			sb.WriteString(fmt.Sprintf("export const %s = %s", schemaName, baseSchema))
 		}
+		// Note: For extended schemas, catchall/strict is applied after extend
+		sb.WriteString(catchall)
 	} else {
-		// Regular object
-		sb.WriteString(fmt.Sprintf("export const %s = z.object({\n", schemaName))
+		// Regular object - use appropriate constructor
+		sb.WriteString(fmt.Sprintf("export const %s = %s({\n", schemaName, objectFunc))
 		for _, field := range typ.Fields {
 			sb.WriteString(fmt.Sprintf("  %s,\n", e.generateField(field)))
 		}
 		sb.WriteString("})")
-	}
-
-	// Add .strict() if configured
-	if e.config.Strict {
-		sb.WriteString(".strict()")
+		sb.WriteString(catchall)
 	}
 
 	// Add metadata
@@ -116,6 +117,32 @@ func (e *Emitter) generateObjectSchema(typ *typegraph.Type, schemaName string) s
 
 	sb.WriteString(";")
 	return sb.String()
+}
+
+// determineObjectMode returns the Zod object constructor and any catchall suffix
+// based on the additionalProperties configuration.
+func (e *Emitter) determineObjectMode(additionalProps *typegraph.AdditionalPropsConfig) (objectFunc, catchall string) {
+	if additionalProps != nil {
+		if additionalProps.Allowed {
+			if additionalProps.Type != nil {
+				// additionalProperties: { type: X } -> z.object({...}).catchall(zType)
+				return "z.object", fmt.Sprintf(".catchall(%s)", e.typeRefToZod(additionalProps.Type, nil))
+			}
+			// additionalProperties: true -> z.looseObject (passthrough)
+			return "z.looseObject", ""
+		}
+		// additionalProperties: false -> z.strictObject (reject unknown)
+		return "z.strictObject", ""
+	}
+
+	// Schema doesn't specify additionalProperties
+	if e.config.Strict {
+		// --ts-zod-strict flag as fallback default
+		return "z.strictObject", ""
+	}
+
+	// Default: z.object (strips unknown keys)
+	return "z.object", ""
 }
 
 // generateEnumSchema generates a Zod enum schema.
@@ -240,5 +267,34 @@ func (e *Emitter) generateField(field *typegraph.Field) string {
 		zodType += fmt.Sprintf(".meta({ description: %q })", field.Description)
 	}
 
+	// Check if this field contains a self-reference (recursive type)
+	// Use getter syntax for Zod v4: get fieldName() { return Schema }
+	if e.containsSelfReference(field.Type) {
+		return fmt.Sprintf("get %s() { return %s }", propName, zodType)
+	}
+
 	return fmt.Sprintf("%s: %s", propName, zodType)
+}
+
+// containsSelfReference checks if a TypeRef contains a reference to the current type.
+func (e *Emitter) containsSelfReference(ref *typegraph.TypeRef) bool {
+	if ref == nil || e.currentType == "" {
+		return false
+	}
+
+	switch ref.Kind {
+	case typegraph.KindRef:
+		return ref.TypeName == e.currentType
+	case typegraph.KindArray:
+		return e.containsSelfReference(ref.ItemType)
+	case typegraph.KindMap:
+		return e.containsSelfReference(ref.ValueType)
+	case typegraph.KindUnion:
+		for _, member := range ref.UnionMembers {
+			if e.containsSelfReference(member) {
+				return true
+			}
+		}
+	}
+	return false
 }

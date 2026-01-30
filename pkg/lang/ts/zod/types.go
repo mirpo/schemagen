@@ -17,12 +17,7 @@ func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) s
 
 	switch ref.Kind {
 	case typegraph.KindRef:
-		// Check for self-reference (recursive type)
-		if ref.TypeName == e.currentType {
-			zodType = fmt.Sprintf("z.lazy(() => %sSchema)", ref.TypeName)
-		} else {
-			zodType = ref.TypeName + "Schema"
-		}
+		zodType = ref.TypeName + "Schema"
 
 	case typegraph.KindPrimitive:
 		zodType = e.primitiveToZod(ref.GoType, ref.Format, field)
@@ -141,19 +136,24 @@ func (e *Emitter) enumValuesToZod(values []interface{}) string {
 }
 
 // generateInlineObject generates a Zod object schema for inline object fields.
+// Note: Inline objects don't have schema-level additionalProperties info,
+// so we only use the --ts-zod-strict flag as a fallback default.
 func (e *Emitter) generateInlineObject(fields []*typegraph.Field) string {
 	var sb strings.Builder
-	sb.WriteString("z.object({\n")
+
+	// Use strictObject when --ts-zod-strict flag is set
+	objectFunc := "z.object"
+	if e.config.Strict {
+		objectFunc = "z.strictObject"
+	}
+
+	sb.WriteString(objectFunc + "({\n")
 
 	for _, field := range fields {
 		sb.WriteString(fmt.Sprintf("    %s,\n", e.generateField(field)))
 	}
 
 	sb.WriteString("  })")
-
-	if e.config.Strict {
-		sb.WriteString(".strict()")
-	}
 
 	return sb.String()
 }
