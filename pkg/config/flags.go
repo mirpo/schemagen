@@ -24,6 +24,12 @@ type GenerationFlags struct {
 	TSUnknownAny           bool
 	TSAdditionalProperties bool
 
+	// TypeScript Zod integration flags
+	TSZod            bool
+	TSZodOnly        bool
+	TSZodCoerceDates bool
+	TSZodStrict      bool
+
 	// Python-specific flags
 	PySnakeCaseField       bool
 	PyAdditionalProperties bool
@@ -53,6 +59,10 @@ func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *
 		cfg.TypeScript = &generation.TypeScriptConfig{
 			UnknownAny:           f.TSUnknownAny,
 			AdditionalProperties: f.TSAdditionalProperties,
+			Zod:                  f.TSZod,
+			ZodOnly:              f.TSZodOnly,
+			ZodCoerceDates:       f.TSZodCoerceDates,
+			ZodStrict:            f.TSZodStrict,
 		}
 	case generation.LanguagePython:
 		cfg.Python = &generation.PythonConfig{
