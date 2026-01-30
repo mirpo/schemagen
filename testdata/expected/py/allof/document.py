@@ -8,14 +8,14 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class Entity(BaseModel):
+    id: UUID
+
+
 class Auditable(BaseModel):
     createdBy: str
     createdAt: datetime
     updatedAt: datetime | None = None
-
-
-class Entity(BaseModel):
-    id: UUID
 
 
 class Document(Entity, Auditable):

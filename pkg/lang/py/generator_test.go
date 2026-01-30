@@ -188,8 +188,8 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	out, err := g.GenerateFile([]*typegraph.Type{b, a}, nil)
 	require.NoError(t, err)
 
-	aIdx := strings.Index(out, "class A")
 	bIdx := strings.Index(out, "class B")
+	aIdx := strings.Index(out, "class A")
 
-	assert.Less(t, aIdx, bIdx, "types must be ordered deterministically")
+	assert.Less(t, bIdx, aIdx, "input order must be preserved")
 }

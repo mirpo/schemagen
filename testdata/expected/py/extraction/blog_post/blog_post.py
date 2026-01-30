@@ -8,19 +8,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field, EmailStr
 
 
-class Commenter(BaseModel):
-    """Nested inline commenter object (should be extracted)"""
-
-    email: EmailStr
-    name: str
-
-
-class CommentsItem(BaseModel):
-    """Inline comment object (should be extracted)"""
-
-    commenter: Commenter = Field(..., description="Nested inline commenter object (should be extracted)")
-    id: UUID
-    text: str
+class Status(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
 
 
 class Role(str, Enum):
@@ -37,10 +28,19 @@ class Author(BaseModel):
     role: Role | None = None
 
 
-class Status(str, Enum):
-    DRAFT = "draft"
-    PUBLISHED = "published"
-    ARCHIVED = "archived"
+class Commenter(BaseModel):
+    """Nested inline commenter object (should be extracted)"""
+
+    email: EmailStr
+    name: str
+
+
+class CommentsItem(BaseModel):
+    """Inline comment object (should be extracted)"""
+
+    commenter: Commenter = Field(..., description="Nested inline commenter object (should be extracted)")
+    id: UUID
+    text: str
 
 
 class BlogPost(BaseModel):

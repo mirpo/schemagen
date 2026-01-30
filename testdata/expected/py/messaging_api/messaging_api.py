@@ -10,43 +10,6 @@ from typing import Any
 from pydantic import BaseModel, Field, AnyUrl
 
 
-class DeliveryMode(str, Enum):
-    """Delivery guarantee level"""
-
-    AT_MOST_ONCE = "at-most-once"
-    AT_LEAST_ONCE = "at-least-once"
-    EXACTLY_ONCE = "exactly-once"
-
-
-class Error(BaseModel):
-    """API error details"""
-
-    code: str = Field(..., description="Error code")
-    message: str = Field(..., description="Human-readable error message")
-    field: str | None = Field(None, description="Field that caused the error")
-    details: dict[str, Any] | None = Field(None, description="Additional error context")
-
-
-class Metadata(BaseModel):
-    """Response metadata (inline object, not a $def)"""
-
-    region: str | None = Field(None, description="Server region that handled the request")
-    requestId: UUID = Field(..., description="Unique request identifier for tracing")
-    timestamp: datetime = Field(..., description="When the response was generated")
-    version: str = Field(..., description="API version")
-
-
-class Pagination(BaseModel):
-    """Pagination information"""
-
-    page: int = Field(..., description="Current page number", ge=1)
-    pageSize: int = Field(..., description="Items per page", ge=1, le=100)
-    totalPages: int = Field(..., description="Total number of pages", ge=0)
-    totalItems: int = Field(..., description="Total number of items", ge=0)
-    hasNext: bool | None = Field(None, description="Whether there is a next page")
-    hasPrevious: bool | None = Field(None, description="Whether there is a previous page")
-
-
 class Priority(str, Enum):
     """Message priority level"""
 
@@ -68,6 +31,14 @@ class Message(BaseModel):
     priority: Priority | None = Field(None, description="Message priority level")
 
 
+class DeliveryMode(str, Enum):
+    """Delivery guarantee level"""
+
+    AT_MOST_ONCE = "at-most-once"
+    AT_LEAST_ONCE = "at-least-once"
+    EXACTLY_ONCE = "exactly-once"
+
+
 class Subscription(BaseModel):
     """Subscription to a topic"""
 
@@ -76,6 +47,35 @@ class Subscription(BaseModel):
     filters: dict[str, str] | None = Field(None, description="Message filtering rules")
     deliveryMode: DeliveryMode = Field(..., description="Delivery guarantee level")
     endpoint: AnyUrl | None = Field(None, description="Webhook URL for message delivery")
+
+
+class Error(BaseModel):
+    """API error details"""
+
+    code: str = Field(..., description="Error code")
+    message: str = Field(..., description="Human-readable error message")
+    field: str | None = Field(None, description="Field that caused the error")
+    details: dict[str, Any] | None = Field(None, description="Additional error context")
+
+
+class Pagination(BaseModel):
+    """Pagination information"""
+
+    page: int = Field(..., description="Current page number", ge=1)
+    pageSize: int = Field(..., description="Items per page", ge=1, le=100)
+    totalPages: int = Field(..., description="Total number of pages", ge=0)
+    totalItems: int = Field(..., description="Total number of items", ge=0)
+    hasNext: bool | None = Field(None, description="Whether there is a next page")
+    hasPrevious: bool | None = Field(None, description="Whether there is a previous page")
+
+
+class Metadata(BaseModel):
+    """Response metadata (inline object, not a $def)"""
+
+    region: str | None = Field(None, description="Server region that handled the request")
+    requestId: UUID = Field(..., description="Unique request identifier for tracing")
+    timestamp: datetime = Field(..., description="When the response was generated")
+    version: str = Field(..., description="API version")
 
 
 class Throughput(BaseModel):

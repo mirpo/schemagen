@@ -7,12 +7,24 @@ import (
 	"time"
 )
 
+type Type string
+
+const (
+	TypeEMAIL Type = "email"
+)
+
 // Channel Email channel configuration
 type Channel struct {
 	Subject string `json:"subject" validate:"required"`
 	To string `json:"to" validate:"required,email"`
 	Type Type `json:"type" validate:"required"`
 }
+
+type Type2 string
+
+const (
+	Type2SMS Type2 = "sms"
+)
 
 // Channel1 SMS channel configuration
 type Channel1 struct {
@@ -21,24 +33,17 @@ type Channel1 struct {
 	Type Type2 `json:"type" validate:"required"`
 }
 
+type Type3 string
+
+const (
+	Type3PUSH Type3 = "push"
+)
+
 // Channel2 Push notification configuration
 type Channel2 struct {
 	Badge *float64 `json:"badge,omitempty"`
 	DeviceId string `json:"deviceId" validate:"required"`
 	Type Type3 `json:"type" validate:"required"`
-}
-
-// Content Plain text content
-type Content struct {
-	Body string `json:"body" validate:"required"`
-	Format Format `json:"format" validate:"required"`
-}
-
-// Content1 HTML content
-type Content1 struct {
-	Body string `json:"body" validate:"required"`
-	Css *string `json:"css,omitempty"`
-	Format Format2 `json:"format" validate:"required"`
 }
 
 type Format string
@@ -47,10 +52,33 @@ const (
 	FormatTEXT Format = "text"
 )
 
+// Content Plain text content
+type Content struct {
+	Body string `json:"body" validate:"required"`
+	Format Format `json:"format" validate:"required"`
+}
+
 type Format2 string
 
 const (
 	Format2HTML Format2 = "html"
+)
+
+// Content1 HTML content
+type Content1 struct {
+	Body string `json:"body" validate:"required"`
+	Css *string `json:"css,omitempty"`
+	Format Format2 `json:"format" validate:"required"`
+}
+
+// Priority Notification priority level
+type Priority string
+
+const (
+	PriorityLOW Priority = "low"
+	PriorityNORMAL Priority = "normal"
+	PriorityHIGH Priority = "high"
+	PriorityURGENT Priority = "urgent"
 )
 
 // Notification A notification that can be sent via multiple channels
@@ -68,31 +96,3 @@ type Notification struct {
 	// Notification priority level
 	Priority *Priority `json:"priority,omitempty"`
 }
-
-// Priority Notification priority level
-type Priority string
-
-const (
-	PriorityLOW Priority = "low"
-	PriorityNORMAL Priority = "normal"
-	PriorityHIGH Priority = "high"
-	PriorityURGENT Priority = "urgent"
-)
-
-type Type string
-
-const (
-	TypeEMAIL Type = "email"
-)
-
-type Type2 string
-
-const (
-	Type2SMS Type2 = "sms"
-)
-
-type Type3 string
-
-const (
-	Type3PUSH Type3 = "push"
-)

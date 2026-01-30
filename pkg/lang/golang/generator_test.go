@@ -177,9 +177,10 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
+	z := strings.Index(out, "type Zebra")
 	a := strings.Index(out, "type Apple")
 	m := strings.Index(out, "type Middle")
-	z := strings.Index(out, "type Zebra")
 
-	assert.True(t, a < m && m < z)
+	// Input order is preserved: Zebra, Apple, Middle
+	assert.True(t, z < a && a < m, "types must preserve input order")
 }

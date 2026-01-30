@@ -152,22 +152,27 @@ func planBundle(graph *typegraph.Graph, language string, bundleName string) *Out
 func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string) *OutputPlan {
 	schemaFiles := make(map[string]*OutputFile)
 
-	// For each schema, collect types that belong to this schema and orphaned dependencies
+	// For each schema, determine which types belong to it (including orphaned dependencies)
+	// We do this in two passes to preserve graph.Types order (dependencies before parent)
 	for _, s := range schemas {
-		// Use input filename for output (notification.json → notification.ts)
-		// This is predictable and matches source files
 		outputPath := convertSchemaPathToOutputForLanguage(s.RelativePath, language)
 
-		// Collect types that belong to this schema and orphaned dependencies
-		included := make(map[string]bool)
-		var fileTypes []*typegraph.Type
-
+		// First pass: collect all type names that belong to this file
+		belongsToFile := make(map[string]bool)
 		for _, typ := range graph.Types {
 			if typeSourceMap[typ.Name] == s {
-				included[typ.Name] = true
+				belongsToFile[typ.Name] = true
+				// Mark orphaned types (no source schema) that are referenced by this type
+				markOrphanedTypes(typ, graph, typeSourceMap, belongsToFile)
+			}
+		}
+
+		// Second pass: iterate graph.Types in order and collect types that belong to this file
+		// This preserves the type graph order (dependencies come before types that use them)
+		var fileTypes []*typegraph.Type
+		for _, typ := range graph.Types {
+			if belongsToFile[typ.Name] {
 				fileTypes = append(fileTypes, typ)
-				// Only collect orphaned types (no source schema)
-				collectOrphanedTypes(typ, graph, typeSourceMap, included, &fileTypes)
 			}
 		}
 
@@ -192,6 +197,54 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 	}
 
 	return plan
+}
+
+// markOrphanedTypes recursively marks orphaned types (types without a source schema)
+// that are referenced by the given type.
+func markOrphanedTypes(typ *typegraph.Type, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
+	for _, field := range typ.Fields {
+		markOrphanedFieldReferences(field.Type, graph, typeSourceMap, belongsToFile)
+	}
+
+	for _, baseName := range typ.Extends {
+		// Only mark if orphaned (no source schema)
+		if !belongsToFile[baseName] && typeSourceMap[baseName] == nil {
+			if baseType := graph.GetType(baseName); baseType != nil {
+				belongsToFile[baseName] = true
+				markOrphanedTypes(baseType, graph, typeSourceMap, belongsToFile)
+			}
+		}
+	}
+}
+
+// markOrphanedFieldReferences recursively marks orphaned types from a TypeRef.
+func markOrphanedFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
+	if ref == nil {
+		return
+	}
+
+	// Mark direct type reference only if orphaned
+	if ref.TypeName != "" && !belongsToFile[ref.TypeName] && typeSourceMap[ref.TypeName] == nil {
+		if refType := graph.GetType(ref.TypeName); refType != nil {
+			belongsToFile[ref.TypeName] = true
+			markOrphanedTypes(refType, graph, typeSourceMap, belongsToFile)
+		}
+	}
+
+	// Mark union members
+	for _, member := range ref.UnionMembers {
+		markOrphanedFieldReferences(member, graph, typeSourceMap, belongsToFile)
+	}
+
+	// Mark array item types
+	if ref.ItemType != nil {
+		markOrphanedFieldReferences(ref.ItemType, graph, typeSourceMap, belongsToFile)
+	}
+
+	// Mark map value types
+	if ref.ValueType != nil {
+		markOrphanedFieldReferences(ref.ValueType, graph, typeSourceMap, belongsToFile)
+	}
 }
 
 func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string, bundleName string) *OutputPlan {
@@ -274,55 +327,6 @@ func collectFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, incl
 	// Collect map value types
 	if ref.ValueType != nil {
 		collectFieldReferences(ref.ValueType, graph, included, result)
-	}
-}
-
-// collectOrphanedTypes recursively collects only orphaned types (types without a source schema)
-func collectOrphanedTypes(typ *typegraph.Type, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, included map[string]bool, result *[]*typegraph.Type) {
-	for _, field := range typ.Fields {
-		collectOrphanedFieldReferences(field.Type, graph, typeSourceMap, included, result)
-	}
-
-	for _, baseName := range typ.Extends {
-		// Only include if orphaned (no source schema)
-		if !included[baseName] && typeSourceMap[baseName] == nil {
-			if baseType := graph.GetType(baseName); baseType != nil {
-				included[baseName] = true
-				*result = append(*result, baseType)
-				collectOrphanedTypes(baseType, graph, typeSourceMap, included, result)
-			}
-		}
-	}
-}
-
-// collectOrphanedFieldReferences recursively collects orphaned types from a TypeRef
-func collectOrphanedFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, included map[string]bool, result *[]*typegraph.Type) {
-	if ref == nil {
-		return
-	}
-
-	// Collect direct type reference only if orphaned
-	if ref.TypeName != "" && !included[ref.TypeName] && typeSourceMap[ref.TypeName] == nil {
-		if refType := graph.GetType(ref.TypeName); refType != nil {
-			included[ref.TypeName] = true
-			*result = append(*result, refType)
-			collectOrphanedTypes(refType, graph, typeSourceMap, included, result)
-		}
-	}
-
-	// Collect union members
-	for _, member := range ref.UnionMembers {
-		collectOrphanedFieldReferences(member, graph, typeSourceMap, included, result)
-	}
-
-	// Collect array item types
-	if ref.ItemType != nil {
-		collectOrphanedFieldReferences(ref.ItemType, graph, typeSourceMap, included, result)
-	}
-
-	// Collect map value types
-	if ref.ValueType != nil {
-		collectOrphanedFieldReferences(ref.ValueType, graph, typeSourceMap, included, result)
 	}
 }
 

@@ -160,13 +160,8 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	// PEP 8: Two blank lines after imports before type definitions
 	sb.WriteString("\n\n")
 
-	// Sort types in topological order (dependencies first)
-	sortedTypes := make([]*typegraph.Type, len(types))
-	copy(sortedTypes, types)
-	sortedTypes = topologicalSort(sortedTypes)
-
 	// Generate types
-	for i, typ := range sortedTypes {
+	for i, typ := range types {
 		if i > 0 {
 			sb.WriteString("\n\n")
 		}

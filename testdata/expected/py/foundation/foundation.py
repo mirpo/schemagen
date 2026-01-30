@@ -10,15 +10,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, EmailStr, AnyUrl
 
 
-class Arrays(BaseModel):
-    minMaxArray: list[str] | None = Field(None, description="Array with size constraints", min_length=1, max_length=10)
+class Primitives(BaseModel):
+    """All primitive types"""
 
-
-class Flexible(BaseModel):
-    """Any additional properties allowed"""
-
-    enabled: bool | None = None
-    version: str
+    booleanVal: bool
+    integerVal: int
+    numberVal: float
+    stringVal: str
 
 
 class Formats(BaseModel):
@@ -34,22 +32,31 @@ class Formats(BaseModel):
     uuid: UUID | None = Field(None, description="Unique identifier")
 
 
-class Level2(BaseModel):
-    level3: str | None = Field(None, description="Three levels deep")
+class Arrays(BaseModel):
+    minMaxArray: list[str] | None = Field(None, description="Array with size constraints", min_length=1, max_length=10)
 
 
-class Level1(BaseModel):
-    level2: Level2 | None = None
+class Numbers(BaseModel):
+    exclusiveRange: float | None = Field(None, description="Number with exclusive bounds", gt=0, lt=100)
+    minMaxInteger: int | None = Field(None, description="Integer with constraints", ge=1, le=999)
+    minMaxNumber: float | None = Field(None, description="Number with inclusive bounds", ge=0, le=100)
+
+
+class Strings(BaseModel):
+    minMaxString: str | None = Field(None, description="String with length constraints", min_length=5, max_length=50)
+    patternString: str | None = Field(None, description="String matching regex pattern", pattern="^[A-Z][a-z]+$")
+
+
+class Constraints(BaseModel):
+    """Validation constraints"""
+
+    arrays: Arrays | None = None
+    numbers: Numbers | None = None
+    strings: Strings | None = None
 
 
 # Mixed type enumeration
 MixedEnum = Literal["string", 42, True, None]
-
-
-class Nested(BaseModel):
-    """Nested object structure"""
-
-    level1: Level1 | None = None
 
 
 class NumberEnum(IntEnum):
@@ -60,10 +67,20 @@ class NumberEnum(IntEnum):
     N_3 = 3
 
 
-class Numbers(BaseModel):
-    exclusiveRange: float | None = Field(None, description="Number with exclusive bounds", gt=0, lt=100)
-    minMaxInteger: int | None = Field(None, description="Integer with constraints", ge=1, le=999)
-    minMaxNumber: float | None = Field(None, description="Number with inclusive bounds", ge=0, le=100)
+class StringEnum(str, Enum):
+    """String enumeration"""
+
+    OPTION1 = "option1"
+    OPTION2 = "option2"
+    OPTION3 = "option3"
+
+
+class Enums(BaseModel):
+    """Enumeration types"""
+
+    mixedEnum: MixedEnum | None = Field(None, description="Mixed type enumeration")
+    numberEnum: NumberEnum | None = Field(None, description="Number enumeration")
+    stringEnum: StringEnum | None = Field(None, description="String enumeration")
 
 
 class ObjectArrayItem(BaseModel):
@@ -77,6 +94,20 @@ class Arrays2(BaseModel):
     numberArray: list[float] | None = Field(None, description="Array of numbers")
     objectArray: list[ObjectArrayItem] | None = Field(None, description="Array of objects")
     stringArray: list[str] | None = Field(None, description="Array of strings")
+
+
+class Level2(BaseModel):
+    level3: str | None = Field(None, description="Three levels deep")
+
+
+class Level1(BaseModel):
+    level2: Level2 | None = None
+
+
+class Nested(BaseModel):
+    """Nested object structure"""
+
+    level1: Level1 | None = None
 
 
 class OptionalObject(BaseModel):
@@ -93,13 +124,33 @@ class Nullable(BaseModel):
     requiredString: str = Field(..., description="This field is required")
 
 
-class Primitives(BaseModel):
-    """All primitive types"""
+class Flexible(BaseModel):
+    """Any additional properties allowed"""
 
-    booleanVal: bool
-    integerVal: int
-    numberVal: float
-    stringVal: str
+    enabled: bool | None = None
+    version: str
+
+
+class Strict(BaseModel):
+    """No additional properties allowed"""
+
+    id: str
+    name: str | None = None
+
+
+class TypedMap(BaseModel):
+    """Additional properties must be numbers"""
+
+    source: str | None = None
+    timestamp: str
+
+
+class AdditionalProps(BaseModel):
+    """Additional properties patterns"""
+
+    flexible: Flexible | None = Field(None, description="Any additional properties allowed")
+    strict: Strict | None = Field(None, description="No additional properties allowed")
+    typedMap: TypedMap | None = Field(None, description="Additional properties must be numbers")
 
 
 class ReservedKeywords(BaseModel):
@@ -140,57 +191,6 @@ class EdgeCases(BaseModel):
     emptyConfig: dict[str, Any] | None = Field(None, description="Empty object with no properties")
     reservedKeywords: ReservedKeywords | None = Field(None, description="Reserved keywords in TypeScript and Python")
     specialChars: SpecialChars | None = Field(None, description="Special characters in property names")
-
-
-class Strict(BaseModel):
-    """No additional properties allowed"""
-
-    id: str
-    name: str | None = None
-
-
-class StringEnum(str, Enum):
-    """String enumeration"""
-
-    OPTION1 = "option1"
-    OPTION2 = "option2"
-    OPTION3 = "option3"
-
-
-class Enums(BaseModel):
-    """Enumeration types"""
-
-    mixedEnum: MixedEnum | None = Field(None, description="Mixed type enumeration")
-    numberEnum: NumberEnum | None = Field(None, description="Number enumeration")
-    stringEnum: StringEnum | None = Field(None, description="String enumeration")
-
-
-class Strings(BaseModel):
-    minMaxString: str | None = Field(None, description="String with length constraints", min_length=5, max_length=50)
-    patternString: str | None = Field(None, description="String matching regex pattern", pattern="^[A-Z][a-z]+$")
-
-
-class Constraints(BaseModel):
-    """Validation constraints"""
-
-    arrays: Arrays | None = None
-    numbers: Numbers | None = None
-    strings: Strings | None = None
-
-
-class TypedMap(BaseModel):
-    """Additional properties must be numbers"""
-
-    source: str | None = None
-    timestamp: str
-
-
-class AdditionalProps(BaseModel):
-    """Additional properties patterns"""
-
-    flexible: Flexible | None = Field(None, description="Any additional properties allowed")
-    strict: Strict | None = Field(None, description="No additional properties allowed")
-    typedMap: TypedMap | None = Field(None, description="Additional properties must be numbers")
 
 
 class Foundation(BaseModel):

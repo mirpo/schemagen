@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type Entity struct {
+	Id uuid.UUID `json:"id" validate:"required,uuid"`
+}
+
 type Auditable struct {
 	CreatedBy string `json:"createdBy" validate:"required"`
 	CreatedAt time.Time `json:"createdAt" validate:"required"`
@@ -23,8 +27,4 @@ type Document struct {
 	Content string `json:"content" validate:"required"`
 	Author *string `json:"author,omitempty"`
 	Tags *[]string `json:"tags,omitempty"`
-}
-
-type Entity struct {
-	Id uuid.UUID `json:"id" validate:"required,uuid"`
 }

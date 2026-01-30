@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+// EventType Type of event
+type EventType string
+
+const (
+	EventTypeSUBSCRIBE EventType = "subscribe"
+	EventTypeUNSUBSCRIBE EventType = "unsubscribe"
+	EventTypePING EventType = "ping"
+	EventTypePONG EventType = "pong"
+)
+
 // EventHeader Standard event header with metadata
 type EventHeader struct {
 	// Unique event identifier
@@ -18,13 +28,3 @@ type EventHeader struct {
 	// Event source system
 	Source string `json:"source" validate:"required,url"`
 }
-
-// EventType Type of event
-type EventType string
-
-const (
-	EventTypeSUBSCRIBE EventType = "subscribe"
-	EventTypeUNSUBSCRIBE EventType = "unsubscribe"
-	EventTypePING EventType = "ping"
-	EventTypePONG EventType = "pong"
-)
