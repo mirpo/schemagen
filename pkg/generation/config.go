@@ -41,6 +41,12 @@ const (
 type TypeScriptConfig struct {
 	UnknownAny           bool
 	AdditionalProperties bool
+
+	// Zod integration options
+	Zod            bool // Generate Zod schemas alongside interfaces
+	ZodOnly        bool // Generate only Zod schemas (no interfaces)
+	ZodCoerceDates bool // Use z.coerce.date() for date-time
+	ZodStrict      bool // Add .strict() to object schemas
 }
 
 // PythonConfig holds Python-specific generation options

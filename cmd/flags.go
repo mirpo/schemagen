@@ -27,6 +27,12 @@ func AddGenerationFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("ts-unknown-any", false, "Use 'unknown' instead of 'any' for untyped schemas (TypeScript)")
 	cmd.Flags().Bool("ts-additional-properties", false, "Add index signatures for additionalProperties (TypeScript)")
 
+	// TypeScript Zod integration flags
+	cmd.Flags().Bool("ts-zod", false, "Generate Zod schemas alongside TypeScript interfaces")
+	cmd.Flags().Bool("ts-zod-only", false, "Generate only Zod schemas (no interfaces, use z.infer for types)")
+	cmd.Flags().Bool("ts-zod-coerce-dates", false, "Use z.coerce.date() instead of z.iso.datetime() for date-time format")
+	cmd.Flags().Bool("ts-zod-strict", false, "Add .strict() to all Zod object schemas")
+
 	// Python feature flags
 	cmd.Flags().Bool("py-snake-case-field", false, "Convert Python field names to snake_case with JSON alias")
 	cmd.Flags().Bool("py-additional-properties", false, "Add model_config with extra='allow' for additionalProperties (Python)")
@@ -55,6 +61,12 @@ func GetGenerationFlags(cmd *cobra.Command) *config.GenerationFlags {
 
 	flags.TSUnknownAny, _ = cmd.Flags().GetBool("ts-unknown-any")
 	flags.TSAdditionalProperties, _ = cmd.Flags().GetBool("ts-additional-properties")
+
+	// Zod flags
+	flags.TSZod, _ = cmd.Flags().GetBool("ts-zod")
+	flags.TSZodOnly, _ = cmd.Flags().GetBool("ts-zod-only")
+	flags.TSZodCoerceDates, _ = cmd.Flags().GetBool("ts-zod-coerce-dates")
+	flags.TSZodStrict, _ = cmd.Flags().GetBool("ts-zod-strict")
 
 	flags.PySnakeCaseField, _ = cmd.Flags().GetBool("py-snake-case-field")
 	flags.PyAdditionalProperties, _ = cmd.Flags().GetBool("py-additional-properties")

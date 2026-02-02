@@ -6,7 +6,20 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
+	"github.com/mirpo/schemagen/pkg/lang/ts/zod"
 	"github.com/mirpo/schemagen/pkg/typegraph"
+)
+
+// ZodMode represents the Zod generation mode
+type ZodMode int
+
+const (
+	// ZodModeOff disables Zod generation (default, interfaces only)
+	ZodModeOff ZodMode = iota
+	// ZodModeWithInterface generates both interfaces and Zod schemas
+	ZodModeWithInterface
+	// ZodModeOnly generates only Zod schemas with z.infer<> types
+	ZodModeOnly
 )
 
 // Config contains TypeScript generation configuration.
@@ -15,6 +28,11 @@ type Config struct {
 	DisableTimestamp     bool
 	UnknownAny           bool // Use 'unknown' instead of 'any'
 	AdditionalProperties bool // Add index signatures for additionalProperties
+
+	// Zod configuration
+	ZodMode        ZodMode // Zod generation mode
+	ZodCoerceDates bool    // Use z.coerce.date() for date-time
+	ZodStrict      bool    // Add .strict() to object schemas
 }
 
 // Generator generates TypeScript code from a type graph.
@@ -50,7 +68,12 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 		DisableTimestamp: g.config.DisableTimestamp,
 	}))
 
-	// Generate imports
+	// Add Zod import if generating Zod schemas
+	if g.config.ZodMode != ZodModeOff {
+		sb.WriteString("import { z } from 'zod';\n\n")
+	}
+
+	// Generate type imports (for interfaces or schema references)
 	if len(imports) > 0 {
 		for _, imp := range imports {
 			if len(imp.TypeNames) == 0 {
@@ -59,11 +82,31 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 
 			sort.Strings(imp.TypeNames)
 
-			sb.WriteString(fmt.Sprintf("import type { %s } from '%s';\n",
-				strings.Join(imp.TypeNames, ", "),
-				imp.ImportPath))
+			// For ZodModeOnly, import schemas instead of types
+			if g.config.ZodMode == ZodModeOnly {
+				schemaNames := make([]string, len(imp.TypeNames))
+				for i, name := range imp.TypeNames {
+					schemaNames[i] = name + "Schema"
+				}
+				sb.WriteString(fmt.Sprintf("import { %s } from '%s';\n",
+					strings.Join(schemaNames, ", "),
+					imp.ImportPath))
+			} else {
+				sb.WriteString(fmt.Sprintf("import type { %s } from '%s';\n",
+					strings.Join(imp.TypeNames, ", "),
+					imp.ImportPath))
+			}
 		}
 		sb.WriteString("\n")
+	}
+
+	// Create Zod emitter if needed
+	var zodEmitter *zod.Emitter
+	if g.config.ZodMode != ZodModeOff {
+		zodEmitter = zod.NewEmitter(g.graph, &zod.Config{
+			CoerceDates: g.config.ZodCoerceDates,
+			Strict:      g.config.ZodStrict,
+		})
 	}
 
 	// Generate types (preserving input order for correct schema references)
@@ -72,11 +115,30 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 			sb.WriteString("\n\n")
 		}
 
-		code, err := g.generateType(typ)
-		if err != nil {
-			return "", err
+		switch g.config.ZodMode {
+		case ZodModeOff:
+			// Generate only interfaces
+			code, err := g.generateType(typ)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(code)
+
+		case ZodModeWithInterface:
+			// Generate interface first
+			code, err := g.generateType(typ)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(code)
+			// Then generate Zod schema
+			sb.WriteString("\n\n")
+			sb.WriteString(zodEmitter.GenerateSchema(typ))
+
+		case ZodModeOnly:
+			// Generate only Zod schema with z.infer type
+			sb.WriteString(zodEmitter.GenerateSchemaWithInfer(typ))
 		}
-		sb.WriteString(code)
 	}
 
 	// Add final newline at EOF
