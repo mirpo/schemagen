@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/mirpo/schemagen/pkg/config"
+	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/spf13/cobra"
 )
@@ -45,8 +45,8 @@ func AddGenerationFlags(cmd *cobra.Command) {
 }
 
 // GetGenerationFlags extracts generation flags from a cobra command.
-func GetGenerationFlags(cmd *cobra.Command) *config.GenerationFlags {
-	flags := &config.GenerationFlags{}
+func GetGenerationFlags(cmd *cobra.Command) *generation.GenerationFlags {
+	flags := &generation.GenerationFlags{}
 
 	flags.OutTS, _ = cmd.Flags().GetString("out-ts")
 	flags.OutPY, _ = cmd.Flags().GetString("out-py")

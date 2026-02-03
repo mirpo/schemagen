@@ -22,7 +22,7 @@ func NewPathMapper(inputRoot, outputRoot, language string) *PathMapper {
 }
 
 func (pm *PathMapper) InputPathToOutputPath(schemaPath string) string {
-	ext := getLanguageExtension(pm.language)
+	ext := constants.GetExtension(pm.language)
 
 	relPath, err := filepath.Rel(pm.inputRoot, schemaPath)
 	if err != nil {
@@ -30,9 +30,9 @@ func (pm *PathMapper) InputPathToOutputPath(schemaPath string) string {
 	}
 
 	base := filepath.Base(relPath)
-	name := stripExt(base)
+	name := stripExtension(base)
 
-	if isPython(pm.language) {
+	if constants.IsPython(pm.language) {
 		name = strings.ReplaceAll(name, "-", "_")
 	}
 
@@ -108,10 +108,7 @@ func GetDirectoryLevels(path string) []string {
 	return levels
 }
 
-func stripExt(name string) string {
+// stripExtension removes the file extension from a path or filename.
+func stripExtension(name string) string {
 	return strings.TrimSuffix(name, filepath.Ext(name))
-}
-
-func isPython(lang string) bool {
-	return lang == constants.LanguagePythonShort || lang == string(constants.LanguagePython)
 }

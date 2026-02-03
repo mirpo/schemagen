@@ -209,17 +209,17 @@ export interface AdditionalProps {
 export interface ReservedKeywords {
   as?: string;
   async?: string;
-  await?: string;
-  class?: string;
+  "await"?: string;
+  "class"?: string;
   def?: string;
-  export?: string;
+  "export"?: string;
   from?: string;
-  import?: string;
-  interface?: string;
+  "import"?: string;
+  "interface"?: string;
   lambda?: string;
-  return?: string;
+  "return"?: string;
   type?: string;
-  yield?: string;
+  "yield"?: string;
 }
 
 /**

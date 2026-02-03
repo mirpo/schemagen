@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -147,7 +148,7 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 
 		// Quote property name if it's not a valid identifier
 		propName := field.JSONName
-		if needsQuoting(propName) {
+		if tscommon.NeedsQuoting(propName) {
 			propName = fmt.Sprintf("%q", propName)
 		}
 
@@ -156,38 +157,4 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 
 	sb.WriteString("  }")
 	return sb.String()
-}
-
-// needsQuoting returns true if a property name needs to be quoted in TypeScript.
-// Valid JS identifiers can start with letter, underscore, or dollar sign,
-// and contain letters, digits, underscores, or dollar signs.
-func needsQuoting(name string) bool {
-	if len(name) == 0 {
-		return true
-	}
-
-	// Check first character - must be letter, underscore, or dollar sign
-	first := rune(name[0])
-	if !isLetter(first) && first != '_' && first != '$' {
-		return true
-	}
-
-	// Check remaining characters - must be letter, digit, underscore, or dollar sign
-	for _, ch := range name[1:] {
-		if !isLetter(ch) && !isDigit(ch) && ch != '_' && ch != '$' {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isLetter returns true if the rune is a letter (including Unicode letters).
-func isLetter(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch > 127
-}
-
-// isDigit returns true if the rune is a digit.
-func isDigit(ch rune) bool {
-	return ch >= '0' && ch <= '9'
 }

@@ -20,7 +20,6 @@ func TestGenerators_InvalidImports(t *testing.T) {
 		name    string
 		imports interface{}
 	}{
-		{"nil", nil},
 		{"string", "bad"},
 		{"slice of string", []string{"a"}},
 		{"map", map[string]string{}},
@@ -75,23 +74,39 @@ func TestGenerators_TypedNilImports(t *testing.T) {
 	}
 }
 
-func TestGoGenerator_ConvertImports(t *testing.T) {
-	gen := newGoGenerator(&typegraph.Graph{}, &Config{
-		Language: LanguageGo,
-		Go:       &GoConfig{PackageName: "models", ModulePath: "github.com/test/project"},
-	}).(*goGenerator)
+func TestGenerators_NilImports(t *testing.T) {
+	tests := []struct {
+		name string
+		gen  Generator
+	}{
+		{"go", newGoGenerator(&typegraph.Graph{}, &Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}})},
+		{"python", newPythonGenerator(&typegraph.Graph{}, &Config{Language: LanguagePython, Python: &PythonConfig{}})},
+		{"typescript", newTypeScriptGenerator(&typegraph.Graph{}, &Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
+	}
 
-	result := gen.ConvertImports([]output.ImportSpec{
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := tt.gen.Generate(nil, nil)
+			require.NoError(t, err)
+			assert.NotEmpty(t, out)
+		})
+	}
+}
+
+func TestGoImportConverter_Convert(t *testing.T) {
+	converter := &GoImportConverter{ModulePath: "github.com/test/project"}
+
+	result := converter.Convert([]output.ImportSpec{
 		{FromPath: "events/event.go", ImportPath: "./header", TypeNames: []string{"Header"}},
 		{ImportPath: "github.com/pkg/errors"},
-	}).([]typegraph.ImportSpec)
+	})
 
 	require.Len(t, result, 2)
 	assert.Equal(t, "github.com/test/project/events/header", result[0].ImportPath)
 	assert.Equal(t, "github.com/pkg/errors", result[1].ImportPath)
 }
 
-func TestRelativeToAbsoluteImport(t *testing.T) {
+func TestGoImportConverter_ResolveRelative(t *testing.T) {
 	tests := []struct {
 		name, relPath, fromFile, modulePath, expected string
 	}{
@@ -103,13 +118,14 @@ func TestRelativeToAbsoluteImport(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, relativeToAbsoluteImport(tt.relPath, tt.fromFile, tt.modulePath))
+			converter := &GoImportConverter{ModulePath: tt.modulePath}
+			assert.Equal(t, tt.expected, converter.resolveRelative(tt.relPath, tt.fromFile))
 		})
 	}
 }
 
-func TestPythonGenerator_ConvertImports(t *testing.T) {
-	gen := newPythonGenerator(&typegraph.Graph{}, &Config{Language: LanguagePython, Python: &PythonConfig{}}).(*pythonGenerator)
+func TestPythonImportConverter_Convert(t *testing.T) {
+	converter := &PythonImportConverter{}
 
 	tests := []struct {
 		name, input, expected string
@@ -123,19 +139,17 @@ func TestPythonGenerator_ConvertImports(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := gen.ConvertImports([]output.ImportSpec{{ImportPath: tt.input}}).([]typegraph.ImportSpec)
+			result := converter.Convert([]output.ImportSpec{{ImportPath: tt.input}})
 			require.Len(t, result, 1)
 			assert.Equal(t, tt.expected, result[0].ImportPath)
 		})
 	}
 }
 
-func TestTypeScriptGenerator_ConvertImports(t *testing.T) {
-	gen := newTypeScriptGenerator(&typegraph.Graph{}, &Config{
-		Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{},
-	}).(*typeScriptGenerator)
+func TestPassthroughConverter_Convert(t *testing.T) {
+	converter := &PassthroughConverter{}
 
-	result := gen.ConvertImports([]output.ImportSpec{{ImportPath: "./types", TypeNames: []string{"User"}}}).([]typegraph.ImportSpec)
+	result := converter.Convert([]output.ImportSpec{{ImportPath: "./types", TypeNames: []string{"User"}}})
 
 	require.Len(t, result, 1)
 	assert.Equal(t, "./types", result[0].ImportPath)

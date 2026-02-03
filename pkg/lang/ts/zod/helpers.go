@@ -3,45 +3,9 @@ package zod
 import (
 	"fmt"
 	"strings"
-	"unicode"
+
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 )
-
-// needsQuoting returns true if the property name needs to be quoted in JS/TS.
-func needsQuoting(name string) bool {
-	if len(name) == 0 {
-		return true
-	}
-
-	// Must start with letter, underscore, or dollar sign
-	first := rune(name[0])
-	if !unicode.IsLetter(first) && first != '_' && first != '$' {
-		return true
-	}
-
-	// Rest must be alphanumeric, underscore, or dollar sign
-	for _, r := range name[1:] {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' && r != '$' {
-			return true
-		}
-	}
-
-	// Check for reserved words
-	reserved := map[string]bool{
-		"break": true, "case": true, "catch": true, "continue": true,
-		"debugger": true, "default": true, "delete": true, "do": true,
-		"else": true, "finally": true, "for": true, "function": true,
-		"if": true, "in": true, "instanceof": true, "new": true,
-		"return": true, "switch": true, "this": true, "throw": true,
-		"try": true, "typeof": true, "var": true, "void": true,
-		"while": true, "with": true, "class": true, "const": true,
-		"enum": true, "export": true, "extends": true, "import": true,
-		"super": true, "implements": true, "interface": true, "let": true,
-		"package": true, "private": true, "protected": true, "public": true,
-		"static": true, "yield": true,
-	}
-
-	return reserved[name]
-}
 
 // escapeRegex escapes special characters in a regex pattern for use in JavaScript.
 // It also handles forward slashes which are regex delimiters in JS.
@@ -89,7 +53,7 @@ func formatJSObject(m map[string]interface{}) string {
 	for k, v := range m {
 		// Quote key if needed
 		var key string
-		if needsQuoting(k) {
+		if tscommon.NeedsQuoting(k) {
 			key = fmt.Sprintf("%q", k)
 		} else {
 			key = k

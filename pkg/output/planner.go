@@ -132,7 +132,7 @@ func extractTypesFromSchema(s *schema.Schema) []string {
 }
 
 func planBundle(graph *typegraph.Graph, language string, bundleName string) *OutputPlan {
-	ext := getLanguageExtension(language)
+	ext := constants.GetExtension(language)
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
 	return &OutputPlan{
@@ -248,7 +248,7 @@ func markOrphanedFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph,
 }
 
 func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string, bundleName string) *OutputPlan {
-	ext := getLanguageExtension(language)
+	ext := constants.GetExtension(language)
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
 	rootSchema := schemas[0]
@@ -331,13 +331,13 @@ func collectFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, incl
 }
 
 func convertSchemaPathToOutputForLanguage(schemaPath string, language string) string {
-	ext := getLanguageExtension(language)
+	ext := constants.GetExtension(language)
 	dir := filepath.Dir(schemaPath)
 	base := filepath.Base(schemaPath)
-	nameWithoutExt := base[:len(base)-len(filepath.Ext(base))]
+	nameWithoutExt := stripExtension(base)
 
 	// Sanitize filename for Python: convert hyphens to underscores
-	if language == constants.LanguagePythonShort || language == string(constants.LanguagePython) {
+	if constants.IsPython(language) {
 		nameWithoutExt = strings.ReplaceAll(nameWithoutExt, "-", "_")
 	}
 
@@ -348,17 +348,4 @@ func convertSchemaPathToOutputForLanguage(schemaPath string, language string) st
 		return filepath.Join(dir, outputName)
 	}
 	return outputName
-}
-
-func getLanguageExtension(language string) string {
-	switch language {
-	case string(constants.LanguageGo):
-		return ".go"
-	case constants.LanguageTypeScriptShort, string(constants.LanguageTypeScript):
-		return ".ts"
-	case constants.LanguagePythonShort, string(constants.LanguagePython):
-		return ".py"
-	default:
-		return ".txt"
-	}
 }

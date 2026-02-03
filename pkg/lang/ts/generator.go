@@ -7,6 +7,7 @@ import (
 
 	"github.com/mirpo/schemagen/pkg/common"
 	"github.com/mirpo/schemagen/pkg/lang/ts/zod"
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -202,7 +203,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 
 			// Quote property name if it's not a valid identifier
 			propName := field.JSONName
-			if needsQuoting(propName) {
+			if tscommon.NeedsQuoting(propName) {
 				propName = fmt.Sprintf("%q", propName)
 			}
 
@@ -251,7 +252,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 
 			// Quote property name if it's not a valid identifier
 			propName := field.JSONName
-			if needsQuoting(propName) {
+			if tscommon.NeedsQuoting(propName) {
 				propName = fmt.Sprintf("%q", propName)
 			}
 

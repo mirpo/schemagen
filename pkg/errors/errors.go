@@ -60,6 +60,11 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error for %s: %s", e.Field, e.Message)
 }
 
+// Unwrap returns nil as ValidationError doesn't wrap other errors.
+func (e *ValidationError) Unwrap() error {
+	return nil
+}
+
 // ExitCodeError is an error that carries an exit code for CLI commands.
 type ExitCodeError struct {
 	Message string

@@ -3,6 +3,7 @@ package zod
 import (
 	"testing"
 
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 	"github.com/stretchr/testify/assert"
 )
@@ -473,7 +474,7 @@ func TestHelpers_NeedsQuoting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			assert.Equal(t, tt.expected, needsQuoting(tt.input))
+			assert.Equal(t, tt.expected, tscommon.NeedsQuoting(tt.input))
 		})
 	}
 }

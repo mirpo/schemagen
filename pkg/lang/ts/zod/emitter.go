@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -250,7 +251,7 @@ func (e *Emitter) generatePrimitiveSchema(typ *typegraph.Type, schemaName string
 func (e *Emitter) generateField(field *typegraph.Field) string {
 	// Property name (quote if necessary)
 	propName := field.JSONName
-	if needsQuoting(propName) {
+	if tscommon.NeedsQuoting(propName) {
 		propName = fmt.Sprintf(`"%s"`, propName)
 	}
 

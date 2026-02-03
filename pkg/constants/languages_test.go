@@ -22,3 +22,69 @@ func TestNormalizeLanguage(t *testing.T) {
 		})
 	}
 }
+
+func TestGetExtension(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"typescript full", "typescript", ".ts"},
+		{"typescript short", "ts", ".ts"},
+		{"python full", "python", ".py"},
+		{"python short", "py", ".py"},
+		{"go", "go", ".go"},
+		{"unknown", "rust", ".txt"},
+		{"empty", "", ".txt"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, GetExtension(tt.input))
+		})
+	}
+}
+
+func TestIsPython(t *testing.T) {
+	assert.True(t, IsPython("python"))
+	assert.True(t, IsPython("py"))
+	assert.False(t, IsPython("typescript"))
+	assert.False(t, IsPython("go"))
+	assert.False(t, IsPython(""))
+}
+
+func TestIsTypeScript(t *testing.T) {
+	assert.True(t, IsTypeScript("typescript"))
+	assert.True(t, IsTypeScript("ts"))
+	assert.False(t, IsTypeScript("python"))
+	assert.False(t, IsTypeScript("go"))
+	assert.False(t, IsTypeScript(""))
+}
+
+func TestIsGo(t *testing.T) {
+	assert.True(t, IsGo("go"))
+	assert.False(t, IsGo("typescript"))
+	assert.False(t, IsGo("python"))
+	assert.False(t, IsGo(""))
+}
+
+func TestGetBarrelFileName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"typescript full", "typescript", "index.ts"},
+		{"typescript short", "ts", "index.ts"},
+		{"python full", "python", "__init__.py"},
+		{"python short", "py", "__init__.py"},
+		{"go has no barrel", "go", ""},
+		{"unknown has no barrel", "rust", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, GetBarrelFileName(tt.input))
+		})
+	}
+}

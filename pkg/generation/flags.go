@@ -1,13 +1,12 @@
-package config
+package generation
 
 import (
 	"github.com/kaptinlin/jsonschema"
-	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
-// GenerationFlags holds all code generation flags
+// GenerationFlags holds all code generation flags from CLI.
 type GenerationFlags struct {
 	// Output directories
 	OutTS string
@@ -41,9 +40,9 @@ type GenerationFlags struct {
 	GoModulePath  string
 }
 
-// ToGenerationConfig creates a generation.Config from flags
-func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *jsonschema.Compiler, outDir string, lang generation.Language) *generation.Config {
-	cfg := &generation.Config{
+// ConfigFromFlags creates a Config from GenerationFlags for a specific language.
+func ConfigFromFlags(f *GenerationFlags, schemas []*schema.Schema, compiler *jsonschema.Compiler, outDir string, lang Language) *Config {
+	cfg := &Config{
 		Schemas:          schemas,
 		Compiler:         compiler,
 		OutDir:           outDir,
@@ -55,8 +54,8 @@ func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *
 	}
 
 	switch lang {
-	case generation.LanguageTypeScript:
-		cfg.TypeScript = &generation.TypeScriptConfig{
+	case LanguageTypeScript:
+		cfg.TypeScript = &TypeScriptConfig{
 			UnknownAny:           f.TSUnknownAny,
 			AdditionalProperties: f.TSAdditionalProperties,
 			Zod:                  f.TSZod,
@@ -64,13 +63,13 @@ func ToGenerationConfig(f *GenerationFlags, schemas []*schema.Schema, compiler *
 			ZodCoerceDates:       f.TSZodCoerceDates,
 			ZodStrict:            f.TSZodStrict,
 		}
-	case generation.LanguagePython:
-		cfg.Python = &generation.PythonConfig{
+	case LanguagePython:
+		cfg.Python = &PythonConfig{
 			SnakeCaseField:       f.PySnakeCaseField,
 			AdditionalProperties: f.PyAdditionalProperties,
 		}
-	case generation.LanguageGo:
-		cfg.Go = &generation.GoConfig{
+	case LanguageGo:
+		cfg.Go = &GoConfig{
 			PackageName: f.GoPackageName,
 			UsePointers: f.GoUsePointers,
 			OmitEmpty:   f.GoOmitEmpty,

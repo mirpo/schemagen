@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/config"
 	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/schema"
 	"github.com/stretchr/testify/assert"
@@ -164,7 +163,7 @@ func TestRun(t *testing.T) {
 
 		result, err := Run(&Config{
 			Input: schemaPath, Schemas: schemas, Loader: loader,
-			Flags: &config.GenerationFlags{OutTS: outputDir}, ExistingDir: tmpDir,
+			Flags: &generation.GenerationFlags{OutTS: outputDir}, ExistingDir: tmpDir,
 		})
 		require.NoError(t, err)
 		assert.False(t, result.HasDrift)
@@ -185,7 +184,7 @@ func TestRun(t *testing.T) {
 		schemas, _ := loader.Load(schemaPath)
 		result, err := Run(&Config{
 			Input: schemaPath, Schemas: schemas, Loader: loader,
-			Flags: &config.GenerationFlags{OutTS: outputDir}, ExistingDir: tmpDir,
+			Flags: &generation.GenerationFlags{OutTS: outputDir}, ExistingDir: tmpDir,
 		})
 		require.NoError(t, err)
 		assert.True(t, result.HasDrift)
@@ -200,7 +199,7 @@ func TestRun(t *testing.T) {
 		_ = os.WriteFile(schemaPath, []byte(`{"type":"object","title":"User","properties":{"name":{"type":"string"}}}`), 0o644)
 
 		result, err := Run(&Config{
-			Input: schemaPath, Flags: &config.GenerationFlags{OutTS: filepath.Join(tmpDir, "output")}, ExistingDir: tmpDir,
+			Input: schemaPath, Flags: &generation.GenerationFlags{OutTS: filepath.Join(tmpDir, "output")}, ExistingDir: tmpDir,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -208,7 +207,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("invalid schema path", func(t *testing.T) {
 		_, err := Run(&Config{
-			Input: "/nonexistent/schema.json", Flags: &config.GenerationFlags{OutTS: "/tmp/output"}, ExistingDir: "/tmp/existing",
+			Input: "/nonexistent/schema.json", Flags: &generation.GenerationFlags{OutTS: "/tmp/output"}, ExistingDir: "/tmp/existing",
 		})
 		require.Error(t, err)
 	})
