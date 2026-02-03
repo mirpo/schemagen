@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
@@ -441,24 +442,11 @@ func sanitizeEnumMemberName(name string) string {
 func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Categorize enum type: all strings, all numbers, or mixed
-	hasString := false
-	hasNumber := false
-	hasOther := false // bool, null, etc.
-
-	for _, val := range typ.EnumValues {
-		switch val.Value.(type) {
-		case string:
-			hasString = true
-		case float64, int, int64:
-			hasNumber = true
-		default:
-			hasOther = true
-		}
-	}
+	// Categorize enum type using shared analyzer
+	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
 
 	// For mixed-type enums or enums with bool/null, use Literal type
-	if (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther {
+	if category.HasMixed {
 		g.imports["typing_literal"] = true
 
 		// Add description as comment if present
@@ -488,7 +476,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	}
 
 	// For number-only enums, use IntEnum
-	if hasNumber && !hasString {
+	if category.AllNumbers {
 		g.imports["enum_int"] = true
 
 		// Class declaration

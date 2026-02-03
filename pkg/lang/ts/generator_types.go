@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/common"
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
@@ -37,15 +38,9 @@ func (g *Generator) typeRefToTS(ref *typegraph.TypeRef) string {
 		if len(ref.EnumValues) > 0 {
 			literals := make([]string, 0, len(ref.EnumValues))
 			for _, val := range ref.EnumValues {
-				switch v := val.(type) {
-				case string:
-					literals = append(literals, fmt.Sprintf("%q", v))
-				case float64, int, int64:
-					literals = append(literals, fmt.Sprintf("%v", v))
-				case bool:
-					literals = append(literals, fmt.Sprintf("%t", v))
-				case nil:
-					literals = append(literals, "null")
+				switch val.(type) {
+				case string, float64, int, int64, bool, nil:
+					literals = append(literals, common.TSLiterals.FormatValue(val))
 				default:
 					// Skip other types (objects, arrays)
 				}

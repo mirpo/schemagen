@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/lang/ts/zod"
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
@@ -312,24 +313,11 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		sb.WriteString(" */\n")
 	}
 
-	// Check if this is a mixed-type enum (has different value types)
-	hasString := false
-	hasNumber := false
-	hasOther := false
-	for _, val := range typ.EnumValues {
-		switch val.Value.(type) {
-		case string:
-			hasString = true
-		case float64, int, int64:
-			hasNumber = true
-		default:
-			hasOther = true
-		}
-	}
-	isMixed := (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther
+	// Check if this is a mixed-type enum using shared analyzer
+	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
 
 	// For mixed-type enums or string enums, use union types (more idiomatic in TS)
-	if typ.EnumType == "string" || isMixed {
+	if typ.EnumType == "string" || category.HasMixed {
 		sb.WriteString(fmt.Sprintf("export type %s = ", typ.Name))
 
 		values := make([]string, 0, len(typ.EnumValues))
