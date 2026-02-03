@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/kaptinlin/jsonschema"
-	"github.com/mirpo/schemagen/pkg/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,78 +89,3 @@ func TestStructBuilder_DeduplicateFields(t *testing.T) {
 	assert.Equal(t, KindPrimitive, idField.Type.Kind)
 }
 
-func TestStructBuilder_ExtractConstraints(t *testing.T) {
-	sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
-
-	t.Run("string", func(t *testing.T) {
-		minLen, maxLen, pattern := float64(5), float64(100), "^[a-z]+$"
-		field := &Field{}
-		sb.ExtractConstraints(field, &jsonschema.Schema{MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern})
-
-		assert.Equal(t, 5, *field.MinLength)
-		assert.Equal(t, 100, *field.MaxLength)
-		assert.Equal(t, "^[a-z]+$", *field.Pattern)
-	})
-
-	t.Run("number", func(t *testing.T) {
-		field := &Field{}
-		sb.ExtractConstraints(field, &jsonschema.Schema{
-			Minimum: jsonschema.NewRat(0),
-			Maximum: jsonschema.NewRat(100),
-		})
-
-		assert.InDelta(t, 0.0, *field.Minimum, 0.0001)
-		assert.InDelta(t, 100.0, *field.Maximum, 0.0001)
-	})
-}
-
-func TestStructBuilder_ExtractAdditionalProperties(t *testing.T) {
-	t.Run("boolean", func(t *testing.T) {
-		sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
-		sb.SetFieldBuilder(&mockFieldBuilder{})
-
-		boolTrue := true
-		config := sb.ExtractAdditionalProperties(&jsonschema.Schema{
-			AdditionalProperties: &jsonschema.Schema{Boolean: &boolTrue},
-		})
-
-		assert.True(t, config.Allowed)
-		assert.Nil(t, config.Type)
-	})
-
-	t.Run("typed", func(t *testing.T) {
-		sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
-		sb.SetFieldBuilder(&mockFieldBuilder{returnTypeRef: &TypeRef{Kind: KindPrimitive, GoType: "string"}})
-
-		config := sb.ExtractAdditionalProperties(&jsonschema.Schema{
-			AdditionalProperties: &jsonschema.Schema{Type: []string{"string"}},
-		})
-
-		assert.True(t, config.Allowed)
-		assert.Equal(t, KindPrimitive, config.Type.Kind)
-	})
-}
-
-func TestStructBuilder_GetOrderedPropertyNames(t *testing.T) {
-	t.Run("with order", func(t *testing.T) {
-		sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
-		order, _ := schema.ExtractPropertyOrder([]byte(`{"properties": {"z": {}, "a": {}, "m": {}}}`), "test.json")
-		sb.SetCurrentOrder(order)
-		sb.SetCurrentPath("test.json")
-
-		names := sb.GetOrderedPropertyNames(&jsonschema.SchemaMap{
-			"z": &jsonschema.Schema{}, "a": &jsonschema.Schema{}, "m": &jsonschema.Schema{},
-		}, "test.json")
-
-		assert.Equal(t, []string{"z", "a", "m"}, names)
-	})
-
-	t.Run("alphabetical", func(t *testing.T) {
-		sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
-		names := sb.GetOrderedPropertyNames(&jsonschema.SchemaMap{
-			"zebra": &jsonschema.Schema{}, "apple": &jsonschema.Schema{}, "mango": &jsonschema.Schema{},
-		}, "")
-
-		assert.Equal(t, []string{"apple", "mango", "zebra"}, names)
-	})
-}

@@ -261,7 +261,7 @@ func (b *TypeRefBuilder) ExtractInlineObjectType(baseName string, schema *jsonsc
 	// Extract properties
 	if schema.Properties != nil {
 		// Inline objects don't have pre-extracted order info, so use empty path (falls back to alphabetical)
-		for _, propName := range b.getOrderedPropertyNames(schema.Properties, "") {
+		for _, propName := range GetOrderedPropertyNames(schema.Properties, "", b.currentOrder) {
 			propSchema := (*schema.Properties)[propName]
 			field := &Field{
 				Name:        naming.ToPascalCase(propName),
@@ -272,13 +272,13 @@ func (b *TypeRefBuilder) ExtractInlineObjectType(baseName string, schema *jsonsc
 				Type:        b.BuildTypeRef(propSchema, propName),
 			}
 			// Extract validation constraints
-			b.extractConstraints(field, propSchema)
+			ExtractConstraints(field, propSchema)
 			typ.Fields = append(typ.Fields, field)
 		}
 	}
 
 	// Capture additionalProperties configuration
-	typ.AdditionalProps = b.extractAdditionalProperties(schema)
+	typ.AdditionalProps = ExtractAdditionalProperties(schema, b.BuildTypeRef)
 
 	return typ
 }
@@ -302,7 +302,7 @@ func (b *TypeRefBuilder) BuildFieldsFromProperties(schema *jsonschema.Schema, or
 	fields := make([]*Field, 0)
 
 	// Iterate over properties in order
-	for _, propName := range b.getOrderedPropertyNames(schema.Properties, orderPath) {
+	for _, propName := range GetOrderedPropertyNames(schema.Properties, orderPath, b.currentOrder) {
 		propSchema := (*schema.Properties)[propName]
 		field := &Field{
 			Name:        naming.ToPascalCase(propName),
@@ -313,7 +313,7 @@ func (b *TypeRefBuilder) BuildFieldsFromProperties(schema *jsonschema.Schema, or
 			Type:        b.BuildTypeRef(propSchema, propName),
 		}
 		// Extract validation constraints
-		b.extractConstraints(field, propSchema)
+		ExtractConstraints(field, propSchema)
 		fields = append(fields, field)
 	}
 
@@ -376,21 +376,6 @@ func (b *TypeRefBuilder) MapPrimitiveType(schema *jsonschema.Schema) string {
 	}
 
 	return "interface{}"
-}
-
-// getOrderedPropertyNames uses the standalone helper function.
-func (b *TypeRefBuilder) getOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string) []string {
-	return GetOrderedPropertyNames(properties, schemaPath, b.currentOrder)
-}
-
-// extractConstraints uses the standalone helper function.
-func (b *TypeRefBuilder) extractConstraints(field *Field, sch *jsonschema.Schema) {
-	ExtractConstraints(field, sch)
-}
-
-// extractAdditionalProperties uses the standalone helper function.
-func (b *TypeRefBuilder) extractAdditionalProperties(sch *jsonschema.Schema) *AdditionalPropsConfig {
-	return ExtractAdditionalProperties(sch, b.BuildTypeRef)
 }
 
 // buildUnionMembers builds TypeRefs for union members (oneOf/anyOf).

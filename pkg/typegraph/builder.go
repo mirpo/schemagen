@@ -114,7 +114,3 @@ func (b *Builder) BuildTypeRef(schema *jsonschema.Schema, fieldName string) *Typ
 	return b.typeRefBuilder.BuildTypeRef(schema, fieldName)
 }
 
-// getOrderedPropertyNames delegates to structBuilder.GetOrderedPropertyNames.
-func (b *Builder) getOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string) []string {
-	return b.structBuilder.GetOrderedPropertyNames(properties, schemaPath)
-}

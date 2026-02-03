@@ -88,7 +88,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 			if allOfSchema.Properties != nil {
 				// Construct path for this allOf branch
 				allOfPath := fmt.Sprintf("%s#/allOf/%d", b.currentPath, allOfIndex)
-				for _, propName := range b.GetOrderedPropertyNames(allOfSchema.Properties, allOfPath) {
+				for _, propName := range GetOrderedPropertyNames(allOfSchema.Properties, allOfPath, b.currentOrder) {
 					propSchema := (*allOfSchema.Properties)[propName]
 					field := &Field{
 						Name:        naming.ToPascalCase(propName),
@@ -99,7 +99,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 						Type:        b.fieldBuilder.BuildTypeRef(propSchema, propName),
 					}
 					// Extract validation constraints
-					b.ExtractConstraints(field, propSchema)
+					ExtractConstraints(field, propSchema)
 					typ.Fields = append(typ.Fields, field)
 				}
 			}
@@ -109,7 +109,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 	// Extract properties from the main schema
 	if schema.Properties != nil {
 		// Iterate over properties in schema file order
-		for _, propName := range b.GetOrderedPropertyNames(schema.Properties, b.currentPath) {
+		for _, propName := range GetOrderedPropertyNames(schema.Properties, b.currentPath, b.currentOrder) {
 			propSchema := (*schema.Properties)[propName]
 			field := &Field{
 				Name:        naming.ToPascalCase(propName),
@@ -120,7 +120,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 				Type:        b.fieldBuilder.BuildTypeRef(propSchema, propName),
 			}
 			// Extract validation constraints
-			b.ExtractConstraints(field, propSchema)
+			ExtractConstraints(field, propSchema)
 			typ.Fields = append(typ.Fields, field)
 		}
 	}
@@ -129,7 +129,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 	typ.Fields = b.DeduplicateFields(typ.Fields)
 
 	// Capture additionalProperties configuration
-	typ.AdditionalProps = b.ExtractAdditionalProperties(schema)
+	typ.AdditionalProps = ExtractAdditionalProperties(schema, b.fieldBuilder.BuildTypeRef)
 
 	return nil
 }
@@ -167,21 +167,3 @@ func (b *StructBuilder) DeduplicateFields(fields []*Field) []*Field {
 	return result
 }
 
-// ExtractConstraints extracts validation constraints from a schema into a field.
-// Delegates to the standalone helper function.
-func (b *StructBuilder) ExtractConstraints(field *Field, sch *jsonschema.Schema) {
-	ExtractConstraints(field, sch)
-}
-
-// ExtractAdditionalProperties captures additionalProperties configuration from a schema.
-// Delegates to the standalone helper function.
-func (b *StructBuilder) ExtractAdditionalProperties(sch *jsonschema.Schema) *AdditionalPropsConfig {
-	return ExtractAdditionalProperties(sch, b.fieldBuilder.BuildTypeRef)
-}
-
-// GetOrderedPropertyNames returns property names in schema file order.
-// Falls back to alphabetical sorting if order information is not available.
-// Delegates to the standalone helper function.
-func (b *StructBuilder) GetOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string) []string {
-	return GetOrderedPropertyNames(properties, schemaPath, b.currentOrder)
-}
