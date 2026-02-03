@@ -3,7 +3,6 @@ package generation
 import (
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,7 +95,7 @@ func TestGenerators_NilImports(t *testing.T) {
 func TestGoImportConverter_Convert(t *testing.T) {
 	converter := &GoImportConverter{ModulePath: "github.com/test/project"}
 
-	result := converter.Convert([]output.ImportSpec{
+	result := converter.Convert([]typegraph.ImportSpec{
 		{FromPath: "events/event.go", ImportPath: "./header", TypeNames: []string{"Header"}},
 		{ImportPath: "github.com/pkg/errors"},
 	})
@@ -139,7 +138,7 @@ func TestPythonImportConverter_Convert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := converter.Convert([]output.ImportSpec{{ImportPath: tt.input}})
+			result := converter.Convert([]typegraph.ImportSpec{{ImportPath: tt.input}})
 			require.Len(t, result, 1)
 			assert.Equal(t, tt.expected, result[0].ImportPath)
 		})
@@ -149,7 +148,7 @@ func TestPythonImportConverter_Convert(t *testing.T) {
 func TestPassthroughConverter_Convert(t *testing.T) {
 	converter := &PassthroughConverter{}
 
-	result := converter.Convert([]output.ImportSpec{{ImportPath: "./types", TypeNames: []string{"User"}}})
+	result := converter.Convert([]typegraph.ImportSpec{{ImportPath: "./types", TypeNames: []string{"User"}}})
 
 	require.Len(t, result, 1)
 	assert.Equal(t, "./types", result[0].ImportPath)

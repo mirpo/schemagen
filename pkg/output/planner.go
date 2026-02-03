@@ -62,14 +62,7 @@ type OutputFile struct {
 	Language     string
 	RelativePath string
 	Types        []*typegraph.Type
-	Imports      []ImportSpec
-}
-
-type ImportSpec struct {
-	FromPath   string
-	ToPath     string
-	TypeNames  []string
-	ImportPath string
+	Imports      []typegraph.ImportSpec
 }
 
 type BarrelFile struct {
@@ -142,7 +135,7 @@ func planBundle(graph *typegraph.Graph, language string, bundleName string) *Out
 				Language:     language,
 				RelativePath: filename,
 				Types:        graph.Types,
-				Imports:      []ImportSpec{},
+				Imports:      []typegraph.ImportSpec{},
 			},
 		},
 		BarrelFiles: []BarrelFile{},
@@ -181,7 +174,7 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 				Language:     language,
 				RelativePath: outputPath,
 				Types:        fileTypes,
-				Imports:      []ImportSpec{},
+				Imports:      []typegraph.ImportSpec{},
 			}
 		}
 	}
@@ -261,7 +254,7 @@ func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSource
 				Language:     language,
 				RelativePath: filename,
 				Types:        includedTypes,
-				Imports:      []ImportSpec{},
+				Imports:      []typegraph.ImportSpec{},
 			},
 		},
 		BarrelFiles: []BarrelFile{},

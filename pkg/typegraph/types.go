@@ -95,6 +95,20 @@ type TypeRef struct {
 	ObjectFields []*Field // Object fields for anonymous interfaces
 }
 
+// Walk traverses all nested TypeRefs, calling the visitor function for each.
+// This enables generic traversal without duplicating recursion logic.
+func (ref *TypeRef) Walk(visitor func(*TypeRef)) {
+	if ref == nil {
+		return
+	}
+	visitor(ref)
+	ref.ItemType.Walk(visitor)
+	ref.ValueType.Walk(visitor)
+	for _, m := range ref.UnionMembers {
+		m.Walk(visitor)
+	}
+}
+
 // EnumValue represents an enum constant.
 type EnumValue struct {
 	Name  string      // Constant name (UPPER_SNAKE_CASE)
@@ -103,17 +117,41 @@ type EnumValue struct {
 
 // ImportSpec represents an import statement in generated code.
 type ImportSpec struct {
-	ImportPath string   // The path/module to import from
+	ImportPath string   // The path/module to import from (language-specific format)
 	TypeNames  []string // The specific types to import
+	FromPath   string   // Source file path (for computing relative imports)
+	ToPath     string   // Target file path (for computing relative imports)
 }
 
 // Graph holds all types in the schema.
 type Graph struct {
-	Types []*Type // All types
+	Types     []*Type          // All types
+	typeIndex map[string]*Type // O(1) type lookup by name
 }
 
-// GetType finds a type by name.
+// NewGraph creates a new Graph with initialized index.
+func NewGraph() *Graph {
+	return &Graph{
+		Types:     make([]*Type, 0),
+		typeIndex: make(map[string]*Type),
+	}
+}
+
+// AddType adds a type to the graph and updates the index.
+func (g *Graph) AddType(t *Type) {
+	g.Types = append(g.Types, t)
+	if g.typeIndex == nil {
+		g.typeIndex = make(map[string]*Type)
+	}
+	g.typeIndex[t.Name] = t
+}
+
+// GetType finds a type by name using O(1) lookup.
 func (g *Graph) GetType(name string) *Type {
+	if g.typeIndex != nil {
+		return g.typeIndex[name]
+	}
+	// Fallback for graphs created without index
 	for _, t := range g.Types {
 		if t.Name == name {
 			return t

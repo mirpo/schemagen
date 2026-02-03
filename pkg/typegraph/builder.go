@@ -62,9 +62,11 @@ func (b *Builder) Build(schemas []*schema.Schema) (*Graph, error) {
 		}
 	}
 
-	return &Graph{
-		Types: b.registry.All(),
-	}, nil
+	graph := NewGraph()
+	for _, t := range b.registry.All() {
+		graph.AddType(t)
+	}
+	return graph, nil
 }
 
 // MapPrimitiveType maps a JSON schema type to a Go type (implements TypeBuilder).

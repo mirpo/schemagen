@@ -3,7 +3,6 @@ package generation
 import (
 	"fmt"
 
-	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -30,17 +29,15 @@ func (w *generatorWrapper) Generate(types []*typegraph.Type, imports interface{}
 		return w.generator.GenerateFile(types, nil)
 	}
 
-	// Handle both import types
+	// Handle imports - pass directly since ConvertImports was already called by pipeline
 	switch typedImports := imports.(type) {
 	case []typegraph.ImportSpec:
 		return w.generator.GenerateFile(types, typedImports)
-	case []output.ImportSpec:
-		return w.generator.GenerateFile(types, w.converter.Convert(typedImports))
 	default:
-		return "", fmt.Errorf("invalid imports type: expected []typegraph.ImportSpec or []output.ImportSpec, got %T", imports)
+		return "", fmt.Errorf("invalid imports type: expected []typegraph.ImportSpec, got %T", imports)
 	}
 }
 
-func (w *generatorWrapper) ConvertImports(imports []output.ImportSpec) interface{} {
+func (w *generatorWrapper) ConvertImports(imports []typegraph.ImportSpec) interface{} {
 	return w.converter.Convert(imports)
 }

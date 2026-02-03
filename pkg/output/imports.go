@@ -68,10 +68,10 @@ func ComputeImports(files []OutputFile, typeToFile map[string]string) []OutputFi
 		}
 
 		deps := tracker.GetDependencies()
-		imports := make([]ImportSpec, 0, len(deps))
+		imports := make([]typegraph.ImportSpec, 0, len(deps))
 
 		for _, d := range deps {
-			imports = append(imports, ImportSpec{
+			imports = append(imports, typegraph.ImportSpec{
 				FromPath:  files[i].RelativePath,
 				ToPath:    d.TargetFile,
 				TypeNames: d.TypeNames,
@@ -105,22 +105,13 @@ func collectTypeReferences(typ *typegraph.Type, tracker *ImportTracker, typeToFi
 }
 
 func collectTypeRefReferences(ref *typegraph.TypeRef, tracker *ImportTracker, typeToFile map[string]string) {
-	if ref == nil {
-		return
-	}
-
-	if ref.TypeName != "" {
-		if target, ok := typeToFile[ref.TypeName]; ok {
-			tracker.AddImport(target, ref.TypeName)
+	ref.Walk(func(r *typegraph.TypeRef) {
+		if r.TypeName != "" {
+			if target, ok := typeToFile[r.TypeName]; ok {
+				tracker.AddImport(target, r.TypeName)
+			}
 		}
-	}
-
-	collectTypeRefReferences(ref.ItemType, tracker, typeToFile)
-	collectTypeRefReferences(ref.ValueType, tracker, typeToFile)
-
-	for _, m := range ref.UnionMembers {
-		collectTypeRefReferences(m, tracker, typeToFile)
-	}
+	})
 }
 
 func BuildTypeToFileMap(files []OutputFile) map[string]string {

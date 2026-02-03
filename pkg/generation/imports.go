@@ -4,33 +4,26 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
-// ImportConverter transforms output.ImportSpec to typegraph.ImportSpec
+// ImportConverter transforms ImportSpec for language-specific needs
 type ImportConverter interface {
-	Convert(imports []output.ImportSpec) []typegraph.ImportSpec
+	Convert(imports []typegraph.ImportSpec) []typegraph.ImportSpec
 }
 
 // PassthroughConverter copies imports without transformation (used by TypeScript)
 type PassthroughConverter struct{}
 
-func (c *PassthroughConverter) Convert(imports []output.ImportSpec) []typegraph.ImportSpec {
-	result := make([]typegraph.ImportSpec, len(imports))
-	for i, imp := range imports {
-		result[i] = typegraph.ImportSpec{
-			ImportPath: imp.ImportPath,
-			TypeNames:  imp.TypeNames,
-		}
-	}
-	return result
+func (c *PassthroughConverter) Convert(imports []typegraph.ImportSpec) []typegraph.ImportSpec {
+	// TypeScript uses imports as-is, no transformation needed
+	return imports
 }
 
 // PythonImportConverter converts paths to Python module notation
 type PythonImportConverter struct{}
 
-func (c *PythonImportConverter) Convert(imports []output.ImportSpec) []typegraph.ImportSpec {
+func (c *PythonImportConverter) Convert(imports []typegraph.ImportSpec) []typegraph.ImportSpec {
 	result := make([]typegraph.ImportSpec, len(imports))
 
 	for i, imp := range imports {
@@ -53,6 +46,8 @@ func (c *PythonImportConverter) Convert(imports []output.ImportSpec) []typegraph
 		result[i] = typegraph.ImportSpec{
 			ImportPath: path,
 			TypeNames:  imp.TypeNames,
+			FromPath:   imp.FromPath,
+			ToPath:     imp.ToPath,
 		}
 	}
 
@@ -64,7 +59,7 @@ type GoImportConverter struct {
 	ModulePath string
 }
 
-func (c *GoImportConverter) Convert(imports []output.ImportSpec) []typegraph.ImportSpec {
+func (c *GoImportConverter) Convert(imports []typegraph.ImportSpec) []typegraph.ImportSpec {
 	result := make([]typegraph.ImportSpec, len(imports))
 
 	for i, imp := range imports {
@@ -77,6 +72,8 @@ func (c *GoImportConverter) Convert(imports []output.ImportSpec) []typegraph.Imp
 		result[i] = typegraph.ImportSpec{
 			ImportPath: importPath,
 			TypeNames:  imp.TypeNames,
+			FromPath:   imp.FromPath,
+			ToPath:     imp.ToPath,
 		}
 	}
 
