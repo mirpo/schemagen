@@ -6,7 +6,7 @@ import (
 )
 
 func newGoGenerator(graph *typegraph.Graph, cfg *Config) Generator {
-	return newGeneratorWrapper(
+	return newCombinedGenerator(
 		golang.NewGenerator(graph, &golang.Config{
 			PackageName:      cfg.Go.PackageName,
 			UsePointers:      cfg.Go.UsePointers,

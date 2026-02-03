@@ -8,33 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenerators_InvalidImports(t *testing.T) {
-	generators := map[string]Generator{
-		"go":         newGoGenerator(&typegraph.Graph{}, &Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}}),
-		"python":     newPythonGenerator(&typegraph.Graph{}, &Config{Language: LanguagePython, Python: &PythonConfig{}}),
-		"typescript": newTypeScriptGenerator(&typegraph.Graph{}, &Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}}),
-	}
-
-	invalidImports := []struct {
-		name    string
-		imports interface{}
-	}{
-		{"string", "bad"},
-		{"slice of string", []string{"a"}},
-		{"map", map[string]string{}},
-	}
-
-	for genName, gen := range generators {
-		for _, tt := range invalidImports {
-			t.Run(genName+"/"+tt.name, func(t *testing.T) {
-				_, err := gen.Generate(nil, tt.imports)
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid imports type")
-			})
-		}
-	}
-}
-
 func TestGenerators_ValidImports(t *testing.T) {
 	tests := []struct {
 		name string

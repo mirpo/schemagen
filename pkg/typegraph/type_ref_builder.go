@@ -11,11 +11,10 @@ import (
 // TypeRefBuilder builds type references from JSON schemas.
 // Implements FieldBuilder interface.
 type TypeRefBuilder struct {
-	registry      *TypeRegistry
-	resolver      *RefResolver
-	structBuilder *StructBuilder
-	config        *BuildConfig
-	currentOrder  *schema.PropertyOrder
+	registry     *TypeRegistry
+	resolver     *RefResolver
+	config       *BuildConfig
+	currentOrder *schema.PropertyOrder
 }
 
 // NewTypeRefBuilder creates a new TypeRefBuilder.
@@ -30,10 +29,6 @@ func NewTypeRefBuilder(registry *TypeRegistry, resolver *RefResolver, config *Bu
 	}
 }
 
-// SetStructBuilder sets the StructBuilder for extracting inline objects.
-func (b *TypeRefBuilder) SetStructBuilder(sb *StructBuilder) {
-	b.structBuilder = sb
-}
 
 // SetCurrentOrder sets the current property order.
 func (b *TypeRefBuilder) SetCurrentOrder(order *schema.PropertyOrder) {
@@ -383,20 +378,19 @@ func (b *TypeRefBuilder) MapPrimitiveType(schema *jsonschema.Schema) string {
 	return "interface{}"
 }
 
-// getOrderedPropertyNames delegates to structBuilder.GetOrderedPropertyNames.
+// getOrderedPropertyNames uses the standalone helper function.
 func (b *TypeRefBuilder) getOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string) []string {
-	b.structBuilder.SetCurrentOrder(b.currentOrder)
-	return b.structBuilder.GetOrderedPropertyNames(properties, schemaPath)
+	return GetOrderedPropertyNames(properties, schemaPath, b.currentOrder)
 }
 
-// extractConstraints delegates to structBuilder.ExtractConstraints.
-func (b *TypeRefBuilder) extractConstraints(field *Field, schema *jsonschema.Schema) {
-	b.structBuilder.ExtractConstraints(field, schema)
+// extractConstraints uses the standalone helper function.
+func (b *TypeRefBuilder) extractConstraints(field *Field, sch *jsonschema.Schema) {
+	ExtractConstraints(field, sch)
 }
 
-// extractAdditionalProperties delegates to structBuilder.ExtractAdditionalProperties.
-func (b *TypeRefBuilder) extractAdditionalProperties(schema *jsonschema.Schema) *AdditionalPropsConfig {
-	return b.structBuilder.ExtractAdditionalProperties(schema)
+// extractAdditionalProperties uses the standalone helper function.
+func (b *TypeRefBuilder) extractAdditionalProperties(sch *jsonschema.Schema) *AdditionalPropsConfig {
+	return ExtractAdditionalProperties(sch, b.BuildTypeRef)
 }
 
 // buildUnionMembers builds TypeRefs for union members (oneOf/anyOf).

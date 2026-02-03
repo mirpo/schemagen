@@ -13,6 +13,28 @@ const (
 	LanguageGoShort         = "go"
 )
 
+// File extensions
+const (
+	ExtTS   = ".ts"
+	ExtPy   = ".py"
+	ExtGo   = ".go"
+	ExtJSON = ".json"
+	ExtTxt  = ".txt"
+)
+
+// Default file names
+const (
+	DefaultTypesFile     = "types"
+	DefaultBarrelTS      = "index.ts"
+	DefaultBarrelPython  = "__init__.py"
+)
+
+// JSON Schema reference constants
+const (
+	SchemaSelfRef   = "#"
+	SchemaDefsPrefix = "#/$defs/"
+)
+
 // NormalizeLanguage converts short-form language names to their full form.
 // If the input is already a full form, it returns it unchanged.
 func NormalizeLanguage(lang string) string {
@@ -32,13 +54,13 @@ func NormalizeLanguage(lang string) string {
 func GetExtension(lang string) string {
 	switch NormalizeLanguage(lang) {
 	case string(LanguageTypeScript):
-		return ".ts"
+		return ExtTS
 	case string(LanguagePython):
-		return ".py"
+		return ExtPy
 	case string(LanguageGo):
-		return ".go"
+		return ExtGo
 	default:
-		return ".txt"
+		return ExtTxt
 	}
 }
 
@@ -62,9 +84,9 @@ func IsGo(lang string) bool {
 func GetBarrelFileName(lang string) string {
 	switch NormalizeLanguage(lang) {
 	case string(LanguageTypeScript):
-		return "index.ts"
+		return DefaultBarrelTS
 	case string(LanguagePython):
-		return "__init__.py"
+		return DefaultBarrelPython
 	default:
 		return ""
 	}

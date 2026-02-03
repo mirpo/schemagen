@@ -23,7 +23,7 @@ func newTypeScriptGenerator(graph *typegraph.Graph, cfg *Config) Generator {
 		tsCfg.ZodMode = ts.ZodModeWithInterface
 	}
 
-	return newGeneratorWrapper(
+	return newCombinedGenerator(
 		ts.NewGeneratorWithConfig(graph, tsCfg),
 		&PassthroughConverter{},
 	)

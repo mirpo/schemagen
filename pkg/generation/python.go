@@ -6,7 +6,7 @@ import (
 )
 
 func newPythonGenerator(graph *typegraph.Graph, cfg *Config) Generator {
-	return newGeneratorWrapper(
+	return newCombinedGenerator(
 		py.NewGeneratorWithConfig(graph, &py.Config{
 			DisableHeaders:   cfg.DisableHeaders,
 			DisableTimestamp: cfg.DisableTimestamp,

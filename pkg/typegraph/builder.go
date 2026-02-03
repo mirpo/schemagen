@@ -45,9 +45,6 @@ func NewBuilderWithConfig(compiler *jsonschema.Compiler, cfg *BuildConfig) *Buil
 	b.structBuilder = NewStructBuilder(registry, resolver)
 	b.structBuilder.SetFieldBuilder(b.typeRefBuilder)
 
-	// Wire StructBuilder into TypeRefBuilder for extractInlineObjectType
-	b.typeRefBuilder.SetStructBuilder(b.structBuilder)
-
 	// Create walker with builder as TypeBuilder (breaks circular dependency via interface)
 	b.walker = NewSchemaWalker(registry, resolver, b, cfg)
 

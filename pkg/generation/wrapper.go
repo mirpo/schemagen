@@ -1,8 +1,6 @@
 package generation
 
 import (
-	"fmt"
-
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -11,33 +9,27 @@ type LanguageGenerator interface {
 	GenerateFile(types []*typegraph.Type, imports []typegraph.ImportSpec) (string, error)
 }
 
-// generatorWrapper adapts a LanguageGenerator to the Generator interface
-type generatorWrapper struct {
+// combinedGenerator wraps a language generator with an import converter.
+// This is a simplified adapter that implements the Generator interface.
+type combinedGenerator struct {
 	generator LanguageGenerator
 	converter ImportConverter
 }
 
-func newGeneratorWrapper(gen LanguageGenerator, conv ImportConverter) *generatorWrapper {
-	return &generatorWrapper{
+// newCombinedGenerator creates a generator that combines a language generator with an import converter.
+func newCombinedGenerator(gen LanguageGenerator, conv ImportConverter) *combinedGenerator {
+	return &combinedGenerator{
 		generator: gen,
 		converter: conv,
 	}
 }
 
-func (w *generatorWrapper) Generate(types []*typegraph.Type, imports interface{}) (string, error) {
-	if imports == nil {
-		return w.generator.GenerateFile(types, nil)
-	}
-
-	// Handle imports - pass directly since ConvertImports was already called by pipeline
-	switch typedImports := imports.(type) {
-	case []typegraph.ImportSpec:
-		return w.generator.GenerateFile(types, typedImports)
-	default:
-		return "", fmt.Errorf("invalid imports type: expected []typegraph.ImportSpec, got %T", imports)
-	}
+// Generate generates code for the given types and imports.
+func (g *combinedGenerator) Generate(types []*typegraph.Type, imports []typegraph.ImportSpec) (string, error) {
+	return g.generator.GenerateFile(types, imports)
 }
 
-func (w *generatorWrapper) ConvertImports(imports []typegraph.ImportSpec) interface{} {
-	return w.converter.Convert(imports)
+// ConvertImports converts imports to language-specific format.
+func (g *combinedGenerator) ConvertImports(imports []typegraph.ImportSpec) []typegraph.ImportSpec {
+	return g.converter.Convert(imports)
 }
