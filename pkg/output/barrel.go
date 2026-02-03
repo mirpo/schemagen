@@ -35,7 +35,7 @@ func GenerateNestedBarrels(files []OutputFile, language string) []BarrelFile {
 
 		for _, f := range filesInDir {
 			base := filepath.Base(f.RelativePath)
-			name := strings.TrimSuffix(base, filepath.Ext(base))
+			name := stripExtension(base)
 
 			if name == "index" || name == "__init__" {
 				continue
@@ -50,9 +50,13 @@ func GenerateNestedBarrels(files []OutputFile, language string) []BarrelFile {
 
 		sort.Strings(exports)
 
-		barrelPath := barrelFilePath(dir, language)
-		if barrelPath == "" {
+		barrelName := constants.GetBarrelFileName(language)
+		if barrelName == "" {
 			continue
+		}
+		barrelPath := barrelName
+		if dir != "" {
+			barrelPath = filepath.Join(dir, barrelName)
 		}
 
 		barrels = append(barrels, BarrelFile{
@@ -108,22 +112,4 @@ func groupFilesByDirectory(files []OutputFile) map[string][]OutputFile {
 	}
 
 	return result
-}
-
-func barrelFilePath(dir, language string) string {
-	switch language {
-	case constants.LanguageTypeScriptShort, string(constants.LanguageTypeScript):
-		if dir == "" {
-			return "index.ts"
-		}
-		return filepath.Join(dir, "index.ts")
-
-	case constants.LanguagePythonShort, string(constants.LanguagePython):
-		if dir == "" {
-			return "__init__.py"
-		}
-		return filepath.Join(dir, "__init__.py")
-	}
-
-	return ""
 }

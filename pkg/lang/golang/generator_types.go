@@ -81,21 +81,11 @@ func (g *Generator) scanTypeForImports(typ *typegraph.Type) {
 	}
 }
 
-// scanTypeRefForImports scans a TypeRef recursively.
+// scanTypeRefForImports scans a TypeRef recursively using Walk.
 func (g *Generator) scanTypeRefForImports(ref *typegraph.TypeRef) {
-	if ref == nil {
-		return
-	}
-
-	g.checkGoTypeForImport(ref.GoType)
-
-	// Recursively check nested types
-	if ref.ItemType != nil {
-		g.scanTypeRefForImports(ref.ItemType)
-	}
-	if ref.ValueType != nil {
-		g.scanTypeRefForImports(ref.ValueType)
-	}
+	ref.Walk(func(r *typegraph.TypeRef) {
+		g.checkGoTypeForImport(r.GoType)
+	})
 }
 
 // checkGoTypeForImport adds imports based on Go type.

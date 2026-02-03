@@ -57,3 +57,82 @@ func TestErrorChaining(t *testing.T) {
 	var ve *ValidationError
 	assert.NotErrorAs(t, genErr, &ve)
 }
+
+func TestSchemaError_NoCause(t *testing.T) {
+	err := &SchemaError{
+		Path:    "schema.json",
+		Message: "missing field",
+	}
+
+	assert.Equal(t, "schema schema.json: missing field", err.Error())
+	assert.NoError(t, err.Unwrap())
+}
+
+func TestGenerationError_NoCause(t *testing.T) {
+	err := &GenerationError{
+		Language: "python",
+		File:     "models.py",
+		Message:  "invalid type",
+	}
+
+	assert.Equal(t, "generating python models.py: invalid type", err.Error())
+	assert.NoError(t, err.Unwrap())
+}
+
+func TestValidationError(t *testing.T) {
+	err := &ValidationError{
+		Field:   "output_dir",
+		Message: "must be a valid path",
+	}
+
+	assert.Equal(t, "validation error for output_dir: must be a valid path", err.Error())
+	assert.NoError(t, err.Unwrap())
+}
+
+func TestExitCodeError(t *testing.T) {
+	t.Run("without cause", func(t *testing.T) {
+		err := &ExitCodeError{
+			Message: "command failed",
+			Code:    ExitGeneral,
+		}
+
+		assert.Equal(t, "command failed", err.Error())
+		assert.Equal(t, ExitGeneral, err.Code)
+		assert.NoError(t, err.Unwrap())
+	})
+
+	t.Run("with cause", func(t *testing.T) {
+		cause := fmt.Errorf("underlying error")
+		err := &ExitCodeError{
+			Message: "command failed",
+			Code:    ExitGeneral,
+			Cause:   cause,
+		}
+
+		assert.Equal(t, "command failed: underlying error", err.Error())
+		assert.ErrorIs(t, err, cause)
+	})
+}
+
+func TestNewUsageError(t *testing.T) {
+	err := NewUsageError("invalid argument")
+
+	assert.Equal(t, "invalid argument", err.Message)
+	assert.Equal(t, ExitUsage, err.Code)
+}
+
+func TestWrap(t *testing.T) {
+	t.Run("wraps error", func(t *testing.T) {
+		cause := fmt.Errorf("original error")
+		err := Wrap(cause, "operation failed")
+
+		assert.Equal(t, "operation failed: original error", err.Error())
+		assert.Equal(t, ExitGeneral, err.Code)
+		assert.ErrorIs(t, err, cause)
+	})
+
+	t.Run("nil error returns nil", func(t *testing.T) {
+		err := Wrap(nil, "operation failed")
+		assert.Nil(t, err)
+	})
+}

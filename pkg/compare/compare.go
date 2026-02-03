@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mirpo/schemagen/pkg/config"
 	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
@@ -16,7 +15,7 @@ type Config struct {
 	Input       string
 	Schemas     []*schema.Schema
 	Loader      *schema.Loader
-	Flags       *config.GenerationFlags
+	Flags       *generation.GenerationFlags
 	ExistingDir string
 }
 
@@ -88,7 +87,7 @@ func generateAll(
 	tmpDir string,
 	schemas []*schema.Schema,
 	loader *schema.Loader,
-	flags *config.GenerationFlags,
+	flags *generation.GenerationFlags,
 ) error {
 	if flags.OutTS != "" {
 		if err := generation.Run(&generation.Config{
@@ -103,6 +102,10 @@ func generateAll(
 			TypeScript: &generation.TypeScriptConfig{
 				UnknownAny:           flags.TSUnknownAny,
 				AdditionalProperties: flags.TSAdditionalProperties,
+				Zod:                  flags.TSZod,
+				ZodOnly:              flags.TSZodOnly,
+				ZodCoerceDates:       flags.TSZodCoerceDates,
+				ZodStrict:            flags.TSZodStrict,
 			},
 		}); err != nil {
 			return fmt.Errorf("typescript generation failed: %w", err)
@@ -153,7 +156,7 @@ func generateAll(
 }
 
 // compareDirectories compares generated and existing directories.
-func compareDirectories(generatedRoot string, flags *config.GenerationFlags) ([]FileDiff, error) {
+func compareDirectories(generatedRoot string, flags *generation.GenerationFlags) ([]FileDiff, error) {
 	var diffs []FileDiff
 
 	type lang struct {

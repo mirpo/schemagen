@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kaptinlin/jsonschema"
+	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/naming"
 )
 
@@ -29,7 +30,7 @@ func (r *RefResolver) SetCurrentSchema(schema *jsonschema.Schema) {
 // ExtractTypeName extracts a type name from a $ref string.
 func (r *RefResolver) ExtractTypeName(ref string) string {
 	// Handle root self-reference "#"
-	if ref == "#" {
+	if ref == constants.SchemaSelfRef {
 		if r.currentSchema != nil {
 			if r.currentSchema.Title != nil && *r.currentSchema.Title != "" {
 				return *r.currentSchema.Title
@@ -39,8 +40,8 @@ func (r *RefResolver) ExtractTypeName(ref string) string {
 	}
 
 	// Handle internal $defs references
-	if strings.HasPrefix(ref, "#/$defs/") {
-		defName := strings.TrimPrefix(ref, "#/$defs/")
+	if strings.HasPrefix(ref, constants.SchemaDefsPrefix) {
+		defName := strings.TrimPrefix(ref, constants.SchemaDefsPrefix)
 		return naming.ToPascalCase(defName)
 	}
 
@@ -79,9 +80,7 @@ func (r *RefResolver) DeriveTypeName(refSchema *jsonschema.Schema, refURI string
 		}
 
 		// Remove .json extension
-		if len(name) > 5 && name[len(name)-5:] == ".json" {
-			name = name[:len(name)-5]
-		}
+		name = strings.TrimSuffix(name, constants.ExtJSON)
 
 		return naming.ToPascalCase(name)
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -47,10 +48,8 @@ func (e *Emitter) generateSchemaInternal(typ *typegraph.Type, withInfer bool) st
 	defer func() { e.currentType = "" }()
 
 	// JSDoc comment (for zod-only mode)
-	if withInfer && typ.Description != "" {
-		sb.WriteString("/**\n")
-		sb.WriteString(fmt.Sprintf(" * %s\n", typ.Description))
-		sb.WriteString(" */\n")
+	if withInfer {
+		tscommon.WriteJSDoc(&sb, "", typ.Description)
 	}
 
 	// Generate schema based on type kind
@@ -250,7 +249,7 @@ func (e *Emitter) generatePrimitiveSchema(typ *typegraph.Type, schemaName string
 func (e *Emitter) generateField(field *typegraph.Field) string {
 	// Property name (quote if necessary)
 	propName := field.JSONName
-	if needsQuoting(propName) {
+	if tscommon.NeedsQuoting(propName) {
 		propName = fmt.Sprintf(`"%s"`, propName)
 	}
 

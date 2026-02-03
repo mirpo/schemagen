@@ -45,9 +45,6 @@ func NewBuilderWithConfig(compiler *jsonschema.Compiler, cfg *BuildConfig) *Buil
 	b.structBuilder = NewStructBuilder(registry, resolver)
 	b.structBuilder.SetFieldBuilder(b.typeRefBuilder)
 
-	// Wire StructBuilder into TypeRefBuilder for extractInlineObjectType
-	b.typeRefBuilder.SetStructBuilder(b.structBuilder)
-
 	// Create walker with builder as TypeBuilder (breaks circular dependency via interface)
 	b.walker = NewSchemaWalker(registry, resolver, b, cfg)
 
@@ -62,9 +59,11 @@ func (b *Builder) Build(schemas []*schema.Schema) (*Graph, error) {
 		}
 	}
 
-	return &Graph{
-		Types: b.registry.All(),
-	}, nil
+	graph := NewGraph()
+	for _, t := range b.registry.All() {
+		graph.AddType(t)
+	}
+	return graph, nil
 }
 
 // MapPrimitiveType maps a JSON schema type to a Go type (implements TypeBuilder).
@@ -113,9 +112,4 @@ func (b *Builder) BuildTypeRef(schema *jsonschema.Schema, fieldName string) *Typ
 	// Sync walker's currentOrder to typeRefBuilder
 	b.typeRefBuilder.SetCurrentOrder(b.walker.CurrentOrder())
 	return b.typeRefBuilder.BuildTypeRef(schema, fieldName)
-}
-
-// getOrderedPropertyNames delegates to structBuilder.GetOrderedPropertyNames.
-func (b *Builder) getOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string) []string {
-	return b.structBuilder.GetOrderedPropertyNames(properties, schemaPath)
 }

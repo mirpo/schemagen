@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
@@ -182,7 +183,8 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	}
 
 	// Analyze enum value types to determine generation strategy
-	allStrings, allNumbers := analyzeEnumValueTypes(typ.EnumValues)
+	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
+	allStrings, allNumbers := category.AllStrings, category.AllNumbers
 
 	// Determine the appropriate base type
 	var enumType string
@@ -225,31 +227,6 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	return sb.String(), nil
 }
 
-// analyzeEnumValueTypes checks if all enum values are strings or all are numbers
-func analyzeEnumValueTypes(values []typegraph.EnumValue) (allStrings, allNumbers bool) {
-	if len(values) == 0 {
-		return true, false // Empty enums default to string
-	}
-
-	allStrings = true
-	allNumbers = true
-
-	for _, v := range values {
-		switch v.Value.(type) {
-		case string:
-			allNumbers = false
-		case float64, int, int64, int32:
-			allStrings = false
-		default:
-			// bool, nil, objects, arrays - neither string nor number
-			allStrings = false
-			allNumbers = false
-		}
-	}
-
-	return allStrings, allNumbers
-}
-
 // formatNumericValue formats a numeric enum value as a Go literal
 func formatNumericValue(val any) string {
 	switch v := val.(type) {
@@ -288,22 +265,12 @@ func (g *Generator) generateUnion(typ *typegraph.Type) (string, error) {
 // formatEnumValue formats an enum value for Go code generation
 func formatEnumValue(val any) string {
 	switch v := val.(type) {
-	case string:
-		return fmt.Sprintf("%q", v)
-	case float64:
-		return fmt.Sprintf("%v", v)
-	case int, int64:
-		return fmt.Sprintf("%v", v)
-	case bool:
-		return fmt.Sprintf("%t", v)
-	case nil:
-		return "nil"
 	case map[string]any:
 		return formatMap(v)
 	case []any:
 		return formatSlice(v)
 	default:
-		return fmt.Sprintf("%#v", v)
+		return common.GoLiterals.FormatValue(val)
 	}
 }
 

@@ -1156,26 +1156,6 @@ func TestEnsureUniqueTypeName(t *testing.T) {
 	}
 }
 
-func TestGetOrderedPropertyNames(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
-
-	t.Run("alphabetical fallback", func(t *testing.T) {
-		properties := jsonschema.SchemaMap{
-			"zebra": &jsonschema.Schema{},
-			"apple": &jsonschema.Schema{},
-			"mango": &jsonschema.Schema{},
-		}
-		result := builder.getOrderedPropertyNames(&properties, "test.json")
-		assert.Equal(t, []string{"apple", "mango", "zebra"}, result)
-	})
-
-	t.Run("nil properties", func(t *testing.T) {
-		result := builder.getOrderedPropertyNames(nil, "test.json")
-		assert.Nil(t, result)
-	})
-}
-
 func TestBuildTypeRef_InlineEnum(t *testing.T) {
 	t.Run("with extraction", func(t *testing.T) {
 		compiler := jsonschema.NewCompiler()

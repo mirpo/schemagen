@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/mirpo/schemagen/pkg/config"
 	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/schema"
@@ -46,7 +45,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 
 	// Generate TypeScript if requested
 	if flags.OutTS != "" {
-		cfg := config.ToGenerationConfig(flags, schemas, loader.Compiler(), flags.OutTS, generation.LanguageTypeScript)
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutTS, generation.LanguageTypeScript)
 		if err := generation.Run(cfg); err != nil {
 			log.Error().Err(err).Msg("TypeScript generation failed")
 			return errors.Wrap(err, "generating TypeScript")
@@ -56,7 +55,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 
 	// Generate Python if requested
 	if flags.OutPY != "" {
-		cfg := config.ToGenerationConfig(flags, schemas, loader.Compiler(), flags.OutPY, generation.LanguagePython)
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutPY, generation.LanguagePython)
 		if err := generation.Run(cfg); err != nil {
 			log.Error().Err(err).Msg("Python generation failed")
 			return errors.Wrap(err, "generating Python")
@@ -66,7 +65,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 
 	// Generate Go if requested
 	if flags.OutGo != "" {
-		cfg := config.ToGenerationConfig(flags, schemas, loader.Compiler(), flags.OutGo, generation.LanguageGo)
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutGo, generation.LanguageGo)
 		if err := generation.Run(cfg); err != nil {
 			log.Error().Err(err).Msg("Go generation failed")
 			return errors.Wrap(err, "generating Go")

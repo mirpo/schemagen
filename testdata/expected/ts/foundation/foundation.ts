@@ -143,17 +143,17 @@ export interface Foundation {
     reservedKeywords?: {
     as?: string;
     async?: string;
-    await?: string;
-    class?: string;
+    "await"?: string;
+    "class"?: string;
     def?: string;
-    export?: string;
+    "export"?: string;
     from?: string;
-    import?: string;
-    interface?: string;
+    "import"?: string;
+    "interface"?: string;
     lambda?: string;
-    return?: string;
+    "return"?: string;
     type?: string;
-    yield?: string;
+    "yield"?: string;
   };
     /** Special characters in property names */
     specialChars?: {

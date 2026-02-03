@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/common"
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -36,15 +38,9 @@ func (g *Generator) typeRefToTS(ref *typegraph.TypeRef) string {
 		if len(ref.EnumValues) > 0 {
 			literals := make([]string, 0, len(ref.EnumValues))
 			for _, val := range ref.EnumValues {
-				switch v := val.(type) {
-				case string:
-					literals = append(literals, fmt.Sprintf("%q", v))
-				case float64, int, int64:
-					literals = append(literals, fmt.Sprintf("%v", v))
-				case bool:
-					literals = append(literals, fmt.Sprintf("%t", v))
-				case nil:
-					literals = append(literals, "null")
+				switch val.(type) {
+				case string, float64, int, int64, bool, nil:
+					literals = append(literals, common.TSLiterals.FormatValue(val))
 				default:
 					// Skip other types (objects, arrays)
 				}
@@ -118,26 +114,11 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 
 	for _, field := range fields {
 		// Generate field comment with format annotation if present
-		hasDescription := field.Description != ""
-		hasFormat := field.Type != nil && field.Type.Format != ""
-
-		if hasDescription || hasFormat {
-			if hasDescription && hasFormat {
-				// Both description and format
-				sb.WriteString("    /**\n")
-				sb.WriteString(fmt.Sprintf("     * %s\n", field.Description))
-				sb.WriteString(fmt.Sprintf("     * @format %s\n", field.Type.Format))
-				sb.WriteString("     */\n")
-			} else if hasDescription {
-				// Description only
-				sb.WriteString(fmt.Sprintf("    /** %s */\n", field.Description))
-			} else {
-				// Format only
-				sb.WriteString("    /**\n")
-				sb.WriteString(fmt.Sprintf("     * @format %s\n", field.Type.Format))
-				sb.WriteString("     */\n")
-			}
+		format := ""
+		if field.Type != nil {
+			format = field.Type.Format
 		}
+		tscommon.WriteJSDocWithFormat(&sb, "    ", field.Description, format)
 
 		tsType := g.typeRefToTS(field.Type)
 		optional := ""
@@ -147,7 +128,7 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 
 		// Quote property name if it's not a valid identifier
 		propName := field.JSONName
-		if needsQuoting(propName) {
+		if tscommon.NeedsQuoting(propName) {
 			propName = fmt.Sprintf("%q", propName)
 		}
 
@@ -156,38 +137,4 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 
 	sb.WriteString("  }")
 	return sb.String()
-}
-
-// needsQuoting returns true if a property name needs to be quoted in TypeScript.
-// Valid JS identifiers can start with letter, underscore, or dollar sign,
-// and contain letters, digits, underscores, or dollar signs.
-func needsQuoting(name string) bool {
-	if len(name) == 0 {
-		return true
-	}
-
-	// Check first character - must be letter, underscore, or dollar sign
-	first := rune(name[0])
-	if !isLetter(first) && first != '_' && first != '$' {
-		return true
-	}
-
-	// Check remaining characters - must be letter, digit, underscore, or dollar sign
-	for _, ch := range name[1:] {
-		if !isLetter(ch) && !isDigit(ch) && ch != '_' && ch != '$' {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isLetter returns true if the rune is a letter (including Unicode letters).
-func isLetter(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch > 127
-}
-
-// isDigit returns true if the rune is a digit.
-func isDigit(ch rune) bool {
-	return ch >= '0' && ch <= '9'
 }

@@ -13,6 +13,28 @@ const (
 	LanguageGoShort         = "go"
 )
 
+// File extensions
+const (
+	ExtTS   = ".ts"
+	ExtPy   = ".py"
+	ExtGo   = ".go"
+	ExtJSON = ".json"
+	ExtTxt  = ".txt"
+)
+
+// Default file names
+const (
+	DefaultTypesFile    = "types"
+	DefaultBarrelTS     = "index.ts"
+	DefaultBarrelPython = "__init__.py"
+)
+
+// JSON Schema reference constants
+const (
+	SchemaSelfRef    = "#"
+	SchemaDefsPrefix = "#/$defs/"
+)
+
 // NormalizeLanguage converts short-form language names to their full form.
 // If the input is already a full form, it returns it unchanged.
 func NormalizeLanguage(lang string) string {
@@ -25,5 +47,47 @@ func NormalizeLanguage(lang string) string {
 		return string(LanguageGo)
 	default:
 		return lang
+	}
+}
+
+// GetExtension returns the file extension for a language.
+func GetExtension(lang string) string {
+	switch NormalizeLanguage(lang) {
+	case string(LanguageTypeScript):
+		return ExtTS
+	case string(LanguagePython):
+		return ExtPy
+	case string(LanguageGo):
+		return ExtGo
+	default:
+		return ExtTxt
+	}
+}
+
+// IsPython checks if the language is Python.
+func IsPython(lang string) bool {
+	return NormalizeLanguage(lang) == string(LanguagePython)
+}
+
+// IsTypeScript checks if the language is TypeScript.
+func IsTypeScript(lang string) bool {
+	return NormalizeLanguage(lang) == string(LanguageTypeScript)
+}
+
+// IsGo checks if the language is Go.
+func IsGo(lang string) bool {
+	return NormalizeLanguage(lang) == string(LanguageGo)
+}
+
+// GetBarrelFileName returns the barrel/index file name for a language.
+// Returns empty string for languages that don't support barrel files.
+func GetBarrelFileName(lang string) string {
+	switch NormalizeLanguage(lang) {
+	case string(LanguageTypeScript):
+		return DefaultBarrelTS
+	case string(LanguagePython):
+		return DefaultBarrelPython
+	default:
+		return ""
 	}
 }

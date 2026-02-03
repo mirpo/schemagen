@@ -3,17 +3,16 @@ package generation
 import (
 	"fmt"
 
-	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
 // Generator is the interface that all language-specific generators must implement
 type Generator interface {
 	// Generate generates code for the given types and imports
-	Generate(types []*typegraph.Type, imports interface{}) (string, error)
+	Generate(types []*typegraph.Type, imports []typegraph.ImportSpec) (string, error)
 
-	// ConvertImports converts generic imports to language-specific format
-	ConvertImports(imports []output.ImportSpec) interface{}
+	// ConvertImports converts imports to language-specific format
+	ConvertImports(imports []typegraph.ImportSpec) []typegraph.ImportSpec
 }
 
 // createGenerator creates a language-specific generator based on the config

@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/lang/ts/zod"
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -169,11 +171,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
 	// JSDoc comment
-	if typ.Description != "" {
-		sb.WriteString("/**\n")
-		sb.WriteString(fmt.Sprintf(" * %s\n", typ.Description))
-		sb.WriteString(" */\n")
-	}
+	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
 	// If we have allOf composition (extends), use intersection types
 	if len(typ.Extends) > 0 {
@@ -190,9 +188,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 		sb.WriteString("{\n")
 		for _, field := range typ.Fields {
 			// Field comment
-			if field.Description != "" {
-				sb.WriteString(fmt.Sprintf("  /** %s */\n", field.Description))
-			}
+			tscommon.WriteJSDocSingleLine(&sb, "  ", field.Description)
 
 			tsType := g.typeRefToTS(field.Type)
 			optional := ""
@@ -202,7 +198,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 
 			// Quote property name if it's not a valid identifier
 			propName := field.JSONName
-			if needsQuoting(propName) {
+			if tscommon.NeedsQuoting(propName) {
 				propName = fmt.Sprintf("%q", propName)
 			}
 
@@ -222,26 +218,11 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 		// Fields
 		for _, field := range typ.Fields {
 			// Field comment with format annotation if present
-			hasDescription := field.Description != ""
-			hasFormat := field.Type != nil && field.Type.Format != ""
-
-			if hasDescription || hasFormat {
-				if hasDescription && hasFormat {
-					// Both description and format
-					sb.WriteString("  /**\n")
-					sb.WriteString(fmt.Sprintf("   * %s\n", field.Description))
-					sb.WriteString(fmt.Sprintf("   * @format %s\n", field.Type.Format))
-					sb.WriteString("   */\n")
-				} else if hasDescription {
-					// Description only
-					sb.WriteString(fmt.Sprintf("  /** %s */\n", field.Description))
-				} else {
-					// Format only
-					sb.WriteString("  /**\n")
-					sb.WriteString(fmt.Sprintf("   * @format %s\n", field.Type.Format))
-					sb.WriteString("   */\n")
-				}
+			format := ""
+			if field.Type != nil {
+				format = field.Type.Format
 			}
+			tscommon.WriteJSDocWithFormat(&sb, "  ", field.Description, format)
 
 			tsType := g.typeRefToTS(field.Type)
 			optional := ""
@@ -251,7 +232,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 
 			// Quote property name if it's not a valid identifier
 			propName := field.JSONName
-			if needsQuoting(propName) {
+			if tscommon.NeedsQuoting(propName) {
 				propName = fmt.Sprintf("%q", propName)
 			}
 
@@ -305,30 +286,13 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
 	// JSDoc comment
-	if typ.Description != "" {
-		sb.WriteString("/**\n")
-		sb.WriteString(fmt.Sprintf(" * %s\n", typ.Description))
-		sb.WriteString(" */\n")
-	}
+	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
-	// Check if this is a mixed-type enum (has different value types)
-	hasString := false
-	hasNumber := false
-	hasOther := false
-	for _, val := range typ.EnumValues {
-		switch val.Value.(type) {
-		case string:
-			hasString = true
-		case float64, int, int64:
-			hasNumber = true
-		default:
-			hasOther = true
-		}
-	}
-	isMixed := (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther
+	// Check if this is a mixed-type enum using shared analyzer
+	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
 
 	// For mixed-type enums or string enums, use union types (more idiomatic in TS)
-	if typ.EnumType == "string" || isMixed {
+	if typ.EnumType == "string" || category.HasMixed {
 		sb.WriteString(fmt.Sprintf("export type %s = ", typ.Name))
 
 		values := make([]string, 0, len(typ.EnumValues))
@@ -371,11 +335,7 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	var sb strings.Builder
 
 	// JSDoc comment
-	if typ.Description != "" {
-		sb.WriteString("/**\n")
-		sb.WriteString(fmt.Sprintf(" * %s\n", typ.Description))
-		sb.WriteString(" */\n")
-	}
+	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
 	// Generate type alias
 	tsType := g.primitiveToTS(typ.GoType)
@@ -389,11 +349,7 @@ func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
 	// JSDoc comment
-	if typ.Description != "" {
-		sb.WriteString("/**\n")
-		sb.WriteString(fmt.Sprintf(" * %s\n", typ.Description))
-		sb.WriteString(" */\n")
-	}
+	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
 	// Generate union type from TargetType if it's a union
 	// The type graph should have stored the union members in TargetType
@@ -413,11 +369,7 @@ func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
 	// JSDoc comment
-	if typ.Description != "" {
-		sb.WriteString("/**\n")
-		sb.WriteString(fmt.Sprintf(" * %s\n", typ.Description))
-		sb.WriteString(" */\n")
-	}
+	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
 	// Generate type alias
 	if typ.TargetType != nil {

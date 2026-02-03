@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"github.com/rs/zerolog/log"
 )
 
 // PropertyOrder tracks insertion order of "properties" and "$defs" blocks in a schema.
@@ -112,6 +114,7 @@ func extractFromFields(fields []OrderedField, path string, po *PropertyOrder) {
 func extractProperties(data json.RawMessage, path string, po *PropertyOrder) {
 	fields, err := DecodeOrderedObject(data)
 	if err != nil {
+		log.Debug().Err(err).Str("path", path).Msg("failed to decode properties")
 		return
 	}
 
@@ -126,6 +129,7 @@ func extractProperties(data json.RawMessage, path string, po *PropertyOrder) {
 func extractFromArray(data json.RawMessage, basePath string, po *PropertyOrder) {
 	var arr []json.RawMessage
 	if err := json.Unmarshal(data, &arr); err != nil {
+		log.Debug().Err(err).Str("path", basePath).Msg("failed to unmarshal array")
 		return
 	}
 
@@ -134,6 +138,7 @@ func extractFromArray(data json.RawMessage, basePath string, po *PropertyOrder) 
 
 		fields, err := DecodeOrderedObject(elem)
 		if err != nil {
+			log.Debug().Err(err).Str("path", elemPath).Msg("failed to decode array element")
 			continue
 		}
 
@@ -144,6 +149,7 @@ func extractFromArray(data json.RawMessage, basePath string, po *PropertyOrder) 
 func extractFromDefinitions(data json.RawMessage, basePath string, po *PropertyOrder) {
 	fields, err := DecodeOrderedObject(data)
 	if err != nil {
+		log.Debug().Err(err).Str("path", basePath).Msg("failed to decode definitions")
 		return
 	}
 
@@ -159,6 +165,7 @@ func extractFromDefinitions(data json.RawMessage, basePath string, po *PropertyO
 
 		defFields, err := DecodeOrderedObject(def.Value)
 		if err != nil {
+			log.Debug().Err(err).Str("path", defPath).Msg("failed to decode definition")
 			continue
 		}
 

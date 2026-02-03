@@ -13,7 +13,7 @@ export interface SpecialProps {
   /** Property starting with dollar */
   $dollar?: boolean;
   /** Python reserved keyword */
-  class?: string;
+  "class"?: string;
   /** Python reserved keyword */
   from?: string;
 }

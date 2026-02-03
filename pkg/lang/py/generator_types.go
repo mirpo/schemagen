@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/common"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -85,19 +86,9 @@ func (g *Generator) typeRefToPython(ref *typegraph.TypeRef, optional bool) strin
 			g.imports["typing_literal"] = true
 			literals := make([]string, 0, len(ref.EnumValues))
 			for _, val := range ref.EnumValues {
-				switch v := val.(type) {
-				case string:
-					literals = append(literals, fmt.Sprintf("%q", v))
-				case float64, int, int64:
-					literals = append(literals, fmt.Sprintf("%v", v))
-				case bool:
-					if v {
-						literals = append(literals, "True")
-					} else {
-						literals = append(literals, "False")
-					}
-				case nil:
-					literals = append(literals, "None")
+				switch val.(type) {
+				case string, float64, int, int64, bool, nil:
+					literals = append(literals, common.PyLiterals.FormatValue(val))
 				default:
 					// Skip other types (objects, arrays)
 				}

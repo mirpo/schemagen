@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -256,7 +257,7 @@ func TestNeedsQuoting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := needsQuoting(tt.input)
+			result := tscommon.NeedsQuoting(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

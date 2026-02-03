@@ -60,14 +60,28 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error for %s: %s", e.Field, e.Message)
 }
 
+// Unwrap returns nil as ValidationError doesn't wrap other errors.
+func (e *ValidationError) Unwrap() error {
+	return nil
+}
+
 // ExitCodeError is an error that carries an exit code for CLI commands.
 type ExitCodeError struct {
 	Message string
 	Code    int
+	Cause   error
 }
 
 func (e *ExitCodeError) Error() string {
+	if e.Cause != nil {
+		return e.Message + ": " + e.Cause.Error()
+	}
 	return e.Message
+}
+
+// Unwrap returns the underlying error for error chain support.
+func (e *ExitCodeError) Unwrap() error {
+	return e.Cause
 }
 
 // Common exit codes
@@ -82,12 +96,14 @@ func NewUsageError(msg string) *ExitCodeError {
 }
 
 // Wrap wraps an error with context and returns an ExitCodeError.
+// The original error is preserved in the error chain via Unwrap.
 func Wrap(err error, msg string) *ExitCodeError {
 	if err == nil {
 		return nil
 	}
 	return &ExitCodeError{
-		Message: msg + ": " + err.Error(),
+		Message: msg,
 		Code:    ExitGeneral,
+		Cause:   err,
 	}
 }
