@@ -29,7 +29,6 @@ func NewTypeRefBuilder(registry *TypeRegistry, resolver *RefResolver, config *Bu
 	}
 }
 
-
 // SetCurrentOrder sets the current property order.
 func (b *TypeRefBuilder) SetCurrentOrder(order *schema.PropertyOrder) {
 	b.currentOrder = order
@@ -242,20 +241,24 @@ func (b *TypeRefBuilder) ShouldExtractInlineObject(schema *jsonschema.Schema) bo
 
 // ExtractInlineObjectType extracts an inline object as a separate Type.
 func (b *TypeRefBuilder) ExtractInlineObjectType(baseName string, schema *jsonschema.Schema) *Type {
+	// Pre-allocate based on expected sizes
+	fieldCount := 0
+	if schema.Properties != nil {
+		fieldCount = len(*schema.Properties)
+	}
+
 	typ := &Type{
 		ID:          b.registry.NextID(),
 		Name:        baseName,
 		Kind:        KindStruct,
 		Description: getDescription(schema),
-		Fields:      make([]*Field, 0),
+		Fields:      make([]*Field, 0, fieldCount),
 	}
 
-	// Build required map
-	requiredMap := make(map[string]bool)
-	if schema.Required != nil {
-		for _, req := range schema.Required {
-			requiredMap[req] = true
-		}
+	// Build required map with pre-allocated capacity
+	requiredMap := make(map[string]bool, len(schema.Required))
+	for _, req := range schema.Required {
+		requiredMap[req] = true
 	}
 
 	// Extract properties
@@ -291,15 +294,13 @@ func (b *TypeRefBuilder) BuildFieldsFromProperties(schema *jsonschema.Schema, or
 		return nil
 	}
 
-	// Build required map
-	requiredMap := make(map[string]bool)
-	if schema.Required != nil {
-		for _, req := range schema.Required {
-			requiredMap[req] = true
-		}
+	// Build required map with pre-allocated capacity
+	requiredMap := make(map[string]bool, len(schema.Required))
+	for _, req := range schema.Required {
+		requiredMap[req] = true
 	}
 
-	fields := make([]*Field, 0)
+	fields := make([]*Field, 0, len(*schema.Properties))
 
 	// Iterate over properties in order
 	for _, propName := range GetOrderedPropertyNames(schema.Properties, orderPath, b.currentOrder) {

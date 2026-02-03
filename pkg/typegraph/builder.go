@@ -113,4 +113,3 @@ func (b *Builder) BuildTypeRef(schema *jsonschema.Schema, fieldName string) *Typ
 	b.typeRefBuilder.SetCurrentOrder(b.walker.CurrentOrder())
 	return b.typeRefBuilder.BuildTypeRef(schema, fieldName)
 }
-

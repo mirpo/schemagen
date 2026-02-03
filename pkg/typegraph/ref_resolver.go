@@ -80,9 +80,7 @@ func (r *RefResolver) DeriveTypeName(refSchema *jsonschema.Schema, refURI string
 		}
 
 		// Remove .json extension
-		if strings.HasSuffix(name, constants.ExtJSON) {
-			name = strings.TrimSuffix(name, constants.ExtJSON)
-		}
+		name = strings.TrimSuffix(name, constants.ExtJSON)
 
 		return naming.ToPascalCase(name)
 	}

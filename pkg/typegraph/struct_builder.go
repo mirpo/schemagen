@@ -51,15 +51,19 @@ func (b *StructBuilder) SetCurrentPath(path string) {
 // Build builds a struct type from a schema.
 func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindStruct
-	typ.Fields = make([]*Field, 0)
-	typ.Extends = make([]string, 0)
 
-	// Track required fields
-	requiredMap := make(map[string]bool)
-	if schema.Required != nil {
-		for _, req := range schema.Required {
-			requiredMap[req] = true
-		}
+	// Pre-allocate based on expected sizes
+	fieldCount := 0
+	if schema.Properties != nil {
+		fieldCount = len(*schema.Properties)
+	}
+	typ.Fields = make([]*Field, 0, fieldCount)
+	typ.Extends = make([]string, 0, len(schema.AllOf))
+
+	// Track required fields with pre-allocated map
+	requiredMap := make(map[string]bool, len(schema.Required))
+	for _, req := range schema.Required {
+		requiredMap[req] = true
 	}
 
 	// Handle allOf composition
@@ -166,4 +170,3 @@ func (b *StructBuilder) DeduplicateFields(fields []*Field) []*Field {
 
 	return result
 }
-

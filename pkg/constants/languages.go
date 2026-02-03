@@ -24,14 +24,14 @@ const (
 
 // Default file names
 const (
-	DefaultTypesFile     = "types"
-	DefaultBarrelTS      = "index.ts"
-	DefaultBarrelPython  = "__init__.py"
+	DefaultTypesFile    = "types"
+	DefaultBarrelTS     = "index.ts"
+	DefaultBarrelPython = "__init__.py"
 )
 
 // JSON Schema reference constants
 const (
-	SchemaSelfRef   = "#"
+	SchemaSelfRef    = "#"
 	SchemaDefsPrefix = "#/$defs/"
 )
 

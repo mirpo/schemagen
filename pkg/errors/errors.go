@@ -69,10 +69,19 @@ func (e *ValidationError) Unwrap() error {
 type ExitCodeError struct {
 	Message string
 	Code    int
+	Cause   error
 }
 
 func (e *ExitCodeError) Error() string {
+	if e.Cause != nil {
+		return e.Message + ": " + e.Cause.Error()
+	}
 	return e.Message
+}
+
+// Unwrap returns the underlying error for error chain support.
+func (e *ExitCodeError) Unwrap() error {
+	return e.Cause
 }
 
 // Common exit codes
@@ -87,12 +96,14 @@ func NewUsageError(msg string) *ExitCodeError {
 }
 
 // Wrap wraps an error with context and returns an ExitCodeError.
+// The original error is preserved in the error chain via Unwrap.
 func Wrap(err error, msg string) *ExitCodeError {
 	if err == nil {
 		return nil
 	}
 	return &ExitCodeError{
-		Message: msg + ": " + err.Error(),
+		Message: msg,
 		Code:    ExitGeneral,
+		Cause:   err,
 	}
 }

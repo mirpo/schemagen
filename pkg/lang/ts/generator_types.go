@@ -114,26 +114,11 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 
 	for _, field := range fields {
 		// Generate field comment with format annotation if present
-		hasDescription := field.Description != ""
-		hasFormat := field.Type != nil && field.Type.Format != ""
-
-		if hasDescription || hasFormat {
-			if hasDescription && hasFormat {
-				// Both description and format
-				sb.WriteString("    /**\n")
-				sb.WriteString(fmt.Sprintf("     * %s\n", field.Description))
-				sb.WriteString(fmt.Sprintf("     * @format %s\n", field.Type.Format))
-				sb.WriteString("     */\n")
-			} else if hasDescription {
-				// Description only
-				sb.WriteString(fmt.Sprintf("    /** %s */\n", field.Description))
-			} else {
-				// Format only
-				sb.WriteString("    /**\n")
-				sb.WriteString(fmt.Sprintf("     * @format %s\n", field.Type.Format))
-				sb.WriteString("     */\n")
-			}
+		format := ""
+		if field.Type != nil {
+			format = field.Type.Format
 		}
+		tscommon.WriteJSDocWithFormat(&sb, "    ", field.Description, format)
 
 		tsType := g.typeRefToTS(field.Type)
 		optional := ""

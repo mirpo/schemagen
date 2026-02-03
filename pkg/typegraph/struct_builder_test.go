@@ -88,4 +88,3 @@ func TestStructBuilder_DeduplicateFields(t *testing.T) {
 	}
 	assert.Equal(t, KindPrimitive, idField.Type.Kind)
 }
-
