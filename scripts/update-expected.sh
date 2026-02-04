@@ -68,4 +68,34 @@ echo "=== Generating EXTRACTED mode outputs (--extract-inline) ==="
 ./schemagen generate testdata/schemas/anyof/ --out-ts testdata/expected/ts-extracted/anyof --extract-inline --disable-timestamp
 ./schemagen generate testdata/schemas/allof/ --out-ts testdata/expected/ts-extracted/allof --extract-inline --disable-timestamp
 
+echo "=== Generating TS-ZOD-EXTRACTED mode outputs (--ts-zod --extract-inline) ==="
+
+# ts-zod-extracted: ts-zod + extract-inline
+./schemagen generate testdata/schemas/foundation/foundation.json --out-ts testdata/expected/ts-zod-extracted/foundation --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/messaging_api/messaging_api.json --out-ts testdata/expected/ts-zod-extracted/messaging_api --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/extraction/blog_post.json --out-ts testdata/expected/ts-zod-extracted/extraction/blog_post --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/refs/organization.json --out-ts testdata/expected/ts-zod-extracted/refs/organization --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/complex/ecommerce_order.json --out-ts testdata/expected/ts-zod-extracted/complex/ecommerce_order --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/basic/ --out-ts testdata/expected/ts-zod-extracted/basic --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/edge-cases/ --out-ts testdata/expected/ts-zod-extracted/edge-cases --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/yaml/ --out-ts testdata/expected/ts-zod-extracted/yaml --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/events/ --out-ts testdata/expected/ts-zod-extracted/events --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/anyof/ --out-ts testdata/expected/ts-zod-extracted/anyof --ts-zod --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/allof/ --out-ts testdata/expected/ts-zod-extracted/allof --ts-zod --extract-inline --disable-timestamp
+
+echo "=== Generating TS-ZOD-ONLY-EXTRACTED mode outputs (--ts-zod-only --extract-inline) ==="
+
+# ts-zod-only-extracted: zod-only + extract-inline
+./schemagen generate testdata/schemas/foundation/foundation.json --out-ts testdata/expected/ts-zod-only-extracted/foundation --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/messaging_api/messaging_api.json --out-ts testdata/expected/ts-zod-only-extracted/messaging_api --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/extraction/blog_post.json --out-ts testdata/expected/ts-zod-only-extracted/extraction/blog_post --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/refs/organization.json --out-ts testdata/expected/ts-zod-only-extracted/refs/organization --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/complex/ecommerce_order.json --out-ts testdata/expected/ts-zod-only-extracted/complex/ecommerce_order --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/basic/ --out-ts testdata/expected/ts-zod-only-extracted/basic --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/edge-cases/ --out-ts testdata/expected/ts-zod-only-extracted/edge-cases --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/yaml/ --out-ts testdata/expected/ts-zod-only-extracted/yaml --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/events/ --out-ts testdata/expected/ts-zod-only-extracted/events --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/anyof/ --out-ts testdata/expected/ts-zod-only-extracted/anyof --ts-zod-only --extract-inline --disable-timestamp
+./schemagen generate testdata/schemas/allof/ --out-ts testdata/expected/ts-zod-only-extracted/allof --ts-zod-only --extract-inline --disable-timestamp
+
 # Note: Go always extracts inline types (no go-extracted needed, see pkg/generation/pipeline.go)

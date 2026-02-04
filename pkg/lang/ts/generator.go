@@ -84,8 +84,9 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 
 			sort.Strings(imp.TypeNames)
 
-			// For ZodModeOnly, import schemas instead of types
-			if g.config.ZodMode == ZodModeOnly {
+			switch g.config.ZodMode {
+			case ZodModeOnly:
+				// Import schemas only (types are inferred)
 				schemaNames := make([]string, len(imp.TypeNames))
 				for i, name := range imp.TypeNames {
 					schemaNames[i] = name + "Schema"
@@ -93,7 +94,22 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 				sb.WriteString(fmt.Sprintf("import { %s } from '%s';\n",
 					strings.Join(schemaNames, ", "),
 					imp.ImportPath))
-			} else {
+
+			case ZodModeWithInterface:
+				// Import both types (for interfaces) and schemas (for Zod)
+				sb.WriteString(fmt.Sprintf("import type { %s } from '%s';\n",
+					strings.Join(imp.TypeNames, ", "),
+					imp.ImportPath))
+				schemaNames := make([]string, len(imp.TypeNames))
+				for i, name := range imp.TypeNames {
+					schemaNames[i] = name + "Schema"
+				}
+				sb.WriteString(fmt.Sprintf("import { %s } from '%s';\n",
+					strings.Join(schemaNames, ", "),
+					imp.ImportPath))
+
+			default:
+				// ZodModeOff - import types only
 				sb.WriteString(fmt.Sprintf("import type { %s } from '%s';\n",
 					strings.Join(imp.TypeNames, ", "),
 					imp.ImportPath))
