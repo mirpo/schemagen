@@ -162,6 +162,16 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 			[]typegraph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Bool", Value: true}},
 			[]string{"z.union([", `z.literal("text")`, "z.literal(42)", "z.literal(true)"},
 		},
+		{
+			"with object value",
+			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Complex", Value: map[string]interface{}{"complex": true}}},
+			[]string{"z.union([", `z.literal("simple")`, "z.object({ complex: z.literal(true) }).strict()"},
+		},
+		{
+			"with array value",
+			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Array", Value: []interface{}{"a", "b"}}},
+			[]string{"z.union([", `z.literal("simple")`, `z.tuple([z.literal("a"), z.literal("b")])`},
+		},
 	}
 
 	for _, tt := range tests {
@@ -495,6 +505,42 @@ func TestHelpers_FormatLiteral(t *testing.T) {
 
 	for _, tt := range tests {
 		assert.Equal(t, tt.expected, formatLiteral(tt.input))
+	}
+}
+
+func TestHelpers_FormatZodLiteral(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected string
+	}{
+		// Primitives wrap in z.literal()
+		{"string", "hello", `z.literal("hello")`},
+		{"number", 42, "z.literal(42)"},
+		{"float", 3.14, "z.literal(3.14)"},
+		{"bool true", true, "z.literal(true)"},
+		{"bool false", false, "z.literal(false)"},
+		{"null", nil, "z.literal(null)"},
+
+		// Objects use z.object with literal values
+		{"simple object", map[string]interface{}{"complex": true}, `z.object({ complex: z.literal(true) }).strict()`},
+		{"object with string", map[string]interface{}{"name": "test"}, `z.object({ name: z.literal("test") }).strict()`},
+		{"object with number", map[string]interface{}{"count": float64(42)}, `z.object({ count: z.literal(42) }).strict()`},
+
+		// Arrays use z.tuple with literal values
+		{"simple array", []interface{}{"a", "b"}, `z.tuple([z.literal("a"), z.literal("b")])`},
+		{"mixed array", []interface{}{"text", float64(42)}, `z.tuple([z.literal("text"), z.literal(42)])`},
+
+		// Nested structures
+		{"nested object", map[string]interface{}{"nested": map[string]interface{}{"deep": float64(1)}}, `z.object({ nested: z.object({ deep: z.literal(1) }).strict() }).strict()`},
+		{"nested array", []interface{}{[]interface{}{"inner"}}, `z.tuple([z.tuple([z.literal("inner")])])`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatZodLiteral(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 }
 

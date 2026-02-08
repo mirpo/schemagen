@@ -157,13 +157,14 @@ func TestRun(t *testing.T) {
 		schemas, _ := loader.Load(schemaPath)
 		_ = generation.Run(&generation.Config{
 			Schemas: schemas, Compiler: loader.Compiler(), OutDir: outputDir,
-			Language:   generation.LanguageTypeScript,
-			TypeScript: &generation.TypeScriptConfig{},
+			Language:         generation.LanguageTypeScript,
+			DisableTimestamp: true,
+			TypeScript:       &generation.TypeScriptConfig{},
 		})
 
 		result, err := Run(&Config{
 			Input: schemaPath, Schemas: schemas, Loader: loader,
-			Flags: &generation.GenerationFlags{OutTS: outputDir}, ExistingDir: tmpDir,
+			Flags: &generation.GenerationFlags{OutTS: outputDir, DisableTimestamp: true}, ExistingDir: tmpDir,
 		})
 		require.NoError(t, err)
 		assert.False(t, result.HasDrift)

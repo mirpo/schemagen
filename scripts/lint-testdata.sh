@@ -27,6 +27,40 @@ else
 fi
 
 # ============================================================================
+# VALIDATE TypeScript with Zod (requires temporary zod installation)
+# ============================================================================
+echo ""
+echo "=== Setting up Zod for TypeScript validation ==="
+
+# Create a temp directory with zod installed for type checking
+ZOD_TEMP_DIR=$(mktemp -d)
+trap "rm -rf $ZOD_TEMP_DIR" EXIT
+
+# Initialize minimal package.json and install zod
+cd "$ZOD_TEMP_DIR"
+npm init -y >/dev/null 2>&1
+npm install --save-dev zod typescript >/dev/null 2>&1
+cd - >/dev/null
+
+echo ""
+echo "=== Validating TypeScript (ts-zod-extracted) ==="
+if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution node --baseUrl "$ZOD_TEMP_DIR/node_modules" $(find testdata/expected/ts-zod-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
+    echo "✅ TypeScript (ts-zod-extracted) validation PASSED"
+else
+    echo "❌ TypeScript (ts-zod-extracted) validation FAILED"
+    exit 1
+fi
+
+echo ""
+echo "=== Validating TypeScript (ts-zod-only-extracted) ==="
+if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution node --baseUrl "$ZOD_TEMP_DIR/node_modules" $(find testdata/expected/ts-zod-only-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
+    echo "✅ TypeScript (ts-zod-only-extracted) validation PASSED"
+else
+    echo "❌ TypeScript (ts-zod-only-extracted) validation FAILED"
+    exit 1
+fi
+
+# ============================================================================
 # VALIDATE Python
 # ============================================================================
 echo ""

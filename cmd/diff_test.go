@@ -12,9 +12,9 @@ import (
 func TestDiffCommand(t *testing.T) {
 	t.Run("no changes", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		generateToDir(t, "../testdata/schemas/foundation", tmpDir, "")
+		generateToDir(t, "../testdata/schemas/foundation", tmpDir, "", "--disable-timestamp")
 		cmd := NewRootCmd()
-		cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDir})
+		cmd.SetArgs([]string{"diff", "../testdata/schemas/foundation", "--out-ts", tmpDir, "--disable-timestamp"})
 		assert.NoError(t, cmd.Execute())
 	})
 

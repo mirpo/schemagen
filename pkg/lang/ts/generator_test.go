@@ -641,3 +641,33 @@ func TestGenerateFile_AllConfigOptions(t *testing.T) {
 	// Check comments still appear
 	assert.Contains(t, result, "This comment should appear")
 }
+
+func TestGenerateFile_ZodBothModeImportsSchemas(t *testing.T) {
+	g := createTestGenerator(&Config{
+		ZodMode: ZodModeWithInterface,
+	})
+
+	typ := createTestType("Event", typegraph.KindStruct)
+	typ.Fields = []*typegraph.Field{
+		{
+			Name:     "Header",
+			JSONName: "header",
+			Type:     &typegraph.TypeRef{Kind: typegraph.KindRef, TypeName: "EventHeader"},
+			Required: true,
+		},
+	}
+
+	imports := []typegraph.ImportSpec{
+		{ImportPath: "./header", TypeNames: []string{"EventHeader"}},
+	}
+
+	result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
+	require.NoError(t, err)
+
+	// Should import both type and schema for cross-file references
+	assert.Contains(t, result, "import type { EventHeader } from './header';")
+	assert.Contains(t, result, "import { EventHeaderSchema } from './header';")
+
+	// Should use the schema in the Zod definition
+	assert.Contains(t, result, "EventHeaderSchema")
+}

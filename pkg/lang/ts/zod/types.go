@@ -127,10 +127,10 @@ func (e *Emitter) enumValuesToZod(values []interface{}) string {
 		return fmt.Sprintf("z.enum([%s])", strings.Join(strValues, ", "))
 	}
 
-	// Use union of literals for mixed types
+	// Use union of literals for mixed types (including objects/arrays)
 	literals := make([]string, len(values))
 	for i, v := range values {
-		literals[i] = fmt.Sprintf("z.literal(%s)", formatLiteral(v))
+		literals[i] = formatZodLiteral(v)
 	}
 	return fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
 }

@@ -146,25 +146,28 @@ func (e *Emitter) determineObjectMode(additionalProps *typegraph.AdditionalProps
 
 // generateEnumSchema generates a Zod enum schema.
 func (e *Emitter) generateEnumSchema(typ *typegraph.Type, schemaName string) string {
-	values := make([]string, len(typ.EnumValues))
 	allStrings := true
 
-	for i, ev := range typ.EnumValues {
+	for _, ev := range typ.EnumValues {
 		if _, ok := ev.Value.(string); !ok {
 			allStrings = false
+			break
 		}
-		values[i] = formatLiteral(ev.Value)
 	}
 
 	var schema string
 	if allStrings && len(typ.EnumValues) > 0 {
 		// Use z.enum for string enums
+		values := make([]string, len(typ.EnumValues))
+		for i, ev := range typ.EnumValues {
+			values[i] = formatLiteral(ev.Value)
+		}
 		schema = fmt.Sprintf("z.enum([%s])", strings.Join(values, ", "))
 	} else {
-		// Use union of literals for mixed types
-		literals := make([]string, len(values))
-		for i, v := range values {
-			literals[i] = fmt.Sprintf("z.literal(%s)", v)
+		// Use union of literals for mixed types (including objects/arrays)
+		literals := make([]string, len(typ.EnumValues))
+		for i, ev := range typ.EnumValues {
+			literals[i] = formatZodLiteral(ev.Value)
 		}
 		schema = fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
 	}

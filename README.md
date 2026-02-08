@@ -134,6 +134,32 @@ schemagen diff schemas/ --out-ts ./types
 - UUID and time.Time format types
 - Configurable pointer usage and package naming
 
+## Validation Libraries
+
+### TypeScript with Zod
+
+Generate Zod schemas alongside TypeScript interfaces:
+
+```bash
+# Interfaces + Zod schemas
+schemagen generate schema.json --out-ts ./types --ts-zod
+
+# Only Zod schemas (with z.infer<> types)
+schemagen generate schema.json --out-ts ./types --ts-zod-only
+
+# Additional options
+--ts-zod-strict        # Add .strict() to object schemas
+--ts-zod-coerce-dates  # Use z.coerce.date() for date-time
+```
+
+### Python with Pydantic v2
+
+Python output uses Pydantic v2 BaseModel with built-in validation:
+
+- Field constraints: `min_length`, `max_length`, `pattern`, `ge`, `le`
+- Format types: `EmailStr`, `UUID`, `datetime`
+- Enums with string/int values
+
 ## License
 
 MIT
