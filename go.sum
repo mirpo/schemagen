@@ -17,6 +17,8 @@ github.com/kaptinlin/jsonpointer v0.4.9 h1:o//bYf4PCvnMJIIX8bIg77KB6DO3wBPAabRyP
 github.com/kaptinlin/jsonpointer v0.4.9/go.mod h1:9y0LgXavlmVE5FSHShY5LRlURJJVhbyVJSRWkilrTqA=
 github.com/kaptinlin/jsonschema v0.6.8 h1:CZt3HxwYCCVtAj50rys6Cg4Z/TWRUMd3U/ePV5FGXkw=
 github.com/kaptinlin/jsonschema v0.6.8/go.mod h1:ZXZ4K5KrRmCCF1i6dgvBsQifl+WTb8XShKj0NpQNrz8=
+github.com/kaptinlin/jsonschema v0.6.10 h1:CYded7nrwVu7pU1GaIjtd9dSzgqZjh7+LTKFaWqS08I=
+github.com/kaptinlin/jsonschema v0.6.10/go.mod h1:ZXZ4K5KrRmCCF1i6dgvBsQifl+WTb8XShKj0NpQNrz8=
 github.com/kaptinlin/messageformat-go v0.4.9 h1:FR5j5n4aL4nG0afKn9vvANrKxLu7HjmbhJnw5ogIwAQ=
 github.com/kaptinlin/messageformat-go v0.4.9/go.mod h1:qZzrGrlvWDz2KyyvN3dOWcK9PVSRV1BnfnNU+zB/RWc=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
@@ -50,6 +52,8 @@ golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.12.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.40.0 h1:DBZZqJ2Rkml6QMQsZywtnjnnGvHza6BTfYFWY9kjEWQ=
 golang.org/x/sys v0.40.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
+golang.org/x/sys v0.41.0 h1:Ivj+2Cp/ylzLiEU89QhWblYnOE9zerudt9Ftecq2C6k=
+golang.org/x/sys v0.41.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
 golang.org/x/text v0.33.0 h1:B3njUFyqtHDUI5jMn1YIr5B0IE2U0qck04r6d4KPAxE=
 golang.org/x/text v0.33.0/go.mod h1:LuMebE6+rBincTi9+xWTY8TztLzKHc/9C1uBCG27+q8=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
