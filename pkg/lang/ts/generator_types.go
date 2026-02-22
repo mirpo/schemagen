@@ -132,7 +132,7 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 			propName = fmt.Sprintf("%q", propName)
 		}
 
-		sb.WriteString(fmt.Sprintf("    %s%s: %s;\n", propName, optional, tsType))
+		fmt.Fprintf(&sb, "    %s%s: %s;\n", propName, optional, tsType)
 	}
 
 	sb.WriteString("  }")

@@ -68,7 +68,7 @@ func (e *Emitter) generateSchemaInternal(typ *typegraph.Type, withInfer bool) st
 
 	// Add z.infer type export if requested
 	if withInfer {
-		sb.WriteString(fmt.Sprintf("\n\nexport type %s = z.infer<typeof %s>;", typ.Name, schemaName))
+		fmt.Fprintf(&sb, "\n\nexport type %s = z.infer<typeof %s>;", typ.Name, schemaName)
 	}
 
 	return sb.String()
@@ -89,21 +89,21 @@ func (e *Emitter) generateObjectSchema(typ *typegraph.Type, schemaName string) s
 		}
 
 		if len(typ.Fields) > 0 {
-			sb.WriteString(fmt.Sprintf("export const %s = %s.extend({\n", schemaName, baseSchema))
+			fmt.Fprintf(&sb, "export const %s = %s.extend({\n", schemaName, baseSchema)
 			for _, field := range typ.Fields {
-				sb.WriteString(fmt.Sprintf("  %s,\n", e.generateField(field)))
+				fmt.Fprintf(&sb, "  %s,\n", e.generateField(field))
 			}
 			sb.WriteString("})")
 		} else {
-			sb.WriteString(fmt.Sprintf("export const %s = %s", schemaName, baseSchema))
+			fmt.Fprintf(&sb, "export const %s = %s", schemaName, baseSchema)
 		}
 		// Note: For extended schemas, catchall/strict is applied after extend
 		sb.WriteString(catchall)
 	} else {
 		// Regular object - use appropriate constructor
-		sb.WriteString(fmt.Sprintf("export const %s = %s({\n", schemaName, objectFunc))
+		fmt.Fprintf(&sb, "export const %s = %s({\n", schemaName, objectFunc)
 		for _, field := range typ.Fields {
-			sb.WriteString(fmt.Sprintf("  %s,\n", e.generateField(field)))
+			fmt.Fprintf(&sb, "  %s,\n", e.generateField(field))
 		}
 		sb.WriteString("})")
 		sb.WriteString(catchall)
@@ -111,7 +111,7 @@ func (e *Emitter) generateObjectSchema(typ *typegraph.Type, schemaName string) s
 
 	// Add metadata
 	if typ.Description != "" {
-		sb.WriteString(fmt.Sprintf(".meta({ description: %q })", typ.Description))
+		fmt.Fprintf(&sb, ".meta({ description: %q })", typ.Description)
 	}
 
 	sb.WriteString(";")

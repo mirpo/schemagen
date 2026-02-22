@@ -152,9 +152,9 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 
 			sort.Strings(imp.TypeNames)
 
-			sb.WriteString(fmt.Sprintf("from %s import %s\n",
+			fmt.Fprintf(&sb, "from %s import %s\n",
 				imp.ImportPath,
-				strings.Join(imp.TypeNames, ", ")))
+				strings.Join(imp.TypeNames, ", "))
 		}
 	}
 
@@ -198,7 +198,7 @@ func (g *Generator) generateImports() string {
 		enumImports = append(enumImports, "IntEnum")
 	}
 	if len(enumImports) > 0 {
-		sb.WriteString(fmt.Sprintf("from enum import %s\n", strings.Join(enumImports, ", ")))
+		fmt.Fprintf(&sb, "from enum import %s\n", strings.Join(enumImports, ", "))
 	}
 
 	if g.imports["uuid"] {
@@ -219,7 +219,7 @@ func (g *Generator) generateImports() string {
 		typingImports = append(typingImports, "Literal")
 	}
 	if len(typingImports) > 0 {
-		sb.WriteString(fmt.Sprintf("from typing import %s\n", strings.Join(typingImports, ", ")))
+		fmt.Fprintf(&sb, "from typing import %s\n", strings.Join(typingImports, ", "))
 	}
 
 	// Pydantic imports
@@ -237,7 +237,7 @@ func (g *Generator) generateImports() string {
 		if g.imports["pydantic_config"] {
 			pydanticImports = append(pydanticImports, "ConfigDict")
 		}
-		sb.WriteString(fmt.Sprintf("from pydantic import %s\n", strings.Join(pydanticImports, ", ")))
+		fmt.Fprintf(&sb, "from pydantic import %s\n", strings.Join(pydanticImports, ", "))
 	}
 
 	return sb.String()
@@ -365,7 +365,7 @@ func (g *Generator) generateClass(typ *typegraph.Type) (string, error) {
 		// Don't include BaseModel if we're extending other classes (they already inherit from it)
 		baseClasses = strings.Join(typ.Extends, ", ")
 	}
-	sb.WriteString(fmt.Sprintf("class %s(%s):\n", typ.Name, baseClasses))
+	fmt.Fprintf(&sb, "class %s(%s):\n", typ.Name, baseClasses)
 	sb.WriteString(writeDescription(typ.Description, "    ", "\n\n"))
 
 	// Add model_config if flag enabled and type has additionalProperties
@@ -407,14 +407,14 @@ func (g *Generator) generateClass(typ *typegraph.Type) (string, error) {
 
 			if len(fieldParams) > 0 {
 				// Use Field() with constraints
-				sb.WriteString(fmt.Sprintf("    %s: %s = Field(%s)\n",
-					fieldName, pyType, strings.Join(fieldParams, ", ")))
+				fmt.Fprintf(&sb, "    %s: %s = Field(%s)\n",
+					fieldName, pyType, strings.Join(fieldParams, ", "))
 			} else {
 				// Simple field without Field()
 				if field.Required {
-					sb.WriteString(fmt.Sprintf("    %s: %s\n", fieldName, pyType))
+					fmt.Fprintf(&sb, "    %s: %s\n", fieldName, pyType)
 				} else {
-					sb.WriteString(fmt.Sprintf("    %s: %s = None\n", fieldName, pyType))
+					fmt.Fprintf(&sb, "    %s: %s = None\n", fieldName, pyType)
 				}
 			}
 		}
@@ -451,7 +451,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 
 		// Add description as comment if present
 		if typ.Description != "" {
-			sb.WriteString(fmt.Sprintf("# %s\n", typ.Description))
+			fmt.Fprintf(&sb, "# %s\n", typ.Description)
 		}
 
 		literals := make([]string, 0, len(typ.EnumValues))
@@ -471,7 +471,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 				literals = append(literals, "None")
 			}
 		}
-		sb.WriteString(fmt.Sprintf("%s = Literal[%s]\n", typ.Name, strings.Join(literals, ", ")))
+		fmt.Fprintf(&sb, "%s = Literal[%s]\n", typ.Name, strings.Join(literals, ", "))
 		return sb.String(), nil
 	}
 
@@ -480,7 +480,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		g.imports["enum_int"] = true
 
 		// Class declaration
-		sb.WriteString(fmt.Sprintf("class %s(IntEnum):\n", typ.Name))
+		fmt.Fprintf(&sb, "class %s(IntEnum):\n", typ.Name)
 		sb.WriteString(writeDescription(typ.Description, "    ", "\n\n"))
 
 		// Enum values
@@ -488,9 +488,9 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 			memberName := sanitizeEnumMemberName(val.Name)
 			switch v := val.Value.(type) {
 			case float64:
-				sb.WriteString(fmt.Sprintf("    %s = %d\n", memberName, int(v)))
+				fmt.Fprintf(&sb, "    %s = %d\n", memberName, int(v))
 			case int, int64:
-				sb.WriteString(fmt.Sprintf("    %s = %v\n", memberName, v))
+				fmt.Fprintf(&sb, "    %s = %v\n", memberName, v)
 			}
 		}
 
@@ -501,14 +501,14 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	g.imports["enum"] = true
 
 	// Class declaration
-	sb.WriteString(fmt.Sprintf("class %s(str, Enum):\n", typ.Name))
+	fmt.Fprintf(&sb, "class %s(str, Enum):\n", typ.Name)
 	sb.WriteString(writeDescription(typ.Description, "    ", "\n\n"))
 
 	// Enum values
 	for _, val := range typ.EnumValues {
 		if strVal, ok := val.Value.(string); ok {
 			memberName := sanitizeEnumMemberName(val.Name)
-			sb.WriteString(fmt.Sprintf("    %s = %q\n", memberName, strVal))
+			fmt.Fprintf(&sb, "    %s = %q\n", memberName, strVal)
 		}
 	}
 
@@ -521,7 +521,7 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 
 	// Python type alias using TypeAlias (Python 3.10+) or simple assignment
 	pyType := g.primitiveToPython(typ.GoType, "")
-	sb.WriteString(fmt.Sprintf("%s = %s\n", typ.Name, pyType))
+	fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 
 	return sb.String(), nil
@@ -534,11 +534,11 @@ func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	// Generate union type from TargetType if it's a union
 	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
 		pyType := g.typeRefToPython(typ.TargetType, false)
-		sb.WriteString(fmt.Sprintf("%s = %s\n", typ.Name, pyType))
+		fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
 	} else {
 		// Fallback to Any if we don't have proper union information
 		g.needsAny = true
-		sb.WriteString(fmt.Sprintf("%s = Any\n", typ.Name))
+		fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
 	}
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 
@@ -552,10 +552,10 @@ func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
 	// Generate type alias
 	if typ.TargetType != nil {
 		pyType := g.typeRefToPython(typ.TargetType, false)
-		sb.WriteString(fmt.Sprintf("%s = %s\n", typ.Name, pyType))
+		fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
 	} else {
 		g.needsAny = true
-		sb.WriteString(fmt.Sprintf("%s = Any\n", typ.Name))
+		fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
 	}
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 

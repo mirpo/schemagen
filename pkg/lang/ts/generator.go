@@ -91,28 +91,28 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 				for i, name := range imp.TypeNames {
 					schemaNames[i] = name + "Schema"
 				}
-				sb.WriteString(fmt.Sprintf("import { %s } from '%s';\n",
+				fmt.Fprintf(&sb, "import { %s } from '%s';\n",
 					strings.Join(schemaNames, ", "),
-					imp.ImportPath))
+					imp.ImportPath)
 
 			case ZodModeWithInterface:
 				// Import both types (for interfaces) and schemas (for Zod)
-				sb.WriteString(fmt.Sprintf("import type { %s } from '%s';\n",
+				fmt.Fprintf(&sb, "import type { %s } from '%s';\n",
 					strings.Join(imp.TypeNames, ", "),
-					imp.ImportPath))
+					imp.ImportPath)
 				schemaNames := make([]string, len(imp.TypeNames))
 				for i, name := range imp.TypeNames {
 					schemaNames[i] = name + "Schema"
 				}
-				sb.WriteString(fmt.Sprintf("import { %s } from '%s';\n",
+				fmt.Fprintf(&sb, "import { %s } from '%s';\n",
 					strings.Join(schemaNames, ", "),
-					imp.ImportPath))
+					imp.ImportPath)
 
 			default:
 				// ZodModeOff - import types only
-				sb.WriteString(fmt.Sprintf("import type { %s } from '%s';\n",
+				fmt.Fprintf(&sb, "import type { %s } from '%s';\n",
 					strings.Join(imp.TypeNames, ", "),
-					imp.ImportPath))
+					imp.ImportPath)
 			}
 		}
 		sb.WriteString("\n")
@@ -192,7 +192,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 	// If we have allOf composition (extends), use intersection types
 	if len(typ.Extends) > 0 {
 		// Generate as: export type Name = Base1 & Base2 & { fields }
-		sb.WriteString(fmt.Sprintf("export type %s = ", typ.Name))
+		fmt.Fprintf(&sb, "export type %s = ", typ.Name)
 
 		// Add base types
 		for _, base := range typ.Extends {
@@ -218,7 +218,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 				propName = fmt.Sprintf("%q", propName)
 			}
 
-			sb.WriteString(fmt.Sprintf("  %s%s: %s;\n", propName, optional, tsType))
+			fmt.Fprintf(&sb, "  %s%s: %s;\n", propName, optional, tsType)
 		}
 
 		// Add index signature if AdditionalProperties is configured and flag is enabled
@@ -229,7 +229,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 		sb.WriteString("};")
 	} else {
 		// Regular interface
-		sb.WriteString(fmt.Sprintf("export interface %s {\n", typ.Name))
+		fmt.Fprintf(&sb, "export interface %s {\n", typ.Name)
 
 		// Fields
 		for _, field := range typ.Fields {
@@ -252,7 +252,7 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 				propName = fmt.Sprintf("%q", propName)
 			}
 
-			sb.WriteString(fmt.Sprintf("  %s%s: %s;\n", propName, optional, tsType))
+			fmt.Fprintf(&sb, "  %s%s: %s;\n", propName, optional, tsType)
 		}
 
 		// Add index signature if AdditionalProperties is configured and flag is enabled
@@ -309,7 +309,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 
 	// For mixed-type enums or string enums, use union types (more idiomatic in TS)
 	if typ.EnumType == "string" || category.HasMixed {
-		sb.WriteString(fmt.Sprintf("export type %s = ", typ.Name))
+		fmt.Fprintf(&sb, "export type %s = ", typ.Name)
 
 		values := make([]string, 0, len(typ.EnumValues))
 		for _, val := range typ.EnumValues {
@@ -328,7 +328,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		sb.WriteString(";")
 	} else {
 		// For numeric-only enums, use actual enum (though less common in TS)
-		sb.WriteString(fmt.Sprintf("export enum %s {\n", typ.Name))
+		fmt.Fprintf(&sb, "export enum %s {\n", typ.Name)
 		for i, val := range typ.EnumValues {
 			if i > 0 {
 				sb.WriteString(",\n")
@@ -338,7 +338,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 			if len(memberName) > 0 && memberName[0] >= '0' && memberName[0] <= '9' {
 				memberName = "N_" + memberName
 			}
-			sb.WriteString(fmt.Sprintf("  %s = %v", memberName, val.Value))
+			fmt.Fprintf(&sb, "  %s = %v", memberName, val.Value)
 		}
 		sb.WriteString("\n}")
 	}
@@ -355,7 +355,7 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 
 	// Generate type alias
 	tsType := g.primitiveToTS(typ.GoType)
-	sb.WriteString(fmt.Sprintf("export type %s = %s;", typ.Name, tsType))
+	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 
 	return sb.String(), nil
 }
@@ -371,10 +371,10 @@ func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	// The type graph should have stored the union members in TargetType
 	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
 		tsType := g.typeRefToTS(typ.TargetType)
-		sb.WriteString(fmt.Sprintf("export type %s = %s;", typ.Name, tsType))
+		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 	} else {
 		// Fallback to any/unknown if we don't have proper union information
-		sb.WriteString(fmt.Sprintf("export type %s = %s;", typ.Name, g.anyType()))
+		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
 	}
 
 	return sb.String(), nil
@@ -390,9 +390,9 @@ func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
 	// Generate type alias
 	if typ.TargetType != nil {
 		tsType := g.typeRefToTS(typ.TargetType)
-		sb.WriteString(fmt.Sprintf("export type %s = %s;", typ.Name, tsType))
+		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 	} else {
-		sb.WriteString(fmt.Sprintf("export type %s = %s;", typ.Name, g.anyType()))
+		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
 	}
 
 	return sb.String(), nil
