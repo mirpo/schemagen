@@ -47,7 +47,7 @@ func (r *RefResolver) ExtractTypeName(ref string) string {
 
 	// Handle external file references - try multiple normalized variants
 	for _, variant := range normalizeRefPath(ref) {
-		if refSchema, err := r.compiler.GetSchema(variant); err == nil && refSchema != nil {
+		if refSchema, err := r.compiler.Schema(variant); err == nil && refSchema != nil {
 			return r.DeriveTypeName(refSchema, ref)
 		}
 	}

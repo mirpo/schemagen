@@ -57,7 +57,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	}))
 
 	// Package declaration
-	sb.WriteString(fmt.Sprintf("package %s\n\n", g.config.PackageName))
+	fmt.Fprintf(&sb, "package %s\n\n", g.config.PackageName)
 
 	// Reset imports and scan types
 	g.resetImports()
@@ -83,7 +83,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 
 		sb.WriteString("import (\n")
 		for _, imp := range importList {
-			sb.WriteString(fmt.Sprintf("\t%q\n", imp))
+			fmt.Fprintf(&sb, "\t%q\n", imp)
 		}
 		sb.WriteString(")\n\n")
 	}
@@ -126,22 +126,22 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 
 	// Type comment
 	if !g.config.DisableComments && typ.Description != "" {
-		sb.WriteString(fmt.Sprintf("// %s %s\n", typ.Name, typ.Description))
+		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
 	}
 
 	// Type declaration
-	sb.WriteString(fmt.Sprintf("type %s struct {\n", typ.Name))
+	fmt.Fprintf(&sb, "type %s struct {\n", typ.Name)
 
 	// Embedded base types (for allOf composition)
 	for _, baseType := range typ.Extends {
-		sb.WriteString(fmt.Sprintf("\t%s\n", baseType))
+		fmt.Fprintf(&sb, "\t%s\n", baseType)
 	}
 
 	// Fields
 	for _, field := range typ.Fields {
 		if !g.config.DisableComments {
 			if field.Description != "" {
-				sb.WriteString(fmt.Sprintf("\t// %s\n", field.Description))
+				fmt.Fprintf(&sb, "\t// %s\n", field.Description)
 			}
 			// Add union type information if this is a union
 			if field.Type.Kind == typegraph.KindUnion && len(field.Type.UnionMembers) > 0 {
@@ -149,7 +149,7 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 				for _, member := range field.Type.UnionMembers {
 					memberTypes = append(memberTypes, g.typeRefToGoType(member))
 				}
-				sb.WriteString(fmt.Sprintf("\t// Can be one of: %s\n", strings.Join(memberTypes, ", ")))
+				fmt.Fprintf(&sb, "\t// Can be one of: %s\n", strings.Join(memberTypes, ", "))
 			}
 		}
 
@@ -162,9 +162,9 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 
 		// Build struct tags (json is always present, validate is optional)
 		if validateTag != "" {
-			sb.WriteString(fmt.Sprintf("\t%s %s `json:%q validate:%q`\n", fieldName, goType, jsonTag, validateTag))
+			fmt.Fprintf(&sb, "\t%s %s `json:%q validate:%q`\n", fieldName, goType, jsonTag, validateTag)
 		} else {
-			sb.WriteString(fmt.Sprintf("\t%s %s `json:%q`\n", fieldName, goType, jsonTag))
+			fmt.Fprintf(&sb, "\t%s %s `json:%q`\n", fieldName, goType, jsonTag)
 		}
 	}
 
@@ -179,7 +179,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 
 	// Type comment
 	if !g.config.DisableComments && typ.Description != "" {
-		sb.WriteString(fmt.Sprintf("// %s %s\n", typ.Name, typ.Description))
+		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
 	}
 
 	// Analyze enum value types to determine generation strategy
@@ -197,14 +197,14 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	}
 
 	// Type declaration
-	sb.WriteString(fmt.Sprintf("type %s %s\n\n", typ.Name, enumType))
+	fmt.Fprintf(&sb, "type %s %s\n\n", typ.Name, enumType)
 
 	// Generate values based on analysis
 	if allStrings {
 		// Use const for string-only enums
 		sb.WriteString("const (\n")
 		for _, val := range typ.EnumValues {
-			sb.WriteString(fmt.Sprintf("\t%s%s %s = %q\n", typ.Name, val.Name, typ.Name, val.Value))
+			fmt.Fprintf(&sb, "\t%s%s %s = %q\n", typ.Name, val.Name, typ.Name, val.Value)
 		}
 		sb.WriteString(")")
 	} else if allNumbers {
@@ -212,14 +212,14 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		sb.WriteString("const (\n")
 		for _, val := range typ.EnumValues {
 			numVal := formatNumericValue(val.Value)
-			sb.WriteString(fmt.Sprintf("\t%s%s %s = %s\n", typ.Name, val.Name, typ.Name, numVal))
+			fmt.Fprintf(&sb, "\t%s%s %s = %s\n", typ.Name, val.Name, typ.Name, numVal)
 		}
 		sb.WriteString(")")
 	} else {
 		// Use var with slice for mixed/complex enums
-		sb.WriteString(fmt.Sprintf("var %sValues = []%s{\n", typ.Name, typ.Name))
+		fmt.Fprintf(&sb, "var %sValues = []%s{\n", typ.Name, typ.Name)
 		for _, val := range typ.EnumValues {
-			sb.WriteString(fmt.Sprintf("\t%s,\n", formatEnumValue(val.Value)))
+			fmt.Fprintf(&sb, "\t%s,\n", formatEnumValue(val.Value))
 		}
 		sb.WriteString("}")
 	}
@@ -253,11 +253,11 @@ func (g *Generator) generateUnion(typ *typegraph.Type) (string, error) {
 
 	// Type comment
 	if !g.config.DisableComments && typ.Description != "" {
-		sb.WriteString(fmt.Sprintf("// %s %s\n", typ.Name, typ.Description))
+		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
 	}
 
 	// Type alias (use = for type alias, not type definition)
-	sb.WriteString(fmt.Sprintf("type %s = any", typ.Name))
+	fmt.Fprintf(&sb, "type %s = any", typ.Name)
 
 	return sb.String(), nil
 }
@@ -283,7 +283,7 @@ func formatMap(m map[string]any) string {
 		if !first {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(fmt.Sprintf("%q: %s", k, formatEnumValue(v)))
+		fmt.Fprintf(&sb, "%q: %s", k, formatEnumValue(v))
 		first = false
 	}
 	sb.WriteString("}")

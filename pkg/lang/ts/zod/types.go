@@ -150,7 +150,7 @@ func (e *Emitter) generateInlineObject(fields []*typegraph.Field) string {
 	sb.WriteString(objectFunc + "({\n")
 
 	for _, field := range fields {
-		sb.WriteString(fmt.Sprintf("    %s,\n", e.generateField(field)))
+		fmt.Fprintf(&sb, "    %s,\n", e.generateField(field))
 	}
 
 	sb.WriteString("  })")

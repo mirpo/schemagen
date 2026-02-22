@@ -107,7 +107,7 @@ func TestLoader_Refs_Work(t *testing.T) {
 	require.Len(t, schemas, 2)
 
 	compiler := loader.Compiler()
-	_, err = compiler.GetSchema("address.json")
+	_, err = compiler.Schema("address.json")
 	assert.NoError(t, err)
 }
 
