@@ -3,8 +3,8 @@ module github.com/mirpo/schemagen
 go 1.26.0
 
 require (
-	github.com/fatih/color v1.18.0
-	github.com/kaptinlin/jsonschema v0.7.5
+	github.com/fatih/color v1.19.0
+	github.com/kaptinlin/jsonschema v0.7.6
 	github.com/kylelemons/godebug v1.1.0
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.2

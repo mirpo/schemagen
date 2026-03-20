@@ -4,6 +4,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fatih/color v1.18.0 h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=
 github.com/fatih/color v1.18.0/go.mod h1:4FelSpRwEGDpQ12mAdzqdOukCy4u8WUtOY6lkT/6HfU=
+github.com/fatih/color v1.19.0 h1:Zp3PiM21/9Ld6FzSKyL5c/BULoe/ONr9KlbYVOfG8+w=
+github.com/fatih/color v1.19.0/go.mod h1:zNk67I0ZUT1bEGsSGyCZYZNrHuTkJJB+r6Q9VuMi0LE=
 github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e h1:Lf/gRkoycfOBPa42vU2bbgPurFong6zXeFtPoxholzU=
 github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e/go.mod h1:uNVvRXArCGbZ508SxYYTC5v1JWoz2voff5pm25jU1Ok=
 github.com/go-json-experiment/json v0.0.0-20260214004413-d219187c3433 h1:vymEbVwYFP/L05h5TKQxvkXoKxNvTpjxYKdF1Nlwuao=
@@ -25,6 +27,8 @@ github.com/kaptinlin/jsonschema v0.7.3 h1:kyIydij76ORiSxmfy0xFYy0cOx8MwG6pyyaSoQ
 github.com/kaptinlin/jsonschema v0.7.3/go.mod h1:Ys6zr+W6/1330FzZEouFrAYImK+AmYt5HQVTHQQXQo8=
 github.com/kaptinlin/jsonschema v0.7.5 h1:jkK4a3NyzNoGlvu12CsL3IcqNMVa5sL51HPVa0nWcPY=
 github.com/kaptinlin/jsonschema v0.7.5/go.mod h1:3gIWnptl+SWMyfMR2r4TXXd0xsQZ1m50AKrwmcUONSg=
+github.com/kaptinlin/jsonschema v0.7.6 h1:UUMqZGFAk7nOzQsYAxvgygm4wpDp/nwXxA4VP9mCPCs=
+github.com/kaptinlin/jsonschema v0.7.6/go.mod h1:GGk/oE+F1lWUfYrzKaCf4QWZmMdytt0LL4XdFEFB0LE=
 github.com/kaptinlin/messageformat-go v0.4.18 h1:RBlHVWgZyoxTcUgGWBsl2AcyScq/urqbLZvzgryTmSI=
 github.com/kaptinlin/messageformat-go v0.4.18/go.mod h1:ntI3154RnqJgr7GaC+vZBnIExl2V3sv9selvRNNEM24=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
