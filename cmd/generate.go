@@ -43,34 +43,25 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 	log.Info().Int("count", len(schemas)).Msg("Loaded schemas")
 
-	// Generate TypeScript if requested
-	if flags.OutTS != "" {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutTS, generation.LanguageTypeScript)
-		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Msg("TypeScript generation failed")
-			return errors.Wrap(err, "generating TypeScript")
-		}
-		log.Info().Str("dir", flags.OutTS).Msg("TypeScript generation complete")
+	targets := []struct {
+		dir  string
+		lang generation.Language
+	}{
+		{flags.OutTS, generation.LanguageTypeScript},
+		{flags.OutPY, generation.LanguagePython},
+		{flags.OutGo, generation.LanguageGo},
 	}
 
-	// Generate Python if requested
-	if flags.OutPY != "" {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutPY, generation.LanguagePython)
-		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Msg("Python generation failed")
-			return errors.Wrap(err, "generating Python")
+	for _, t := range targets {
+		if t.dir == "" {
+			continue
 		}
-		log.Info().Str("dir", flags.OutPY).Msg("Python generation complete")
-	}
-
-	// Generate Go if requested
-	if flags.OutGo != "" {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutGo, generation.LanguageGo)
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), t.dir, t.lang)
 		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Msg("Go generation failed")
-			return errors.Wrap(err, "generating Go")
+			log.Error().Err(err).Str("lang", string(t.lang)).Msg("Generation failed")
+			return errors.Wrap(err, "generating "+string(t.lang))
 		}
-		log.Info().Str("dir", flags.OutGo).Msg("Go generation complete")
+		log.Info().Str("dir", t.dir).Str("lang", string(t.lang)).Msg("Generation complete")
 	}
 
 	return nil
