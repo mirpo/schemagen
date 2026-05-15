@@ -15,7 +15,7 @@ type mockTypeBuilder struct {
 	buildUnionCalled  bool
 }
 
-func (m *mockTypeBuilder) BuildStruct(typ *Type, s *jsonschema.Schema) error {
+func (m *mockTypeBuilder) BuildStruct(_ *BuildContext, typ *Type, s *jsonschema.Schema) error {
 	m.buildStructCalled = true
 	typ.Kind = KindStruct
 	return nil
@@ -27,7 +27,7 @@ func (m *mockTypeBuilder) BuildEnum(typ *Type, s *jsonschema.Schema) error {
 	return nil
 }
 
-func (m *mockTypeBuilder) BuildUnion(typ *Type, s *jsonschema.Schema) error {
+func (m *mockTypeBuilder) BuildUnion(_ *BuildContext, typ *Type, s *jsonschema.Schema) error {
 	m.buildUnionCalled = true
 	typ.Kind = KindUnion
 	return nil

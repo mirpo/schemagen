@@ -10,14 +10,14 @@ import (
 func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	t.Run("ref", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Ref: "#/$defs/MyType"}, "")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Ref: "#/$defs/MyType"}, "")
 		assert.Equal(t, KindRef, ref.Kind)
 		assert.Equal(t, "MyType", ref.TypeName)
 	})
 
 	t.Run("enum inline", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{ExtractInlined: false})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
 		assert.Equal(t, KindEnum, ref.Kind)
 		assert.Len(t, ref.EnumValues, 3)
 	})
@@ -25,7 +25,7 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	t.Run("enum extracted", func(t *testing.T) {
 		registry := NewTypeRegistry()
 		trb := NewTypeRefBuilder(registry, NewRefResolver(nil), &BuildConfig{ExtractInlined: true})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
 		assert.Equal(t, KindRef, ref.Kind)
 		assert.Equal(t, "Status", ref.TypeName)
 		assert.Len(t, registry.All(), 1)
@@ -33,7 +33,7 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 
 	t.Run("union oneOf", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
 			OneOf: []*jsonschema.Schema{{Type: []string{"string"}}, {Type: []string{"integer"}}},
 		}, "")
 		assert.Equal(t, KindUnion, ref.Kind)
@@ -42,7 +42,7 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 
 	t.Run("array", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
 			Type:  []string{"array"},
 			Items: &jsonschema.Schema{Type: []string{"string"}},
 		}, "tags")
@@ -52,13 +52,13 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 
 	t.Run("object as map", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"object"}}, "")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"object"}}, "")
 		assert.Equal(t, KindMap, ref.Kind)
 	})
 
 	t.Run("primitive", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string"}}, "")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"string"}}, "")
 		assert.Equal(t, KindPrimitive, ref.Kind)
 		assert.Equal(t, PrimString, ref.Primitive)
 	})
@@ -66,20 +66,20 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	t.Run("primitive with format", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
 		format := "email"
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string"}, Format: &format}, "")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"string"}, Format: &format}, "")
 		assert.Equal(t, "email", ref.Format)
 	})
 
 	t.Run("nullable", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string", "null"}}, "")
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"string", "null"}}, "")
 		assert.True(t, ref.Nullable)
 		assert.Equal(t, KindPrimitive, ref.Kind)
 	})
 
 	t.Run("nullable array with null first", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
 			Type:  []string{"null", "array"},
 			Items: &jsonschema.Schema{Type: []string{"string"}},
 		}, "tags")
@@ -90,7 +90,7 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 
 	t.Run("nullable object with null first", func(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&jsonschema.Schema{
+		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
 			Type: []string{"null", "object"},
 		}, "")
 		assert.True(t, ref.Nullable)

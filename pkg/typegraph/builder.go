@@ -100,10 +100,6 @@ func isUnion(schema *jsonschema.Schema) bool {
 	return len(schema.AnyOf) > 0 || len(schema.OneOf) > 0
 }
 
-// BuildTypeRef builds a TypeRef from a schema property (implements FieldBuilder).
-// Delegates to typeRefBuilder.
-func (b *Builder) BuildTypeRef(schema *jsonschema.Schema, fieldName string) *TypeRef {
-	// Sync walker's currentOrder to typeRefBuilder
-	b.typeRefBuilder.SetCurrentOrder(b.walker.CurrentOrder())
-	return b.typeRefBuilder.BuildTypeRef(schema, fieldName)
+func (b *Builder) BuildTypeRef(ctx *BuildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
+	return b.typeRefBuilder.BuildTypeRef(ctx, schema, fieldName)
 }

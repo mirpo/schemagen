@@ -1170,7 +1170,7 @@ func TestBuildTypeRef_InlineEnum(t *testing.T) {
 		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: true})
 		schema := &jsonschema.Schema{Enum: []interface{}{"active", "inactive", "pending"}}
 
-		ref := builder.BuildTypeRef(schema, "status")
+		ref := builder.BuildTypeRef(&BuildContext{}, schema, "status")
 
 		assert.Equal(t, KindRef, ref.Kind)
 		assert.Equal(t, "Status", ref.TypeName)
@@ -1182,7 +1182,7 @@ func TestBuildTypeRef_InlineEnum(t *testing.T) {
 		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: false})
 		schema := &jsonschema.Schema{Enum: []interface{}{"option1", "option2", "option3"}}
 
-		ref := builder.BuildTypeRef(schema, "status")
+		ref := builder.BuildTypeRef(&BuildContext{}, schema, "status")
 
 		assert.Equal(t, KindEnum, ref.Kind)
 		assert.Len(t, ref.EnumValues, 3)
@@ -1222,7 +1222,7 @@ func TestExtractDefinition_PrimitiveType(t *testing.T) {
 		Type: []string{"string"},
 	}
 
-	err := builder.walker.ExtractDefinition("CustomString", schema)
+	err := builder.walker.extractDefinition(&BuildContext{}, "CustomString", schema)
 
 	require.NoError(t, err)
 	assert.Len(t, builder.registry.All(), 1)
@@ -1298,7 +1298,7 @@ func TestExtractInlineObjectType(t *testing.T) {
 		Required: []string{"id"},
 	}
 
-	typ := builder.extractInlineObjectType("Property", schema)
+	typ := builder.extractInlineObjectType(&BuildContext{}, "Property", schema)
 
 	assert.NotNil(t, typ)
 	assert.Equal(t, "Property", typ.Name)
@@ -1324,7 +1324,7 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 		Required: []string{"name"},
 	}
 
-	fields := builder.BuildFieldsFromProperties(schema, "")
+	fields := builder.BuildFieldsFromProperties(&BuildContext{}, schema, "")
 
 	assert.Len(t, fields, 2)
 	// Should be alphabetically ordered
@@ -1346,7 +1346,7 @@ func TestBuildStruct(t *testing.T) {
 			},
 		}
 		typ := &Type{ID: "1", Name: "Extended"}
-		err := builder.BuildStruct(typ, schema)
+		err := builder.BuildStruct(&BuildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindStruct, typ.Kind)
 		assert.Contains(t, typ.Extends, "BaseType")
@@ -1361,7 +1361,7 @@ func TestBuildStruct(t *testing.T) {
 			AdditionalProperties: &jsonschema.Schema{Type: []string{"string"}},
 		}
 		typ := &Type{ID: "1", Name: "TestType"}
-		err := builder.BuildStruct(typ, schema)
+		err := builder.BuildStruct(&BuildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindStruct, typ.Kind)
 		assert.NotNil(t, typ.AdditionalProps)
@@ -1571,7 +1571,7 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			builder := NewBuilder(compiler)
 
 			schema := tt.setupSchema()
-			ref := builder.BuildTypeRef(schema, tt.fieldName)
+			ref := builder.BuildTypeRef(&BuildContext{}, schema, tt.fieldName)
 
 			assert.Equal(t, tt.expectKind, ref.Kind)
 			if tt.expectChecks != nil {
@@ -1841,7 +1841,7 @@ func TestBuildUnion(t *testing.T) {
 			Name: "UnionNullable",
 		}
 
-		err := builder.BuildUnion(typ, schema)
+		err := builder.BuildUnion(&BuildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 3)
@@ -1860,7 +1860,7 @@ func TestBuildUnion(t *testing.T) {
 			Name: "SimpleUnion",
 		}
 
-		err := builder.BuildUnion(typ, schema)
+		err := builder.BuildUnion(&BuildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 2)

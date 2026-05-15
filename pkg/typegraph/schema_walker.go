@@ -46,22 +46,19 @@ func (w *SchemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jso
 // TypeBuilder interface for building specific type kinds.
 // Used to break circular dependency between SchemaWalker and type builders.
 type TypeBuilder interface {
-	BuildStruct(typ *Type, schema *jsonschema.Schema) error
+	BuildStruct(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error
 	BuildEnum(typ *Type, schema *jsonschema.Schema) error
-	BuildUnion(typ *Type, schema *jsonschema.Schema) error
+	BuildUnion(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error
 }
 
 // SchemaWalker handles schema traversal and type detection.
 type SchemaWalker struct {
-	registry     *TypeRegistry
-	resolver     *RefResolver
-	typeBuilder  TypeBuilder
-	config       *BuildConfig
-	currentOrder *schema.PropertyOrder
-	currentPath  string
+	registry    *TypeRegistry
+	resolver    *RefResolver
+	typeBuilder TypeBuilder
+	config      *BuildConfig
 }
 
-// NewSchemaWalker creates a new schema walker.
 func NewSchemaWalker(registry *TypeRegistry, resolver *RefResolver, tb TypeBuilder, config *BuildConfig) *SchemaWalker {
 	if config == nil {
 		config = &BuildConfig{}
@@ -74,69 +71,40 @@ func NewSchemaWalker(registry *TypeRegistry, resolver *RefResolver, tb TypeBuild
 	}
 }
 
-// SetCurrentOrder sets the current property order for lookups.
-func (w *SchemaWalker) SetCurrentOrder(order *schema.PropertyOrder) {
-	w.currentOrder = order
-}
-
-// SetCurrentPath sets the current schema path for order lookups.
-func (w *SchemaWalker) SetCurrentPath(path string) {
-	w.currentPath = path
-}
-
-// CurrentOrder returns the current property order.
-func (w *SchemaWalker) CurrentOrder() *schema.PropertyOrder {
-	return w.currentOrder
-}
-
-// CurrentPath returns the current schema path.
-func (w *SchemaWalker) CurrentPath() string {
-	return w.currentPath
-}
-
 // Process processes a single schema and extracts types.
 func (w *SchemaWalker) Process(s *schema.Schema) error {
-	// Store current schema's property order for lookups
-	w.currentOrder = s.PropertyOrder
-	w.currentPath = s.RelativePath
+	ctx := &BuildContext{
+		Order: s.PropertyOrder,
+		Path:  s.RelativePath,
+	}
 
-	// Get the compiled schema
 	compiled := s.Compiled
-	// Store current root schema for self-reference resolution
 	w.resolver.SetCurrentSchema(compiled)
 
-	// First, extract $defs as separate types
 	if compiled.Defs != nil {
-		// Get $defs in original schema order (preserves JSON file order)
 		defNames := w.getOrderedDefNames(s, compiled.Defs)
 
-		// Process each $def with correct path for order lookup
 		for _, defName := range defNames {
 			defSchema := compiled.Defs[defName]
-
-			// Set currentPath to the $def path for property order lookup
-			previousPath := w.currentPath
-			w.currentPath = fmt.Sprintf("%s#/$defs/%s", s.RelativePath, defName)
-
-			if err := w.ExtractDefinition(defName, defSchema); err != nil {
-				return fmt.Errorf("extracting $def %s: %w", defName, err)
+			defCtx := &BuildContext{
+				Order: ctx.Order,
+				Path:  fmt.Sprintf("%s#/$defs/%s", s.RelativePath, defName),
 			}
 
-			// Restore path
-			w.currentPath = previousPath
+			if err := w.extractDefinition(defCtx, defName, defSchema); err != nil {
+				return fmt.Errorf("extracting $def %s: %w", defName, err)
+			}
 		}
 	}
 
-	// Determine type kind based on schema
 	typ := &Type{
 		ID:          w.registry.NextID(),
 		Name:        s.Name,
 		Description: getDescription(compiled),
 	}
 
-	// Handle different schema types
 	if isObject(compiled) {
-		if err := w.typeBuilder.BuildStruct(typ, compiled); err != nil {
+		if err := w.typeBuilder.BuildStruct(ctx, typ, compiled); err != nil {
 			return err
 		}
 	} else if isEnum(compiled) {
@@ -144,7 +112,7 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 			return err
 		}
 	} else if isUnion(compiled) {
-		if err := w.typeBuilder.BuildUnion(typ, compiled); err != nil {
+		if err := w.typeBuilder.BuildUnion(ctx, typ, compiled); err != nil {
 			return err
 		}
 	} else {
@@ -156,8 +124,7 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 	return nil
 }
 
-// ExtractDefinition extracts a $def as a separate type.
-func (w *SchemaWalker) ExtractDefinition(name string, schema *jsonschema.Schema) error {
+func (w *SchemaWalker) extractDefinition(ctx *BuildContext, name string, schema *jsonschema.Schema) error {
 	typ := &Type{
 		ID:          w.registry.NextID(),
 		Name:        naming.ToPascalCase(name),
@@ -165,7 +132,7 @@ func (w *SchemaWalker) ExtractDefinition(name string, schema *jsonschema.Schema)
 	}
 
 	if isObject(schema) {
-		if err := w.typeBuilder.BuildStruct(typ, schema); err != nil {
+		if err := w.typeBuilder.BuildStruct(ctx, typ, schema); err != nil {
 			return err
 		}
 	} else if isEnum(schema) {
@@ -173,7 +140,7 @@ func (w *SchemaWalker) ExtractDefinition(name string, schema *jsonschema.Schema)
 			return err
 		}
 	} else if isUnion(schema) {
-		if err := w.typeBuilder.BuildUnion(typ, schema); err != nil {
+		if err := w.typeBuilder.BuildUnion(ctx, typ, schema); err != nil {
 			return err
 		}
 	} else {

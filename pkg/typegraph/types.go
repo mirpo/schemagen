@@ -1,5 +1,7 @@
 package typegraph
 
+import "github.com/mirpo/schemagen/pkg/schema"
+
 // PrimitiveKind identifies a language-neutral primitive type.
 type PrimitiveKind int
 
@@ -186,4 +188,10 @@ func (g *Graph) GetType(name string) *Type {
 // BuildConfig controls type graph building behavior.
 type BuildConfig struct {
 	ExtractInlined bool // Extract inline enums/objects to named types
+}
+
+// BuildContext carries per-schema state through the build pipeline.
+type BuildContext struct {
+	Order *schema.PropertyOrder
+	Path  string
 }

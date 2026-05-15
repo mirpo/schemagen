@@ -5,26 +5,21 @@ import (
 
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/naming"
-	"github.com/mirpo/schemagen/pkg/schema"
 )
 
 // FieldBuilder interface for building fields/type refs.
 // Breaks circular dependency between StructBuilder and TypeRefBuilder.
 type FieldBuilder interface {
-	BuildTypeRef(schema *jsonschema.Schema, fieldName string) *TypeRef
-	BuildFieldsFromProperties(schema *jsonschema.Schema, orderPath string) []*Field
+	BuildTypeRef(ctx *BuildContext, schema *jsonschema.Schema, fieldName string) *TypeRef
+	BuildFieldsFromProperties(ctx *BuildContext, schema *jsonschema.Schema, orderPath string) []*Field
 }
 
-// StructBuilder builds struct types from JSON schemas.
 type StructBuilder struct {
 	registry     *TypeRegistry
 	resolver     *RefResolver
 	fieldBuilder FieldBuilder
-	currentOrder *schema.PropertyOrder
-	currentPath  string
 }
 
-// NewStructBuilder creates a new StructBuilder.
 func NewStructBuilder(registry *TypeRegistry, resolver *RefResolver) *StructBuilder {
 	return &StructBuilder{
 		registry: registry,
@@ -32,23 +27,11 @@ func NewStructBuilder(registry *TypeRegistry, resolver *RefResolver) *StructBuil
 	}
 }
 
-// SetFieldBuilder sets the FieldBuilder (setter injection to break cycle).
 func (b *StructBuilder) SetFieldBuilder(fb FieldBuilder) {
 	b.fieldBuilder = fb
 }
 
-// SetCurrentOrder sets the current property order for field ordering.
-func (b *StructBuilder) SetCurrentOrder(order *schema.PropertyOrder) {
-	b.currentOrder = order
-}
-
-// SetCurrentPath sets the current schema path for order lookups.
-func (b *StructBuilder) SetCurrentPath(path string) {
-	b.currentPath = path
-}
-
-// Build builds a struct type from a schema.
-func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
+func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindStruct
 
 	// Pre-allocate based on expected sizes
@@ -90,8 +73,8 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 			// For inline allOf schemas, merge their properties
 			if allOfSchema.Properties != nil {
 				// Construct path for this allOf branch
-				allOfPath := fmt.Sprintf("%s#/allOf/%d", b.currentPath, allOfIndex)
-				for _, propName := range GetOrderedPropertyNames(allOfSchema.Properties, allOfPath, b.currentOrder) {
+				allOfPath := fmt.Sprintf("%s#/allOf/%d", ctx.Path, allOfIndex)
+				for _, propName := range GetOrderedPropertyNames(allOfSchema.Properties, allOfPath, ctx.Order) {
 					propSchema := (*allOfSchema.Properties)[propName]
 					field := &Field{
 						Name:        naming.ToPascalCase(propName),
@@ -99,9 +82,8 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 						Description: getDescription(propSchema),
 						Required:    requiredMap[propName],
 						OmitEmpty:   !requiredMap[propName],
-						Type:        b.fieldBuilder.BuildTypeRef(propSchema, propName),
+						Type:        b.fieldBuilder.BuildTypeRef(ctx, propSchema, propName),
 					}
-					// Extract validation constraints
 					ExtractConstraints(field, propSchema)
 					typ.Fields = append(typ.Fields, field)
 				}
@@ -109,10 +91,8 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 		}
 	}
 
-	// Extract properties from the main schema
 	if schema.Properties != nil {
-		// Iterate over properties in schema file order
-		for _, propName := range GetOrderedPropertyNames(schema.Properties, b.currentPath, b.currentOrder) {
+		for _, propName := range GetOrderedPropertyNames(schema.Properties, ctx.Path, ctx.Order) {
 			propSchema := (*schema.Properties)[propName]
 			field := &Field{
 				Name:        naming.ToPascalCase(propName),
@@ -120,9 +100,8 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 				Description: getDescription(propSchema),
 				Required:    requiredMap[propName],
 				OmitEmpty:   !requiredMap[propName],
-				Type:        b.fieldBuilder.BuildTypeRef(propSchema, propName),
+				Type:        b.fieldBuilder.BuildTypeRef(ctx, propSchema, propName),
 			}
-			// Extract validation constraints
 			ExtractConstraints(field, propSchema)
 			typ.Fields = append(typ.Fields, field)
 		}
@@ -132,7 +111,9 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 	typ.Fields = b.DeduplicateFields(typ.Fields)
 
 	// Capture additionalProperties configuration
-	typ.AdditionalProps = ExtractAdditionalProperties(schema, b.fieldBuilder.BuildTypeRef)
+	typ.AdditionalProps = ExtractAdditionalProperties(schema, func(s *jsonschema.Schema, fieldName string) *TypeRef {
+		return b.fieldBuilder.BuildTypeRef(ctx, s, fieldName)
+	})
 
 	return nil
 }

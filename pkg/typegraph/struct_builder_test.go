@@ -14,7 +14,7 @@ type mockFieldBuilder struct {
 	returnFields      []*Field
 }
 
-func (m *mockFieldBuilder) BuildTypeRef(schema *jsonschema.Schema, fieldName string) *TypeRef {
+func (m *mockFieldBuilder) BuildTypeRef(_ *BuildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
 	m.buildTypeRefCalls++
 	if m.returnTypeRef != nil {
 		return m.returnTypeRef
@@ -22,7 +22,7 @@ func (m *mockFieldBuilder) BuildTypeRef(schema *jsonschema.Schema, fieldName str
 	return &TypeRef{Kind: KindPrimitive, Primitive: PrimString}
 }
 
-func (m *mockFieldBuilder) BuildFieldsFromProperties(schema *jsonschema.Schema, orderPath string) []*Field {
+func (m *mockFieldBuilder) BuildFieldsFromProperties(_ *BuildContext, schema *jsonschema.Schema, orderPath string) []*Field {
 	return m.returnFields
 }
 
@@ -34,7 +34,7 @@ func TestStructBuilder_Build(t *testing.T) {
 		sb.SetFieldBuilder(mock)
 
 		typ := &Type{ID: "1", Name: "Person"}
-		err := sb.Build(typ, &jsonschema.Schema{
+		err := sb.Build(&BuildContext{}, typ, &jsonschema.Schema{
 			Type: []string{"object"},
 			Properties: &jsonschema.SchemaMap{
 				"name": &jsonschema.Schema{Type: []string{"string"}},
@@ -54,7 +54,7 @@ func TestStructBuilder_Build(t *testing.T) {
 		sb.SetFieldBuilder(&mockFieldBuilder{})
 
 		typ := &Type{ID: "1", Name: "ExtendedType"}
-		err := sb.Build(typ, &jsonschema.Schema{
+		err := sb.Build(&BuildContext{}, typ, &jsonschema.Schema{
 			AllOf: []*jsonschema.Schema{
 				{Ref: "#/$defs/BaseType"},
 				{Properties: &jsonschema.SchemaMap{"extra": &jsonschema.Schema{Type: []string{"string"}}}},
