@@ -225,8 +225,7 @@ func (g *Generator) fieldNeedsAlias(field *typegraph.Field) bool {
 		return true
 	}
 	if g.config.SnakeCaseField {
-		sanitized := sanitizePythonIdentifier(name)
-		return naming.ToSnakeCase(sanitized) != sanitized
+		return naming.ToSnakeCase(name) != name
 	}
 	return false
 }
