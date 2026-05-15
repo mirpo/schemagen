@@ -197,8 +197,11 @@ func compareLangDir(generated, existing string) ([]FileDiff, error) {
 		return normalizeLineEndings(string(b)), nil
 	}
 
-	if _, err := os.Stat(existing); os.IsNotExist(err) {
-		return walkGeneratedFiles(generated, "", readFile)
+	if _, err := os.Stat(existing); err != nil {
+		if os.IsNotExist(err) {
+			return walkGeneratedFiles(generated, "", readFile)
+		}
+		return nil, err
 	}
 
 	var diffs []FileDiff
@@ -287,7 +290,10 @@ func walkExistingFiles(generated, existing string, readFile func(string) (string
 			return err
 		}
 
-		if _, err := os.Stat(filepath.Join(generated, rel)); os.IsNotExist(err) {
+		if _, statErr := os.Stat(filepath.Join(generated, rel)); statErr != nil {
+			if !os.IsNotExist(statErr) {
+				return statErr
+			}
 			content, err := readFile(existPath)
 			if err != nil {
 				return err

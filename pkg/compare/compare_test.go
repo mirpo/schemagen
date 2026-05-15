@@ -237,3 +237,24 @@ func TestFileStatus_Constants(t *testing.T) {
 	assert.Equal(t, StatusNew, FileStatus("new"))
 	assert.Equal(t, StatusDeleted, FileStatus("deleted"))
 }
+
+func TestWalkExistingFiles_StatErrorPropagated(t *testing.T) {
+	_, generatedDir, existingDir := setupDirs(t)
+	createTestOutput(t, existingDir, "file.ts", "content")
+
+	// Make generated dir unreadable so os.Stat on the joined path fails
+	// with a permission error, not IsNotExist
+	unreadableDir := filepath.Join(generatedDir, "noperm")
+	require.NoError(t, os.MkdirAll(unreadableDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(unreadableDir, 0o755) })
+
+	readFile := func(p string) (string, error) {
+		b, err := os.ReadFile(p)
+		return string(b), err
+	}
+
+	createTestOutput(t, existingDir, "noperm/inner.ts", "content")
+
+	_, err := walkExistingFiles(generatedDir, existingDir, readFile)
+	assert.Error(t, err, "non-IsNotExist stat errors should propagate")
+}

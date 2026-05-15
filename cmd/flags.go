@@ -21,7 +21,7 @@ func AddGenerationFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("disable-timestamp", false, "Disable timestamp in generated file headers")
 
 	// Output strategy flag
-	cmd.Flags().String("output-strategy", "multifile", "Output file strategy: 'bundle', 'multifile', 'bundledeps', 'bundle-per-dir'")
+	cmd.Flags().String("output-strategy", "multifile", "Output file strategy: 'bundle', 'multifile', 'bundledeps'")
 
 	// TypeScript feature flags
 	cmd.Flags().Bool("ts-unknown-any", false, "Use 'unknown' instead of 'any' for untyped schemas (TypeScript)")

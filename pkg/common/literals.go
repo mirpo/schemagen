@@ -56,27 +56,3 @@ func (f LiteralFormatter) FormatValue(val interface{}) string {
 		return fmt.Sprintf("%v", v)
 	}
 }
-
-// FormatStringLiteral formats a string value as a quoted literal.
-func (f LiteralFormatter) FormatStringLiteral(s string) string {
-	return fmt.Sprintf("%q", s)
-}
-
-// FormatNumericLiteral formats a numeric value as a literal.
-func (f LiteralFormatter) FormatNumericLiteral(val interface{}) string {
-	switch v := val.(type) {
-	case float64:
-		if v == float64(int64(v)) {
-			return fmt.Sprintf("%d", int64(v))
-		}
-		return fmt.Sprintf("%g", v)
-	case int:
-		return fmt.Sprintf("%d", v)
-	case int64:
-		return fmt.Sprintf("%d", v)
-	case int32:
-		return fmt.Sprintf("%d", v)
-	default:
-		return fmt.Sprintf("%v", v)
-	}
-}

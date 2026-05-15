@@ -114,13 +114,6 @@ func TestExitCodeError(t *testing.T) {
 	})
 }
 
-func TestNewUsageError(t *testing.T) {
-	err := NewUsageError("invalid argument")
-
-	assert.Equal(t, "invalid argument", err.Message)
-	assert.Equal(t, ExitUsage, err.Code)
-}
-
 func TestWrap(t *testing.T) {
 	t.Run("wraps error", func(t *testing.T) {
 		cause := fmt.Errorf("original error")

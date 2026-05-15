@@ -84,16 +84,9 @@ func (e *ExitCodeError) Unwrap() error {
 	return e.Cause
 }
 
-// Common exit codes
 const (
-	ExitGeneral = 1 // General error
-	ExitUsage   = 2 // Invalid usage/arguments
+	ExitGeneral = 1
 )
-
-// NewUsageError creates an error for invalid CLI usage.
-func NewUsageError(msg string) *ExitCodeError {
-	return &ExitCodeError{Message: msg, Code: ExitUsage}
-}
 
 // Wrap wraps an error with context and returns an ExitCodeError.
 // The original error is preserved in the error chain via Unwrap.

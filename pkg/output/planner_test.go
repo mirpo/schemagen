@@ -23,8 +23,6 @@ func TestOutputStrategy_Set(t *testing.T) {
 		{"multi-file", "multi-file", StrategyMultiFile, false},
 		{"bundledeps", "bundledeps", StrategyBundleDeps, false},
 		{"bundle-deps", "bundle-deps", StrategyBundleDeps, false},
-		{"bundle-per-dir", "bundle-per-dir", StrategyBundlePerDir, false},
-
 		// Invalid inputs should error
 		{"invalid", "invalid", "", true},
 		{"empty", "", "", true},
@@ -55,7 +53,6 @@ func TestOutputStrategy_String(t *testing.T) {
 		{StrategyBundle, "bundle"},
 		{StrategyMultiFile, "multi-file"},
 		{StrategyBundleDeps, "bundle-deps"},
-		{StrategyBundlePerDir, "bundle-per-dir"},
 	}
 
 	for _, tt := range tests {

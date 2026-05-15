@@ -3,6 +3,7 @@ package naming
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // ToPascalCase converts a string to PascalCase.
@@ -90,22 +91,29 @@ func ToConstantCase(s string) string {
 		return s
 	}
 
-	// Normalize common delimiters to underscores first.
-	normalized := strings.NewReplacer("-", "_", " ", "_", ".", "_").Replace(s)
-
-	// Now handle camel/pascal boundaries + acronyms using snake conversion,
-	// then uppercase result.
+	normalized := strings.Join(splitOnDelimiters(s), "_")
 	snake := ToSnakeCase(normalized)
 	return strings.ToUpper(snake)
 }
 
-// IsPascalCase checks if a string is in PascalCase format.
 func IsPascalCase(s string) bool {
 	if s == "" {
 		return false
 	}
-	r := rune(s[0])
-	return r >= 'A' && r <= 'Z'
+	first, size := utf8.DecodeRuneInString(s)
+	if !unicode.IsUpper(first) {
+		return false
+	}
+	for _, r := range s[size:] {
+		if isDelimiter(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDelimiter(r rune) bool {
+	return r == '_' || r == '-' || r == ' ' || r == '.'
 }
 
 // splitOnDelimiters splits a string on underscores, hyphens, spaces, and dots.
@@ -122,10 +130,9 @@ func splitOnDelimiters(s string) []string {
 	}
 
 	for _, r := range s {
-		switch r {
-		case '_', '-', ' ', '.':
+		if isDelimiter(r) {
 			flush()
-		default:
+		} else {
 			cur.WriteRune(r)
 		}
 	}

@@ -105,6 +105,11 @@ func TestIsPascalCase(t *testing.T) {
 		{"user_name", false},
 		{"123", false},
 		{"APIKey", true},
+		{"HTTP_RESPONSE", false},
+		{"Hello_world", false},
+		{"Hello world", false},
+		{"my-component", false},
+		{"some.thing", false},
 	}
 
 	for _, tt := range tests {

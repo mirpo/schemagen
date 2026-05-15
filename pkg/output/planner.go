@@ -14,10 +14,9 @@ import (
 type OutputStrategy string
 
 const (
-	StrategyBundle       OutputStrategy = "bundle"
-	StrategyBundleDeps   OutputStrategy = "bundle-deps"
-	StrategyMultiFile    OutputStrategy = "multi-file"
-	StrategyBundlePerDir OutputStrategy = "bundle-per-dir"
+	StrategyBundle     OutputStrategy = "bundle"
+	StrategyBundleDeps OutputStrategy = "bundle-deps"
+	StrategyMultiFile  OutputStrategy = "multi-file"
 )
 
 func (s *OutputStrategy) String() string {
@@ -32,10 +31,8 @@ func (s *OutputStrategy) Set(v string) error {
 		*s = StrategyMultiFile
 	case "bundledeps", "bundle-deps":
 		*s = StrategyBundleDeps
-	case "bundle-per-dir":
-		*s = StrategyBundlePerDir
 	default:
-		return fmt.Errorf("invalid output strategy %q (must be bundle, multifile, bundledeps, or bundle-per-dir)", v)
+		return fmt.Errorf("invalid output strategy %q (must be bundle, multifile, or bundledeps)", v)
 	}
 	return nil
 }

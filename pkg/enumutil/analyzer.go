@@ -38,31 +38,3 @@ func AnalyzeEnumValues(values []typegraph.EnumValue) EnumCategory {
 		HasMixed:   (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther,
 	}
 }
-
-// AnalyzeRawEnumValues analyzes raw interface{} enum values (for inline enums in TypeRef).
-func AnalyzeRawEnumValues(values []interface{}) EnumCategory {
-	if len(values) == 0 {
-		return EnumCategory{AllStrings: true}
-	}
-
-	hasString := false
-	hasNumber := false
-	hasOther := false
-
-	for _, v := range values {
-		switch v.(type) {
-		case string:
-			hasString = true
-		case float64, int, int64, int32:
-			hasNumber = true
-		default:
-			hasOther = true
-		}
-	}
-
-	return EnumCategory{
-		AllStrings: hasString && !hasNumber && !hasOther,
-		AllNumbers: hasNumber && !hasString && !hasOther,
-		HasMixed:   (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther,
-	}
-}

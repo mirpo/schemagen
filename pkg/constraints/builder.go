@@ -88,39 +88,3 @@ func BuildArrayConstraints(field *typegraph.Field, fmt ArrayFormatters) []string
 
 	return constraints
 }
-
-// HasConstraints checks if a field has any validation constraints.
-func HasConstraints(field *typegraph.Field) bool {
-	if field == nil {
-		return false
-	}
-	return field.MinLength != nil || field.MaxLength != nil || field.Pattern != nil ||
-		field.Minimum != nil || field.Maximum != nil ||
-		field.ExclusiveMinimum != nil || field.ExclusiveMaximum != nil ||
-		field.MinItems != nil || field.MaxItems != nil
-}
-
-// HasStringConstraints checks if a field has string validation constraints.
-func HasStringConstraints(field *typegraph.Field) bool {
-	if field == nil {
-		return false
-	}
-	return field.MinLength != nil || field.MaxLength != nil || field.Pattern != nil
-}
-
-// HasNumberConstraints checks if a field has numeric validation constraints.
-func HasNumberConstraints(field *typegraph.Field) bool {
-	if field == nil {
-		return false
-	}
-	return field.Minimum != nil || field.Maximum != nil ||
-		field.ExclusiveMinimum != nil || field.ExclusiveMaximum != nil
-}
-
-// HasArrayConstraints checks if a field has array validation constraints.
-func HasArrayConstraints(field *typegraph.Field) bool {
-	if field == nil {
-		return false
-	}
-	return field.MinItems != nil || field.MaxItems != nil
-}
