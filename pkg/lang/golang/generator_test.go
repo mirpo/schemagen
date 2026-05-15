@@ -164,7 +164,35 @@ func TestGenerateFile_ConfigFlags(t *testing.T) {
 }
 
 /*
-5. Ordering & spacing
+5. Nil safety
+*/
+
+func TestGenerateFile_NilTypeRef(t *testing.T) {
+	g := gen(&Config{DisableHeaders: true})
+
+	typ := structType("Event",
+		&typegraph.Field{
+			JSONName: "data",
+			Type:     nil, // nil TypeRef — should not panic
+			Required: true,
+		},
+	)
+
+	assert.NotPanics(t, func() {
+		_, _ = g.GenerateFile([]*typegraph.Type{typ}, nil)
+	})
+}
+
+func TestTypeRefToGoType_Nil(t *testing.T) {
+	g := gen(nil)
+	assert.NotPanics(t, func() {
+		result := g.typeRefToGoType(nil)
+		assert.Equal(t, "interface{}", result)
+	})
+}
+
+/*
+6. Ordering & spacing
 */
 
 func TestGenerateFile_TypeOrdering(t *testing.T) {

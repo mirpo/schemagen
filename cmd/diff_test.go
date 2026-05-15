@@ -9,6 +9,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestShowUnifiedDiff_FormatSpecifiers(t *testing.T) {
+	// Lines containing % format verbs must not be interpreted as fmt format strings.
+	// color.Red(line) treats line as a format string, producing garbled output
+	// like "%!s(MISSING)" when the line contains %s, %d, etc.
+	old := `fmt.Sprintf("%s is %d")`
+	new := `fmt.Sprintf("%s is %d done")`
+
+	out := captureStdout(t, func() {
+		showUnifiedDiff(old, new)
+	})
+
+	assert.NotContains(t, out, "MISSING")
+	assert.Contains(t, out, "%s")
+	assert.Contains(t, out, "%d")
+}
+
 func TestDiffCommand(t *testing.T) {
 	t.Run("no changes", func(t *testing.T) {
 		tmpDir := t.TempDir()

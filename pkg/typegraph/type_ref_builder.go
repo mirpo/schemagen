@@ -64,19 +64,17 @@ func (b *TypeRefBuilder) BuildTypeRef(schema *jsonschema.Schema, fieldName strin
 	}
 }
 
-// isNullable checks if the schema allows null values.
 func (b *TypeRefBuilder) isNullable(schema *jsonschema.Schema) bool {
+	return b.hasType(schema, "null")
+}
+
+func (b *TypeRefBuilder) hasType(schema *jsonschema.Schema, typeName string) bool {
 	for _, t := range schema.Type {
-		if t == "null" {
+		if t == typeName {
 			return true
 		}
 	}
 	return false
-}
-
-// hasType checks if the schema has the specified primary type.
-func (b *TypeRefBuilder) hasType(schema *jsonschema.Schema, typeName string) bool {
-	return len(schema.Type) > 0 && schema.Type[0] == typeName
 }
 
 // buildRefTypeRef handles $ref schemas.

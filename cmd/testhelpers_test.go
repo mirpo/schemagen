@@ -1,12 +1,33 @@
 package cmd
 
 import (
+	"io"
+	"os"
 	"testing"
 
 	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	origOut := os.Stdout
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = origOut
+
+	data, err := io.ReadAll(r)
+	r.Close()
+	require.NoError(t, err)
+	return string(data)
+}
 
 func generateToDir(t *testing.T, schemaPath, outTS, outPY string, extraFlags ...string) {
 	t.Helper()

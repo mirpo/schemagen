@@ -174,7 +174,6 @@ func (w *SchemaWalker) ExtractDefinition(name string, schema *jsonschema.Schema)
 		Description: getDescription(schema),
 	}
 
-	// Handle different definition types
 	if isObject(schema) {
 		if err := w.typeBuilder.BuildStruct(typ, schema); err != nil {
 			return err
@@ -183,8 +182,11 @@ func (w *SchemaWalker) ExtractDefinition(name string, schema *jsonschema.Schema)
 		if err := w.typeBuilder.BuildEnum(typ, schema); err != nil {
 			return err
 		}
+	} else if isUnion(schema) {
+		if err := w.typeBuilder.BuildUnion(typ, schema); err != nil {
+			return err
+		}
 	} else {
-		// Primitive or other type
 		typ.Kind = KindPrimitive
 		typ.GoType = w.typeBuilder.MapPrimitiveType(schema)
 	}

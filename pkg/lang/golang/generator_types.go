@@ -16,8 +16,10 @@ func (g *Generator) fieldGoType(field *typegraph.Field) string {
 	return typeStr
 }
 
-// typeRefToGoType converts a TypeRef to a Go type string.
 func (g *Generator) typeRefToGoType(ref *typegraph.TypeRef) string {
+	if ref == nil {
+		return "interface{}"
+	}
 	if ref.GoType != "" {
 		return g.primitiveToGo(ref.GoType)
 	}

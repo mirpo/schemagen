@@ -143,8 +143,7 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 			if field.Description != "" {
 				fmt.Fprintf(&sb, "\t// %s\n", field.Description)
 			}
-			// Add union type information if this is a union
-			if field.Type.Kind == typegraph.KindUnion && len(field.Type.UnionMembers) > 0 {
+			if field.Type != nil && field.Type.Kind == typegraph.KindUnion && len(field.Type.UnionMembers) > 0 {
 				memberTypes := make([]string, 0, len(field.Type.UnionMembers))
 				for _, member := range field.Type.UnionMembers {
 					memberTypes = append(memberTypes, g.typeRefToGoType(member))

@@ -76,6 +76,26 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 		assert.True(t, ref.Nullable)
 		assert.Equal(t, KindPrimitive, ref.Kind)
 	})
+
+	t.Run("nullable array with null first", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{
+			Type:  []string{"null", "array"},
+			Items: &jsonschema.Schema{Type: []string{"string"}},
+		}, "tags")
+		assert.True(t, ref.Nullable)
+		assert.Equal(t, KindArray, ref.Kind, "should detect array even when null is listed first")
+		assert.Equal(t, KindPrimitive, ref.ItemType.Kind)
+	})
+
+	t.Run("nullable object with null first", func(t *testing.T) {
+		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&jsonschema.Schema{
+			Type: []string{"null", "object"},
+		}, "")
+		assert.True(t, ref.Nullable)
+		assert.Equal(t, KindMap, ref.Kind, "should detect object even when null is listed first")
+	})
 }
 
 func TestTypeRefBuilder_MapPrimitiveType(t *testing.T) {

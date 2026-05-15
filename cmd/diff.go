@@ -105,14 +105,12 @@ func showUnifiedDiff(old, new string) {
 			continue
 		}
 
-		// Colorize based on prefix
 		switch {
 		case strings.HasPrefix(line, "-"):
-			color.Red(line)
+			fmt.Println(color.RedString("%s", line))
 		case strings.HasPrefix(line, "+"):
-			color.Green(line)
+			fmt.Println(color.GreenString("%s", line))
 		default:
-			// Context line (starts with space)
 			fmt.Println(line)
 		}
 	}
