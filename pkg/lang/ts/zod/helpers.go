@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/common"
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 )
 
@@ -16,32 +17,14 @@ func escapeRegex(pattern string) string {
 	return strings.ReplaceAll(pattern, "/", "\\/")
 }
 
-// formatLiteral formats a value as a JavaScript literal.
 func formatLiteral(v interface{}) string {
 	switch val := v.(type) {
-	case string:
-		return fmt.Sprintf("%q", val)
-	case float64:
-		// Check if it's a whole number
-		if val == float64(int64(val)) {
-			return fmt.Sprintf("%d", int64(val))
-		}
-		return fmt.Sprintf("%v", val)
-	case int:
-		return fmt.Sprintf("%d", val)
-	case int64:
-		return fmt.Sprintf("%d", val)
-	case bool:
-		return fmt.Sprintf("%t", val)
-	case nil:
-		return "null"
 	case map[string]interface{}:
 		return formatJSObject(val)
 	case []interface{}:
 		return formatJSArray(val)
 	default:
-		// For unknown types, try to format as string
-		return fmt.Sprintf("%q", fmt.Sprintf("%v", val))
+		return common.TSLiterals.FormatValue(v)
 	}
 }
 

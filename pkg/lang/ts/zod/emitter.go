@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
@@ -144,17 +145,10 @@ func (e *Emitter) determineObjectMode(additionalProps *typegraph.AdditionalProps
 
 // generateEnumSchema generates a Zod enum schema.
 func (e *Emitter) generateEnumSchema(typ *typegraph.Type, schemaName string) string {
-	allStrings := true
-
-	for _, ev := range typ.EnumValues {
-		if _, ok := ev.Value.(string); !ok {
-			allStrings = false
-			break
-		}
-	}
+	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
 
 	var schema string
-	if allStrings && len(typ.EnumValues) > 0 {
+	if category.AllStrings && len(typ.EnumValues) > 0 {
 		// Use z.enum for string enums
 		values := make([]string, len(typ.EnumValues))
 		for i, ev := range typ.EnumValues {

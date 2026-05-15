@@ -204,7 +204,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		// Use const for number-only enums with numeric literals
 		sb.WriteString("const (\n")
 		for _, val := range typ.EnumValues {
-			numVal := formatNumericValue(val.Value)
+			numVal := common.GoLiterals.FormatValue(val.Value)
 			fmt.Fprintf(&sb, "\t%s%s %s = %s\n", typ.Name, val.Name, typ.Name, numVal)
 		}
 		sb.WriteString(")")
@@ -218,26 +218,6 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	}
 
 	return sb.String(), nil
-}
-
-// formatNumericValue formats a numeric enum value as a Go literal
-func formatNumericValue(val any) string {
-	switch v := val.(type) {
-	case float64:
-		// Check if it's a whole number
-		if v == float64(int64(v)) {
-			return fmt.Sprintf("%d", int64(v))
-		}
-		return fmt.Sprintf("%g", v)
-	case int:
-		return fmt.Sprintf("%d", v)
-	case int64:
-		return fmt.Sprintf("%d", v)
-	case int32:
-		return fmt.Sprintf("%d", v)
-	default:
-		return fmt.Sprintf("%v", v)
-	}
 }
 
 // generateUnion generates a type alias for union types.

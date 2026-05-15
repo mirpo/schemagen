@@ -76,26 +76,10 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 				g.needsAny = true
 			}
 		case typegraph.KindEnum:
-			// Categorize enum type for import determination
-			hasString := false
-			hasNumber := false
-			hasOther := false
-
-			for _, val := range typ.EnumValues {
-				switch val.Value.(type) {
-				case string:
-					hasString = true
-				case float64, int, int64:
-					hasNumber = true
-				default:
-					hasOther = true
-				}
-			}
-
-			// Determine which imports are needed
-			if (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther {
+			category := enumutil.AnalyzeEnumValues(typ.EnumValues)
+			if category.HasMixed {
 				g.imports["typing_literal"] = true
-			} else if hasNumber && !hasString {
+			} else if category.AllNumbers {
 				g.imports["enum_int"] = true
 			} else {
 				g.imports["enum"] = true
