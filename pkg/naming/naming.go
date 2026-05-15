@@ -50,6 +50,7 @@ func ToSnakeCase(s string) string {
 
 	runes := []rune(s)
 	var b strings.Builder
+	var prevWritten rune
 
 	for i := range runes {
 		r := runes[i]
@@ -64,21 +65,26 @@ func ToSnakeCase(s string) string {
 				// - aB   => a_b
 				// - ABc  => a_bc (acronym break before last cap if next is lower)
 				if prevIsLower || (unicode.IsUpper(prev) && nextIsLower) {
-					if last, ok := lastRune(&b); ok && last != '_' {
+					if prevWritten != 0 && prevWritten != '_' {
 						b.WriteRune('_')
 					}
 				}
 			}
-			b.WriteRune(unicode.ToLower(r))
+			lower := unicode.ToLower(r)
+			b.WriteRune(lower)
+			prevWritten = lower
 			continue
 		}
 
 		// Keep underscores as-is; lower everything else if it has case
 		if r == '_' {
 			b.WriteRune('_')
+			prevWritten = '_'
 			continue
 		}
-		b.WriteRune(unicode.ToLower(r))
+		lower := unicode.ToLower(r)
+		b.WriteRune(lower)
+		prevWritten = lower
 	}
 
 	return b.String()
@@ -223,15 +229,4 @@ func isValidGoIdentifier(s string) bool {
 		}
 	}
 	return true
-}
-
-// lastRune peeks the last rune written to a strings.Builder (best-effort).
-// We use it only to avoid "__" when inserting underscores.
-func lastRune(b *strings.Builder) (rune, bool) {
-	s := b.String()
-	if s == "" {
-		return 0, false
-	}
-	rs := []rune(s)
-	return rs[len(rs)-1], true
 }

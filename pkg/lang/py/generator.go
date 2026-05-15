@@ -69,11 +69,8 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 			hasStructTypes = true
 			for _, field := range typ.Fields {
 				g.checkTypeRefForImports(field.Type)
-				// Check if Field() will be needed for this field
-				if field.Description != "" || field.MinLength != nil || field.MaxLength != nil ||
-					field.Pattern != nil || field.Minimum != nil || field.Maximum != nil ||
-					field.ExclusiveMinimum != nil || field.ExclusiveMaximum != nil ||
-					field.MinItems != nil || field.MaxItems != nil {
+				// needsAlias=false: Python field name (which determines alias) is not yet computed
+				if needsField(field, false) {
 					g.imports["pydantic_field"] = true
 				}
 			}

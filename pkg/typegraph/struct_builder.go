@@ -92,19 +92,10 @@ func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.S
 	}
 
 	if schema.Properties != nil {
-		for _, propName := range GetOrderedPropertyNames(schema.Properties, ctx.Path, ctx.Order) {
-			propSchema := (*schema.Properties)[propName]
-			field := &Field{
-				Name:        naming.ToPascalCase(propName),
-				JSONName:    propName,
-				Description: getDescription(propSchema),
-				Required:    requiredMap[propName],
-				OmitEmpty:   !requiredMap[propName],
-				Type:        b.fieldBuilder.BuildTypeRef(ctx, propSchema, propName),
-			}
-			ExtractConstraints(field, propSchema)
-			typ.Fields = append(typ.Fields, field)
-		}
+		fields := buildFieldsFromSchema(ctx, schema, ctx.Path, func(c *BuildContext, s *jsonschema.Schema, name string) *TypeRef {
+			return b.fieldBuilder.BuildTypeRef(c, s, name)
+		})
+		typ.Fields = append(typ.Fields, fields...)
 	}
 
 	// Deduplicate fields (in case allOf branches define the same field)

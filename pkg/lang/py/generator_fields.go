@@ -6,22 +6,26 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
-// buildFieldParams generates Pydantic Field() parameters for a field.
-// Returns empty slice if no Field() is needed (simple field).
-// Returns non-empty slice with all constraint parameters if Field() is required.
-func (g *Generator) buildFieldParams(field *typegraph.Field, required bool, needsAlias bool, jsonName string) []string {
-	var params []string
-
-	// Determine if Field() is needed
-	needsField := field.Description != "" ||
+// needsField reports whether a Pydantic Field() wrapper is required for the given field.
+// needsAlias is true when the Python field name differs from the JSON key (e.g. snake_case
+// conversion or Python-keyword escaping) and an alias= parameter must be emitted.
+func needsField(field *typegraph.Field, needsAlias bool) bool {
+	return field.Description != "" ||
 		field.MinLength != nil || field.MaxLength != nil ||
 		field.Pattern != nil ||
 		field.Minimum != nil || field.Maximum != nil ||
 		field.ExclusiveMinimum != nil || field.ExclusiveMaximum != nil ||
 		field.MinItems != nil || field.MaxItems != nil ||
 		needsAlias
+}
 
-	if !needsField {
+// buildFieldParams generates Pydantic Field() parameters for a field.
+// Returns empty slice if no Field() is needed (simple field).
+// Returns non-empty slice with all constraint parameters if Field() is required.
+func (g *Generator) buildFieldParams(field *typegraph.Field, required bool, needsAlias bool, jsonName string) []string {
+	var params []string
+
+	if !needsField(field, needsAlias) {
 		return []string{} // Empty slice = no Field() needed
 	}
 

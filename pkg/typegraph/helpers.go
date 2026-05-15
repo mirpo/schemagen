@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/kaptinlin/jsonschema"
+	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
@@ -96,6 +97,35 @@ func GetOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string
 	// Fallback to alphabetical sorting for backward compatibility
 	names := slices.Sorted(maps.Keys(*properties))
 	return names
+}
+
+func buildFieldsFromSchema(ctx *BuildContext, sch *jsonschema.Schema, orderPath string, buildTypeRef func(*BuildContext, *jsonschema.Schema, string) *TypeRef) []*Field {
+	if sch.Properties == nil {
+		return nil
+	}
+
+	requiredMap := make(map[string]bool, len(sch.Required))
+	for _, req := range sch.Required {
+		requiredMap[req] = true
+	}
+
+	fields := make([]*Field, 0, len(*sch.Properties))
+
+	for _, propName := range GetOrderedPropertyNames(sch.Properties, orderPath, ctx.Order) {
+		propSchema := (*sch.Properties)[propName]
+		field := &Field{
+			Name:        naming.ToPascalCase(propName),
+			JSONName:    propName,
+			Description: getDescription(propSchema),
+			Required:    requiredMap[propName],
+			OmitEmpty:   !requiredMap[propName],
+			Type:        buildTypeRef(ctx, propSchema, propName),
+		}
+		ExtractConstraints(field, propSchema)
+		fields = append(fields, field)
+	}
+
+	return fields
 }
 
 // TypeRefBuilder callback type for building type references.

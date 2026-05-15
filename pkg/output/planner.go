@@ -194,48 +194,26 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 // markOrphanedTypes recursively marks orphaned types (types without a source schema)
 // that are referenced by the given type.
 func markOrphanedTypes(typ *typegraph.Type, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
+	markOrphanedRef := func(r *typegraph.TypeRef) {
+		if r.TypeName != "" && !belongsToFile[r.TypeName] && typeSourceMap[r.TypeName] == nil {
+			if refType := graph.GetType(r.TypeName); refType != nil {
+				belongsToFile[r.TypeName] = true
+				markOrphanedTypes(refType, graph, typeSourceMap, belongsToFile)
+			}
+		}
+	}
+
 	for _, field := range typ.Fields {
-		markOrphanedFieldReferences(field.Type, graph, typeSourceMap, belongsToFile)
+		field.Type.Walk(markOrphanedRef)
 	}
 
 	for _, baseName := range typ.Extends {
-		// Only mark if orphaned (no source schema)
 		if !belongsToFile[baseName] && typeSourceMap[baseName] == nil {
 			if baseType := graph.GetType(baseName); baseType != nil {
 				belongsToFile[baseName] = true
 				markOrphanedTypes(baseType, graph, typeSourceMap, belongsToFile)
 			}
 		}
-	}
-}
-
-// markOrphanedFieldReferences recursively marks orphaned types from a TypeRef.
-func markOrphanedFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
-	if ref == nil {
-		return
-	}
-
-	// Mark direct type reference only if orphaned
-	if ref.TypeName != "" && !belongsToFile[ref.TypeName] && typeSourceMap[ref.TypeName] == nil {
-		if refType := graph.GetType(ref.TypeName); refType != nil {
-			belongsToFile[ref.TypeName] = true
-			markOrphanedTypes(refType, graph, typeSourceMap, belongsToFile)
-		}
-	}
-
-	// Mark union members
-	for _, member := range ref.UnionMembers {
-		markOrphanedFieldReferences(member, graph, typeSourceMap, belongsToFile)
-	}
-
-	// Mark array item types
-	if ref.ItemType != nil {
-		markOrphanedFieldReferences(ref.ItemType, graph, typeSourceMap, belongsToFile)
-	}
-
-	// Mark map value types
-	if ref.ValueType != nil {
-		markOrphanedFieldReferences(ref.ValueType, graph, typeSourceMap, belongsToFile)
 	}
 }
 

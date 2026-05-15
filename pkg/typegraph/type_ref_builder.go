@@ -230,43 +230,12 @@ func (b *TypeRefBuilder) ShouldExtractInlineObject(schema *jsonschema.Schema) bo
 
 // ExtractInlineObjectType extracts an inline object as a separate Type.
 func (b *TypeRefBuilder) ExtractInlineObjectType(ctx *BuildContext, baseName string, schema *jsonschema.Schema) *Type {
-	// Pre-allocate based on expected sizes
-	fieldCount := 0
-	if schema.Properties != nil {
-		fieldCount = len(*schema.Properties)
-	}
-
 	typ := &Type{
 		ID:          b.registry.NextID(),
 		Name:        baseName,
 		Kind:        KindStruct,
 		Description: getDescription(schema),
-		Fields:      make([]*Field, 0, fieldCount),
-	}
-
-	// Build required map with pre-allocated capacity
-	requiredMap := make(map[string]bool, len(schema.Required))
-	for _, req := range schema.Required {
-		requiredMap[req] = true
-	}
-
-	// Extract properties
-	if schema.Properties != nil {
-		// Inline objects don't have pre-extracted order info, so use empty path (falls back to alphabetical)
-		for _, propName := range GetOrderedPropertyNames(schema.Properties, "", ctx.Order) {
-			propSchema := (*schema.Properties)[propName]
-			field := &Field{
-				Name:        naming.ToPascalCase(propName),
-				JSONName:    propName,
-				Description: getDescription(propSchema),
-				Required:    requiredMap[propName],
-				OmitEmpty:   !requiredMap[propName],
-				Type:        b.BuildTypeRef(ctx, propSchema, propName),
-			}
-			// Extract validation constraints
-			ExtractConstraints(field, propSchema)
-			typ.Fields = append(typ.Fields, field)
-		}
+		Fields:      buildFieldsFromSchema(ctx, schema, "", b.BuildTypeRef),
 	}
 
 	// Capture additionalProperties configuration
@@ -279,35 +248,7 @@ func (b *TypeRefBuilder) ExtractInlineObjectType(ctx *BuildContext, baseName str
 // This is used to populate ObjectFields in TypeRef for anonymous interfaces.
 // Implements FieldBuilder interface.
 func (b *TypeRefBuilder) BuildFieldsFromProperties(ctx *BuildContext, schema *jsonschema.Schema, orderPath string) []*Field {
-	if schema.Properties == nil {
-		return nil
-	}
-
-	// Build required map with pre-allocated capacity
-	requiredMap := make(map[string]bool, len(schema.Required))
-	for _, req := range schema.Required {
-		requiredMap[req] = true
-	}
-
-	fields := make([]*Field, 0, len(*schema.Properties))
-
-	// Iterate over properties in order
-	for _, propName := range GetOrderedPropertyNames(schema.Properties, orderPath, ctx.Order) {
-		propSchema := (*schema.Properties)[propName]
-		field := &Field{
-			Name:        naming.ToPascalCase(propName),
-			JSONName:    propName,
-			Description: getDescription(propSchema),
-			Required:    requiredMap[propName],
-			OmitEmpty:   !requiredMap[propName],
-			Type:        b.BuildTypeRef(ctx, propSchema, propName),
-		}
-		// Extract validation constraints
-		ExtractConstraints(field, propSchema)
-		fields = append(fields, field)
-	}
-
-	return fields
+	return buildFieldsFromSchema(ctx, schema, orderPath, b.BuildTypeRef)
 }
 
 // MapPrimitiveSchema maps a JSON schema to a PrimitiveKind.
