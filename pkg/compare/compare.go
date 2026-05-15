@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
@@ -89,66 +90,24 @@ func generateAll(
 	loader *schema.Loader,
 	flags *generation.GenerationFlags,
 ) error {
-	if flags.OutTS != "" {
-		if err := generation.Run(&generation.Config{
-			Schemas:          schemas,
-			Compiler:         loader.Compiler(),
-			OutDir:           filepath.Join(tmpDir, "ts"),
-			Language:         generation.LanguageTypeScript,
-			ExtractInline:    flags.ExtractInline,
-			DisableHeaders:   flags.DisableHeaders,
-			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   flags.OutputStrategy,
-			TypeScript: &generation.TypeScriptConfig{
-				UnknownAny:           flags.TSUnknownAny,
-				AdditionalProperties: flags.TSAdditionalProperties,
-				Zod:                  flags.TSZod,
-				ZodOnly:              flags.TSZodOnly,
-				ZodCoerceDates:       flags.TSZodCoerceDates,
-				ZodStrict:            flags.TSZodStrict,
-			},
-		}); err != nil {
-			return fmt.Errorf("typescript generation failed: %w", err)
-		}
+	targets := []struct {
+		outDir   string
+		shortDir string
+		lang     generation.Language
+	}{
+		{flags.OutTS, constants.LanguageTypeScriptShort, generation.LanguageTypeScript},
+		{flags.OutPY, constants.LanguagePythonShort, generation.LanguagePython},
+		{flags.OutGo, constants.LanguageGoShort, generation.LanguageGo},
 	}
 
-	if flags.OutPY != "" {
-		if err := generation.Run(&generation.Config{
-			Schemas:          schemas,
-			Compiler:         loader.Compiler(),
-			OutDir:           filepath.Join(tmpDir, "py"),
-			Language:         generation.LanguagePython,
-			ExtractInline:    flags.ExtractInline,
-			DisableHeaders:   flags.DisableHeaders,
-			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   flags.OutputStrategy,
-			Python: &generation.PythonConfig{
-				SnakeCaseField:       flags.PySnakeCaseField,
-				AdditionalProperties: flags.PyAdditionalProperties,
-			},
-		}); err != nil {
-			return fmt.Errorf("python generation failed: %w", err)
+	for _, t := range targets {
+		if t.outDir == "" {
+			continue
 		}
-	}
-
-	if flags.OutGo != "" {
-		if err := generation.Run(&generation.Config{
-			Schemas:          schemas,
-			Compiler:         loader.Compiler(),
-			OutDir:           filepath.Join(tmpDir, "go"),
-			Language:         generation.LanguageGo,
-			ExtractInline:    flags.ExtractInline,
-			DisableHeaders:   flags.DisableHeaders,
-			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   flags.OutputStrategy,
-			Go: &generation.GoConfig{
-				PackageName: flags.GoPackageName,
-				UsePointers: flags.GoUsePointers,
-				OmitEmpty:   flags.GoOmitEmpty,
-				ModulePath:  flags.GoModulePath,
-			},
-		}); err != nil {
-			return fmt.Errorf("go generation failed: %w", err)
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(),
+			filepath.Join(tmpDir, t.shortDir), t.lang)
+		if err := generation.Run(cfg); err != nil {
+			return fmt.Errorf("%s generation failed: %w", t.lang, err)
 		}
 	}
 
