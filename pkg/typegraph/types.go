@@ -58,12 +58,6 @@ type Type struct {
 	// For primitives
 	Primitive PrimitiveKind
 
-	// For arrays
-	ItemType *TypeRef
-
-	// For maps
-	ValueType *TypeRef
-
 	// For unions
 	UnionMembers []*TypeRef // Union members (anyOf/oneOf)
 }

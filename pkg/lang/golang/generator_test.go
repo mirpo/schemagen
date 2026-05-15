@@ -140,6 +140,51 @@ func TestGenerateFile_Imports(t *testing.T) {
 	assert.Contains(t, out, `"time"`)
 }
 
+func TestGenerateFile_NoValidatorImport(t *testing.T) {
+	g := gen(nil)
+
+	user := structType("User",
+		field("name", typegraph.PrimString, true),
+	)
+
+	out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
+	require.NoError(t, err)
+
+	assert.NotContains(t, out, "validator",
+		"validator package should not be imported — struct tags work without it")
+}
+
+func TestFieldValidateTag_ExclusiveMinMax(t *testing.T) {
+	g := gen(nil)
+	excMin := float64(0)
+	excMax := float64(100)
+
+	f := &typegraph.Field{
+		JSONName:         "score",
+		Type:             &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimFloat64},
+		ExclusiveMinimum: &excMin,
+		ExclusiveMaximum: &excMax,
+	}
+
+	tag := g.fieldValidateTag(f)
+	assert.Contains(t, tag, "gt=0")
+	assert.Contains(t, tag, "lt=100")
+}
+
+func TestFieldValidateTag_Pattern(t *testing.T) {
+	g := gen(nil)
+	pattern := "^[a-z]+$"
+
+	f := &typegraph.Field{
+		JSONName: "code",
+		Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
+		Pattern:  &pattern,
+	}
+
+	tag := g.fieldValidateTag(f)
+	assert.Equal(t, "", tag, "Pattern not supported by go-playground/validator struct tags — should be omitted")
+}
+
 /*
 4. Config flags
 */

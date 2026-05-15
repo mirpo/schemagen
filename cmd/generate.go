@@ -18,7 +18,7 @@ Supports TypeScript interfaces, Python Pydantic v2 models, and Go structs.
 Input can be a single file, directory, or glob pattern.`,
 		Example: `  schemagen generate ./schemas --out-ts ./types
   schemagen generate ./api/*.json --out-py ./models --out-go ./pkg/models`,
-		Args:         cobra.MinimumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		RunE:         runGenerate,
 		SilenceUsage: true,
 	}

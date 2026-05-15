@@ -55,11 +55,20 @@ func TestImportTracker_TypeNamesSorted(t *testing.T) {
 func TestCollectTypeReferences_DeepTraversal(t *testing.T) {
 	typ := &typegraph.Type{
 		Name: "Wrapper",
-		ValueType: &typegraph.TypeRef{
-			ItemType: &typegraph.TypeRef{
-				UnionMembers: []*typegraph.TypeRef{
-					{TypeName: "A"},
-					{TypeName: "B"},
+		Fields: []*typegraph.Field{
+			{
+				Type: &typegraph.TypeRef{
+					Kind: typegraph.KindMap,
+					ValueType: &typegraph.TypeRef{
+						Kind: typegraph.KindArray,
+						ItemType: &typegraph.TypeRef{
+							Kind: typegraph.KindUnion,
+							UnionMembers: []*typegraph.TypeRef{
+								{TypeName: "A"},
+								{TypeName: "B"},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -78,6 +87,35 @@ func TestCollectTypeReferences_DeepTraversal(t *testing.T) {
 
 	assert.Equal(t, "a.ts", deps[0].TargetFile)
 	assert.Equal(t, "b.ts", deps[1].TargetFile)
+}
+
+func TestCollectTypeReferences_UnionMembers(t *testing.T) {
+	typ := &typegraph.Type{
+		Name: "Shape",
+		Kind: typegraph.KindUnion,
+		UnionMembers: []*typegraph.TypeRef{
+			{Kind: typegraph.KindRef, TypeName: "Circle"},
+			{Kind: typegraph.KindRef, TypeName: "Square"},
+			{Kind: typegraph.KindRef, TypeName: "Triangle"},
+		},
+	}
+
+	tracker := NewImportTracker("shape.ts")
+	typeToFile := map[string]string{
+		"Circle":   "circle.ts",
+		"Square":   "square.ts",
+		"Triangle": "triangle.ts",
+	}
+
+	collectTypeReferences(typ, tracker, typeToFile)
+
+	deps := tracker.GetDependencies()
+	require.Len(t, deps, 3)
+
+	assert.Equal(t, "circle.ts", deps[0].TargetFile)
+	assert.Equal(t, []string{"Circle"}, deps[0].TypeNames)
+	assert.Equal(t, "square.ts", deps[1].TargetFile)
+	assert.Equal(t, "triangle.ts", deps[2].TargetFile)
 }
 
 func TestComputeImports_Integration(t *testing.T) {

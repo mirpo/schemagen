@@ -137,6 +137,60 @@ func TestGenerateEnum(t *testing.T) {
 	})
 }
 
+func TestGenerateUnionAlias_WithMembers(t *testing.T) {
+	g := createTestGenerator(nil)
+
+	typ := &typegraph.Type{
+		Name: "Shape",
+		Kind: typegraph.KindUnion,
+		UnionMembers: []*typegraph.TypeRef{
+			{Kind: typegraph.KindRef, TypeName: "Circle"},
+			{Kind: typegraph.KindRef, TypeName: "Square"},
+			{Kind: typegraph.KindRef, TypeName: "Triangle"},
+		},
+	}
+
+	result, err := g.generateUnionAlias(typ)
+	require.NoError(t, err)
+
+	assert.Contains(t, result, "export type Shape = Circle | Square | Triangle;")
+	assert.NotContains(t, result, "any")
+}
+
+func TestGenerateUnionAlias_EmptyMembers(t *testing.T) {
+	g := createTestGenerator(nil)
+
+	typ := &typegraph.Type{
+		Name: "Unknown",
+		Kind: typegraph.KindUnion,
+	}
+
+	result, err := g.generateUnionAlias(typ)
+	require.NoError(t, err)
+
+	assert.Contains(t, result, "export type Unknown = any;")
+}
+
+func TestGenerateUnionAlias_WithDescription(t *testing.T) {
+	g := createTestGenerator(nil)
+
+	typ := &typegraph.Type{
+		Name:        "Shape",
+		Kind:        typegraph.KindUnion,
+		Description: "A geometric shape",
+		UnionMembers: []*typegraph.TypeRef{
+			{Kind: typegraph.KindRef, TypeName: "Circle"},
+			{Kind: typegraph.KindRef, TypeName: "Square"},
+		},
+	}
+
+	result, err := g.generateUnionAlias(typ)
+	require.NoError(t, err)
+
+	assert.Contains(t, result, "A geometric shape")
+	assert.Contains(t, result, "Circle | Square")
+}
+
 // Phase 1.3: Type Conversion
 
 func TestTypeRefToTS_Primitives(t *testing.T) {

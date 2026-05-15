@@ -209,6 +209,51 @@ func TestPlanOutput_BundleDeps(t *testing.T) {
 	assert.False(t, typeNames["Unused"])
 }
 
+func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
+	circle := &typegraph.Type{Name: "Circle", Kind: typegraph.KindStruct}
+	square := &typegraph.Type{Name: "Square", Kind: typegraph.KindStruct}
+	shape := &typegraph.Type{
+		Name: "Shape",
+		Kind: typegraph.KindUnion,
+		UnionMembers: []*typegraph.TypeRef{
+			{Kind: typegraph.KindRef, TypeName: "Circle"},
+			{Kind: typegraph.KindRef, TypeName: "Square"},
+		},
+	}
+
+	graph := &typegraph.Graph{
+		Types: []*typegraph.Type{circle, square, shape},
+	}
+	graph.AddType(circle)
+	graph.AddType(square)
+	graph.AddType(shape)
+
+	shapeSchema := &schema.Schema{
+		Name:         "Shape",
+		RelativePath: "shape.json",
+	}
+
+	plan, err := PlanOutput(
+		graph,
+		[]*schema.Schema{shapeSchema},
+		StrategyBundleDeps,
+		"ts",
+		"bundle",
+	)
+
+	require.NoError(t, err)
+	require.Len(t, plan.Files, 1)
+
+	typeNames := map[string]bool{}
+	for _, typ := range plan.Files[0].Types {
+		typeNames[typ.Name] = true
+	}
+
+	assert.True(t, typeNames["Shape"], "Shape should be included")
+	assert.True(t, typeNames["Circle"], "Circle should be included as union member")
+	assert.True(t, typeNames["Square"], "Square should be included as union member")
+}
+
 func TestPlanOutput_MultiFile_DeterministicOrder(t *testing.T) {
 	schemas := make([]*schema.Schema, 10)
 	types := make([]*typegraph.Type, 10)

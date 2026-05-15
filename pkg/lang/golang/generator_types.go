@@ -81,10 +81,6 @@ func (g *Generator) scanTypeForImports(typ *typegraph.Type) {
 	case typegraph.KindStruct:
 		for _, field := range typ.Fields {
 			g.scanTypeRefForImports(field.Type)
-			if field.Required || field.HasConstraints() ||
-				(field.Type != nil && field.Type.Format != "") {
-				g.imports["github.com/go-playground/validator/v10"] = true
-			}
 		}
 	case typegraph.KindPrimitive:
 		if imp := importsForPrimitive(typ.Primitive); imp != "" {

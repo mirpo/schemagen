@@ -243,6 +243,14 @@ func walkReachableTypes(typ *typegraph.Type, graph *typegraph.Graph, shouldVisit
 	for _, baseName := range typ.Extends {
 		visit(baseName)
 	}
+
+	for _, m := range typ.UnionMembers {
+		m.Walk(func(r *typegraph.TypeRef) {
+			if r.TypeName != "" {
+				visit(r.TypeName)
+			}
+		})
+	}
 }
 
 func convertSchemaPathToOutputForLanguage(schemaPath string, language string) string {

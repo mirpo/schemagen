@@ -26,7 +26,7 @@ Exit codes:
   2 - Differences found`,
 		Example: `  schemagen diff ./schemas --out-ts ./types
   schemagen diff ./schemas --out-py ./models --no-color`,
-		Args:         cobra.MinimumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		RunE:         runDiff,
 		SilenceUsage: true,
 	}

@@ -1,6 +1,7 @@
 package py
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -144,6 +145,86 @@ func TestGenerateFile_SnakeCaseWithAlias(t *testing.T) {
 
 	assert.Contains(t, out, "first_name: str")
 	assert.Contains(t, out, `alias="firstName"`)
+}
+
+func TestGenerateFile_FieldImportForAliasOnly(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *Config
+		jsonName string
+		wantName string
+	}{
+		{
+			name:     "snake_case alias requires Field import",
+			config:   &Config{SnakeCaseField: true},
+			jsonName: "firstName",
+			wantName: "first_name",
+		},
+		{
+			name:     "numeric prefix sanitization requires Field import",
+			config:   &Config{},
+			jsonName: "123abc",
+			wantName: "field_123abc",
+		},
+		{
+			name:     "python keyword escaping requires Field import",
+			config:   &Config{},
+			jsonName: "class",
+			wantName: "class_",
+		},
+		{
+			name:     "special char sanitization requires Field import",
+			config:   &Config{},
+			jsonName: "$value",
+			wantName: "field__value",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := newGen(tt.config)
+
+			typ := &typegraph.Type{
+				Name: "TestModel",
+				Kind: typegraph.KindStruct,
+				Fields: []*typegraph.Field{
+					{
+						JSONName: tt.jsonName,
+						Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
+						Required: true,
+					},
+				},
+			}
+
+			out, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
+			require.NoError(t, err)
+
+			assert.Contains(t, out, "from pydantic import BaseModel, Field",
+				"Field must be imported from pydantic when alias is needed")
+			assert.Contains(t, out, tt.wantName+": str = Field(")
+			assert.Contains(t, out, fmt.Sprintf("alias=%q", tt.jsonName))
+		})
+	}
+}
+
+func TestBuildFieldParams_NoMinLengthCollision(t *testing.T) {
+	g := newGen(nil)
+	minLen := 3
+	minItems := 1
+
+	f := &typegraph.Field{
+		JSONName:  "tags",
+		Type:      &typegraph.TypeRef{Kind: typegraph.KindArray},
+		Required:  true,
+		MinLength: &minLen,
+		MinItems:  &minItems,
+	}
+
+	params := g.buildFieldParams(f, true, false, "tags")
+	combined := strings.Join(params, ", ")
+	count := strings.Count(combined, "min_length")
+	assert.LessOrEqual(t, count, 1,
+		"min_length should not appear twice: %s", combined)
 }
 
 func TestGenerateFile_DisableHeaders(t *testing.T) {

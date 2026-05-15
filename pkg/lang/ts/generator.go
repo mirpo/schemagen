@@ -339,7 +339,16 @@ func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
 	tscommon.WriteJSDoc(&sb, "", typ.Description)
-	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
+
+	tsType := g.anyType()
+	if len(typ.UnionMembers) > 0 {
+		members := make([]string, len(typ.UnionMembers))
+		for i, m := range typ.UnionMembers {
+			members[i] = g.typeRefToTS(m)
+		}
+		tsType = strings.Join(members, " | ")
+	}
+	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 
 	return sb.String(), nil
 }

@@ -68,10 +68,10 @@ func (g *Generator) buildFieldParams(field *typegraph.Field, required bool, need
 	}
 
 	// 6. Array constraints (using min/max_length for list items)
-	if field.MinItems != nil {
+	if field.MinItems != nil && field.MinLength == nil {
 		params = append(params, fmt.Sprintf("min_length=%d", *field.MinItems))
 	}
-	if field.MaxItems != nil {
+	if field.MaxItems != nil && field.MaxLength == nil {
 		params = append(params, fmt.Sprintf("max_length=%d", *field.MaxItems))
 	}
 

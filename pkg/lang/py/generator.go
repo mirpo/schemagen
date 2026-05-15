@@ -64,8 +64,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 			hasStructTypes = true
 			for _, field := range typ.Fields {
 				g.checkTypeRefForImports(field.Type)
-				// needsAlias=false: Python field name (which determines alias) is not yet computed
-				if needsField(field, false) {
+				if needsField(field, g.fieldNeedsAlias(field)) {
 					g.imports["pydantic_field"] = true
 				}
 			}
@@ -218,6 +217,18 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
+}
+
+func (g *Generator) fieldNeedsAlias(field *typegraph.Field) bool {
+	name := field.JSONName
+	if sanitizePythonIdentifier(name) != name {
+		return true
+	}
+	if g.config.SnakeCaseField {
+		sanitized := sanitizePythonIdentifier(name)
+		return naming.ToSnakeCase(sanitized) != sanitized
+	}
+	return false
 }
 
 // Python keywords that need to be escaped

@@ -43,6 +43,12 @@ func (g *Generator) fieldValidateTag(field *typegraph.Field) string {
 	if field.Maximum != nil {
 		constraints = append(constraints, fmt.Sprintf("lte=%g", *field.Maximum))
 	}
+	if field.ExclusiveMinimum != nil {
+		constraints = append(constraints, fmt.Sprintf("gt=%g", *field.ExclusiveMinimum))
+	}
+	if field.ExclusiveMaximum != nil {
+		constraints = append(constraints, fmt.Sprintf("lt=%g", *field.ExclusiveMaximum))
+	}
 
 	// Array constraints (dive for nested validation)
 	if field.MinItems != nil {

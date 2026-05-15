@@ -20,6 +20,12 @@ func TestValidateCommand(t *testing.T) {
 		require.NoError(t, cmd.Execute())
 	})
 
+	t.Run("rejects extra arguments", func(t *testing.T) {
+		cmd := NewRootCmd()
+		cmd.SetArgs([]string{"validate", "../testdata/schemas/basic/", "extra-arg"})
+		require.Error(t, cmd.Execute())
+	})
+
 	t.Run("invalid file", func(t *testing.T) {
 		cmd := NewRootCmd()
 		cmd.SetArgs([]string{"validate", "nonexistent.json"})
