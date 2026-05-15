@@ -24,7 +24,6 @@ const (
 
 // Default file names
 const (
-	DefaultTypesFile    = "types"
 	DefaultBarrelTS     = "index.ts"
 	DefaultBarrelPython = "__init__.py"
 )
@@ -67,16 +66,6 @@ func GetExtension(lang string) string {
 // IsPython checks if the language is Python.
 func IsPython(lang string) bool {
 	return NormalizeLanguage(lang) == string(LanguagePython)
-}
-
-// IsTypeScript checks if the language is TypeScript.
-func IsTypeScript(lang string) bool {
-	return NormalizeLanguage(lang) == string(LanguageTypeScript)
-}
-
-// IsGo checks if the language is Go.
-func IsGo(lang string) bool {
-	return NormalizeLanguage(lang) == string(LanguageGo)
 }
 
 // GetBarrelFileName returns the barrel/index file name for a language.

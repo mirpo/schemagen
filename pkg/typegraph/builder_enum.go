@@ -33,12 +33,11 @@ func (b *Builder) BuildEnum(typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindEnum
 	typ.EnumValues = make([]EnumValue, 0)
 
-	// Check if enum has complex values
-	typ.HasComplexValues = hasComplexEnumValues(schema.Enum)
+	hasComplex := hasComplexEnumValues(schema.Enum)
 
 	// Determine enum type
 	if len(schema.Enum) > 0 {
-		if typ.HasComplexValues {
+		if hasComplex {
 			typ.EnumType = "any" // Complex enums use any
 		} else {
 			// Determine from first value

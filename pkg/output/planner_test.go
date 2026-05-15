@@ -45,28 +45,6 @@ func TestOutputStrategy_Set(t *testing.T) {
 	}
 }
 
-func TestOutputStrategy_String(t *testing.T) {
-	tests := []struct {
-		strategy OutputStrategy
-		expected string
-	}{
-		{StrategyBundle, "bundle"},
-		{StrategyMultiFile, "multi-file"},
-		{StrategyBundleDeps, "bundle-deps"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.expected, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.strategy.String())
-		})
-	}
-}
-
-func TestOutputStrategy_Type(t *testing.T) {
-	var s OutputStrategy
-	assert.Equal(t, "strategy", s.Type())
-}
-
 func TestPlanOutput_Bundle(t *testing.T) {
 	graph := &typegraph.Graph{
 		Types: []*typegraph.Type{
@@ -93,7 +71,6 @@ func TestPlanOutput_Bundle(t *testing.T) {
 	assert.Equal(t, "models.ts", file.RelativePath)
 	assert.Len(t, file.Types, 2)
 	assert.Empty(t, file.Imports)
-	assert.Empty(t, plan.BarrelFiles)
 }
 
 func TestPlanOutput_MultiFile_Basic(t *testing.T) {

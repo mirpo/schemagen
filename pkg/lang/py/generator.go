@@ -27,11 +27,6 @@ type Generator struct {
 	needsAny bool // Track if typing.Any is needed
 }
 
-// NewGenerator creates a new Python generator.
-func NewGenerator(graph *typegraph.Graph) *Generator {
-	return NewGeneratorWithConfig(graph, &Config{})
-}
-
 // NewGeneratorWithConfig creates a Python generator with custom config.
 func NewGeneratorWithConfig(graph *typegraph.Graph, cfg *Config) *Generator {
 	if cfg == nil {
@@ -75,19 +70,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 				}
 			}
 		case typegraph.KindUnion:
-			// Check if union will fall back to Any
-			if typ.TargetType == nil || typ.TargetType.Kind != typegraph.KindUnion {
-				g.needsAny = true
-			} else {
-				g.checkTypeRefForImports(typ.TargetType)
-			}
-		case typegraph.KindAlias:
-			// Check if alias will fall back to Any
-			if typ.TargetType == nil {
-				g.needsAny = true
-			} else {
-				g.checkTypeRefForImports(typ.TargetType)
-			}
+			g.needsAny = true
 		case typegraph.KindPrimitive:
 			if typ.Primitive == typegraph.PrimUnknown {
 				g.needsAny = true
@@ -174,8 +157,6 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	return sb.String(), nil
 }
 
-// checkTypeRefForImports checks a TypeRef and adds necessary imports.
-
 // generateImports generates the import statements.
 func (g *Generator) generateImports() string {
 	var sb strings.Builder
@@ -250,8 +231,6 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 		return g.generatePrimitiveAlias(typ)
 	case typegraph.KindUnion:
 		return g.generateUnionAlias(typ)
-	case typegraph.KindAlias:
-		return g.generateTypeAlias(typ)
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
@@ -523,36 +502,11 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	return sb.String(), nil
 }
 
-// generateUnionAlias generates a type alias for a union type.
 func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Generate union type from TargetType if it's a union
-	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
-		pyType := g.typeRefToPython(typ.TargetType, false)
-		fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
-	} else {
-		// Fallback to Any if we don't have proper union information
-		g.needsAny = true
-		fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
-	}
-	sb.WriteString(writeDescription(typ.Description, "", "\n"))
-
-	return sb.String(), nil
-}
-
-// generateTypeAlias generates a type alias for an alias type.
-func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
-	var sb strings.Builder
-
-	// Generate type alias
-	if typ.TargetType != nil {
-		pyType := g.typeRefToPython(typ.TargetType, false)
-		fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
-	} else {
-		g.needsAny = true
-		fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
-	}
+	g.needsAny = true
+	fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 
 	return sb.String(), nil

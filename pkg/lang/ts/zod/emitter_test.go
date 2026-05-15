@@ -336,26 +336,16 @@ func TestEmitter_GenerateField_PropertyNames(t *testing.T) {
 	})
 }
 
-// Union, Alias, Primitive Schema Generation
+// Union and Primitive Schema Generation
 
 func TestEmitter_GenerateUnionSchema(t *testing.T) {
 	e := createTestEmitter(nil)
 	typ := createTestType("Response", typegraph.KindUnion)
-	typ.TargetType = &typegraph.TypeRef{
-		Kind: typegraph.KindUnion,
-		UnionMembers: []*typegraph.TypeRef{
-			{Kind: typegraph.KindRef, TypeName: "Success"},
-			{Kind: typegraph.KindRef, TypeName: "Error"},
-		},
+	typ.UnionMembers = []*typegraph.TypeRef{
+		{Kind: typegraph.KindRef, TypeName: "Success"},
+		{Kind: typegraph.KindRef, TypeName: "Error"},
 	}
 	assert.Contains(t, e.GenerateSchema(typ), "z.union([SuccessSchema, ErrorSchema])")
-}
-
-func TestEmitter_GenerateAliasSchema(t *testing.T) {
-	e := createTestEmitter(nil)
-	typ := createTestType("UserID", typegraph.KindAlias)
-	typ.TargetType = &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUUID}
-	assert.Contains(t, e.GenerateSchema(typ), "z.uuid()")
 }
 
 func TestEmitter_GeneratePrimitiveSchema(t *testing.T) {

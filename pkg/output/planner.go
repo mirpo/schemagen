@@ -21,10 +21,6 @@ const (
 	StrategyMultiFile  OutputStrategy = "multi-file"
 )
 
-func (s *OutputStrategy) String() string {
-	return string(*s)
-}
-
 func (s *OutputStrategy) Set(v string) error {
 	switch v {
 	case "bundle":
@@ -39,10 +35,6 @@ func (s *OutputStrategy) Set(v string) error {
 	return nil
 }
 
-func (s *OutputStrategy) Type() string {
-	return "strategy"
-}
-
 func ParseStrategy(v string) OutputStrategy {
 	var s OutputStrategy
 	if err := s.Set(v); err != nil {
@@ -52,13 +44,11 @@ func ParseStrategy(v string) OutputStrategy {
 }
 
 type OutputPlan struct {
-	Strategy    OutputStrategy
-	Files       []OutputFile
-	BarrelFiles []BarrelFile
+	Strategy OutputStrategy
+	Files    []OutputFile
 }
 
 type OutputFile struct {
-	Language     string
 	RelativePath string
 	Types        []*typegraph.Type
 	Imports      []typegraph.ImportSpec
@@ -67,12 +57,6 @@ type OutputFile struct {
 type BarrelFile struct {
 	Path    string
 	Exports []string
-}
-
-type TypeSource struct {
-	TypeName   string
-	SchemaPath string
-	SchemaName string
 }
 
 func PlanOutput(graph *typegraph.Graph, schemas []*schema.Schema, strategy OutputStrategy, language string, bundleName string) (*OutputPlan, error) {
@@ -131,13 +115,11 @@ func planBundle(graph *typegraph.Graph, language string, bundleName string) *Out
 		Strategy: StrategyBundle,
 		Files: []OutputFile{
 			{
-				Language:     language,
 				RelativePath: filename,
 				Types:        graph.Types,
 				Imports:      []typegraph.ImportSpec{},
 			},
 		},
-		BarrelFiles: []BarrelFile{},
 	}
 }
 
@@ -170,7 +152,6 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 
 		if len(fileTypes) > 0 {
 			schemaFiles[outputPath] = &OutputFile{
-				Language:     language,
 				RelativePath: outputPath,
 				Types:        fileTypes,
 				Imports:      []typegraph.ImportSpec{},
@@ -179,9 +160,8 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 	}
 
 	plan := &OutputPlan{
-		Strategy:    StrategyMultiFile,
-		Files:       make([]OutputFile, 0, len(schemaFiles)),
-		BarrelFiles: []BarrelFile{},
+		Strategy: StrategyMultiFile,
+		Files:    make([]OutputFile, 0, len(schemaFiles)),
 	}
 
 	for _, p := range slices.Sorted(maps.Keys(schemaFiles)) {
@@ -228,13 +208,11 @@ func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSource
 		Strategy: StrategyBundleDeps,
 		Files: []OutputFile{
 			{
-				Language:     language,
 				RelativePath: filename,
 				Types:        includedTypes,
 				Imports:      []typegraph.ImportSpec{},
 			},
 		},
-		BarrelFiles: []BarrelFile{},
 	}
 }
 

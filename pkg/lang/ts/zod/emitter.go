@@ -60,8 +60,6 @@ func (e *Emitter) generateSchemaInternal(typ *typegraph.Type, withInfer bool) st
 		sb.WriteString(e.generateEnumSchema(typ, schemaName))
 	case typegraph.KindUnion:
 		sb.WriteString(e.generateUnionSchema(typ, schemaName))
-	case typegraph.KindAlias:
-		sb.WriteString(e.generateAliasSchema(typ, schemaName))
 	case typegraph.KindPrimitive:
 		sb.WriteString(e.generatePrimitiveSchema(typ, schemaName))
 	}
@@ -182,24 +180,7 @@ func (e *Emitter) generateEnumSchema(typ *typegraph.Type, schemaName string) str
 	return result + ";"
 }
 
-// generateUnionSchema generates a Zod union schema.
 func (e *Emitter) generateUnionSchema(typ *typegraph.Type, schemaName string) string {
-	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
-		members := make([]string, len(typ.TargetType.UnionMembers))
-		for i, member := range typ.TargetType.UnionMembers {
-			members[i] = e.typeRefToZod(member, nil)
-		}
-
-		result := fmt.Sprintf("export const %s = z.union([%s])", schemaName, strings.Join(members, ", "))
-
-		if typ.Description != "" {
-			result += fmt.Sprintf(".meta({ description: %q })", typ.Description)
-		}
-
-		return result + ";"
-	}
-
-	// Fallback for types with UnionMembers directly on Type
 	if len(typ.UnionMembers) > 0 {
 		members := make([]string, len(typ.UnionMembers))
 		for i, member := range typ.UnionMembers {
@@ -216,23 +197,6 @@ func (e *Emitter) generateUnionSchema(typ *typegraph.Type, schemaName string) st
 	}
 
 	// Fallback to unknown
-	return fmt.Sprintf("export const %s = z.unknown();", schemaName)
-}
-
-// generateAliasSchema generates a Zod schema for a type alias.
-func (e *Emitter) generateAliasSchema(typ *typegraph.Type, schemaName string) string {
-	if typ.TargetType != nil {
-		zodType := e.typeRefToZod(typ.TargetType, nil)
-
-		result := fmt.Sprintf("export const %s = %s", schemaName, zodType)
-
-		if typ.Description != "" {
-			result += fmt.Sprintf(".meta({ description: %q })", typ.Description)
-		}
-
-		return result + ";"
-	}
-
 	return fmt.Sprintf("export const %s = z.unknown();", schemaName)
 }
 

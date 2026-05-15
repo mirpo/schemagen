@@ -24,23 +24,6 @@ func ToPascalCase(s string) string {
 	return b.String()
 }
 
-// ToCamelCase converts a string to camelCase.
-// Examples: "user_name" -> "userName", "ApiKey" -> "apiKey"
-func ToCamelCase(s string) string {
-	if s == "" {
-		return s
-	}
-
-	pascal := ToPascalCase(s)
-	if pascal == "" {
-		return pascal
-	}
-
-	r := []rune(pascal)
-	r[0] = unicode.ToLower(r[0])
-	return string(r)
-}
-
 // ToSnakeCase converts a camelCase or PascalCase string to snake_case.
 // Handles acronyms properly: "APIKey" -> "api_key", "HTTPResponse" -> "http_response"
 func ToSnakeCase(s string) string {

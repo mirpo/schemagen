@@ -175,8 +175,6 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 		return g.generatePrimitiveAlias(typ)
 	case typegraph.KindUnion:
 		return g.generateUnionAlias(typ)
-	case typegraph.KindAlias:
-		return g.generateTypeAlias(typ)
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
@@ -360,40 +358,11 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	return sb.String(), nil
 }
 
-// generateUnionAlias generates a type alias for a union type.
 func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// JSDoc comment
 	tscommon.WriteJSDoc(&sb, "", typ.Description)
-
-	// Generate union type from TargetType if it's a union
-	// The type graph should have stored the union members in TargetType
-	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
-		tsType := g.typeRefToTS(typ.TargetType)
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
-	} else {
-		// Fallback to any/unknown if we don't have proper union information
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
-	}
-
-	return sb.String(), nil
-}
-
-// generateTypeAlias generates a type alias for an alias type.
-func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
-	var sb strings.Builder
-
-	// JSDoc comment
-	tscommon.WriteJSDoc(&sb, "", typ.Description)
-
-	// Generate type alias
-	if typ.TargetType != nil {
-		tsType := g.typeRefToTS(typ.TargetType)
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
-	} else {
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
-	}
+	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
 
 	return sb.String(), nil
 }

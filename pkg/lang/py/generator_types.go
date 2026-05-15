@@ -92,13 +92,8 @@ func (g *Generator) typeRefToPython(ref *typegraph.TypeRef, optional bool) strin
 		valueType := g.typeRefToPython(ref.ValueType, false)
 		pyType = fmt.Sprintf("dict[str, %s]", valueType)
 	case typegraph.KindInterface:
-		if len(ref.ObjectFields) > 0 {
-			pyType = "dict[str, Any]"
-			g.needsAny = true
-		} else {
-			pyType = "dict[str, Any]"
-			g.needsAny = true
-		}
+		pyType = "dict[str, Any]"
+		g.needsAny = true
 	default:
 		pyType = "Any"
 	}

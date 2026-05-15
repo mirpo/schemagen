@@ -12,7 +12,6 @@ func newGoGenerator(graph *typegraph.Graph, cfg *Config) Generator {
 			UsePointers:      cfg.Go.UsePointers,
 			OmitEmpty:        cfg.Go.OmitEmpty,
 			DisableComments:  false,
-			PackagePrefix:    cfg.Go.PackagePrefix,
 			DisableHeaders:   cfg.DisableHeaders,
 			DisableTimestamp: cfg.DisableTimestamp,
 		}),

@@ -1298,7 +1298,7 @@ func TestExtractInlineObjectType(t *testing.T) {
 		Required: []string{"id"},
 	}
 
-	typ := builder.extractInlineObjectType(&BuildContext{}, "Property", schema)
+	typ := builder.typeRefBuilder.ExtractInlineObjectType(&BuildContext{}, "Property", schema)
 
 	assert.NotNil(t, typ)
 	assert.Equal(t, "Property", typ.Name)
@@ -1324,7 +1324,7 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 		Required: []string{"name"},
 	}
 
-	fields := builder.BuildFieldsFromProperties(&BuildContext{}, schema, "")
+	fields := builder.typeRefBuilder.BuildFieldsFromProperties(&BuildContext{}, schema, "")
 
 	assert.Len(t, fields, 2)
 	// Should be alphabetically ordered
@@ -1625,7 +1625,7 @@ func TestShouldExtractInlineObject(t *testing.T) {
 			compiler := jsonschema.NewCompiler()
 			builder := NewBuilder(compiler)
 
-			result := builder.shouldExtractInlineObject(tt.schema)
+			result := builder.typeRefBuilder.ShouldExtractInlineObject(tt.schema)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

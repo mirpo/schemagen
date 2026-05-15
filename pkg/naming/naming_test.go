@@ -28,27 +28,6 @@ func TestToPascalCase(t *testing.T) {
 	}
 }
 
-func TestToCamelCase(t *testing.T) {
-	tests := []struct {
-		in   string
-		want string
-	}{
-		{"User", "user"},
-		{"user_name", "userName"},
-		{"user-name", "userName"},
-		{"UserName", "userName"},
-		{"api_key", "apiKey"},
-		{"APIKey", "aPIKey"},
-		{"some_long_variable_name", "someLongVariableName"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			assert.Equal(t, tt.want, ToCamelCase(tt.in))
-		})
-	}
-}
-
 func TestToSnakeCase(t *testing.T) {
 	tests := []struct {
 		in   string

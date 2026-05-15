@@ -22,12 +22,11 @@ type Generator struct {
 // Config contains generation configuration.
 type Config struct {
 	PackageName      string
-	UsePointers      bool   // Use pointers for optional fields
-	OmitEmpty        bool   // Add omitempty to optional fields
-	DisableComments  bool   // Don't generate comments
-	PackagePrefix    string // Package import prefix (e.g., "github.com/org/project")
-	DisableHeaders   bool   // Don't generate file headers
-	DisableTimestamp bool   // Don't generate timestamp in headers
+	UsePointers      bool // Use pointers for optional fields
+	OmitEmpty        bool // Add omitempty to optional fields
+	DisableComments  bool // Don't generate comments
+	DisableHeaders   bool // Don't generate file headers
+	DisableTimestamp bool // Don't generate timestamp in headers
 }
 
 // NewGenerator creates a new Go generator.
@@ -109,7 +108,7 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 	case typegraph.KindUnion:
 		return g.generateUnion(typ)
 	case typegraph.KindPrimitive:
-		return g.generateTypeAlias(typ)
+		return "", nil
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
@@ -294,11 +293,4 @@ func formatSlice(s []any) string {
 	}
 	sb.WriteString("}")
 	return sb.String()
-}
-
-// generateTypeAlias generates a type alias for primitives.
-func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
-	// For now, we don't generate aliases for primitives
-	// This would be used for custom type mappings
-	return "", nil
 }

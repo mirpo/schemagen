@@ -34,7 +34,6 @@ const (
 	KindPrimitive TypeKind = "primitive"
 	KindArray     TypeKind = "array"
 	KindMap       TypeKind = "map"
-	KindAlias     TypeKind = "alias"
 	KindRef       TypeKind = "ref"       // Reference to another type
 	KindUnion     TypeKind = "union"     // Union type (oneOf/anyOf)
 	KindInterface TypeKind = "interface" // For empty objects or any
@@ -53,9 +52,8 @@ type Type struct {
 	AdditionalProps *AdditionalPropsConfig // Additional properties configuration
 
 	// For enums
-	EnumType         string // "string" or "int"
-	EnumValues       []EnumValue
-	HasComplexValues bool // true if enum contains non-primitive values (objects/arrays)
+	EnumType   string // "string" or "int"
+	EnumValues []EnumValue
 
 	// For primitives
 	Primitive PrimitiveKind
@@ -65,9 +63,6 @@ type Type struct {
 
 	// For maps
 	ValueType *TypeRef
-
-	// For aliases
-	TargetType *TypeRef
 
 	// For unions
 	UnionMembers []*TypeRef // Union members (anyOf/oneOf)

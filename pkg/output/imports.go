@@ -98,7 +98,6 @@ func collectTypeReferences(typ *typegraph.Type, tracker *ImportTracker, typeToFi
 
 	collectTypeRefReferences(typ.ItemType, tracker, typeToFile)
 	collectTypeRefReferences(typ.ValueType, tracker, typeToFile)
-	collectTypeRefReferences(typ.TargetType, tracker, typeToFile)
 }
 
 func collectTypeRefReferences(ref *typegraph.TypeRef, tracker *ImportTracker, typeToFile map[string]string) {
