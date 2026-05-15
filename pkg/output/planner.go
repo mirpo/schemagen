@@ -2,7 +2,9 @@ package output
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/constants"
@@ -182,8 +184,8 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 		BarrelFiles: []BarrelFile{},
 	}
 
-	for _, file := range schemaFiles {
-		plan.Files = append(plan.Files, *file)
+	for _, p := range slices.Sorted(maps.Keys(schemaFiles)) {
+		plan.Files = append(plan.Files, *schemaFiles[p])
 	}
 
 	return plan

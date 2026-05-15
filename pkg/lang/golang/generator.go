@@ -2,7 +2,8 @@ package golang
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
@@ -75,14 +76,8 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 
 	// Write imports if any
 	if len(g.imports) > 0 {
-		importList := make([]string, 0, len(g.imports))
-		for imp := range g.imports {
-			importList = append(importList, imp)
-		}
-		sort.Strings(importList)
-
 		sb.WriteString("import (\n")
-		for _, imp := range importList {
+		for _, imp := range slices.Sorted(maps.Keys(g.imports)) {
 			fmt.Fprintf(&sb, "\t%q\n", imp)
 		}
 		sb.WriteString(")\n\n")
@@ -277,13 +272,11 @@ func formatEnumValue(val any) string {
 func formatMap(m map[string]any) string {
 	var sb strings.Builder
 	sb.WriteString("map[string]any{")
-	first := true
-	for k, v := range m {
-		if !first {
+	for i, k := range slices.Sorted(maps.Keys(m)) {
+		if i > 0 {
 			sb.WriteString(", ")
 		}
-		fmt.Fprintf(&sb, "%q: %s", k, formatEnumValue(v))
-		first = false
+		fmt.Fprintf(&sb, "%q: %s", k, formatEnumValue(m[k]))
 	}
 	sb.WriteString("}")
 	return sb.String()

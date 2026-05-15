@@ -1,6 +1,8 @@
 package output
 
 import (
+	"maps"
+	"slices"
 	"sort"
 
 	"github.com/mirpo/schemagen/pkg/typegraph"
@@ -39,12 +41,7 @@ func (it *ImportTracker) GetDependencies() []ImportDependency {
 	result := make([]ImportDependency, 0, len(it.deps))
 
 	for target, typeSet := range it.deps {
-		typeNames := make([]string, 0, len(typeSet))
-		for name := range typeSet {
-			typeNames = append(typeNames, name)
-		}
-
-		sort.Strings(typeNames)
+		typeNames := slices.Sorted(maps.Keys(typeSet))
 
 		result = append(result, ImportDependency{
 			TargetFile: target,

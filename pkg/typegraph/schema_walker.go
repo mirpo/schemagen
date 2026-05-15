@@ -2,7 +2,8 @@ package typegraph
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/naming"
@@ -13,12 +14,7 @@ import (
 func (w *SchemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jsonschema.Schema) []string {
 	// PropertyOrder may be nil in tests that create schemas manually
 	if s.PropertyOrder == nil {
-		names := make([]string, 0, len(defs))
-		for name := range defs {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		return names
+		return slices.Sorted(maps.Keys(defs))
 	}
 
 	defsPath := s.RelativePath + "#/$defs"
@@ -40,11 +36,7 @@ func (w *SchemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jso
 
 	// Add any keys not in order (shouldn't happen, but be safe)
 	if len(mapKeys) > 0 {
-		extra := make([]string, 0, len(mapKeys))
-		for key := range mapKeys {
-			extra = append(extra, key)
-		}
-		sort.Strings(extra)
+		extra := slices.Sorted(maps.Keys(mapKeys))
 		result = append(result, extra...)
 	}
 

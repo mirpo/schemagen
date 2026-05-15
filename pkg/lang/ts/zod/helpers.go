@@ -2,6 +2,8 @@ package zod
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
@@ -50,15 +52,14 @@ func formatJSObject(m map[string]interface{}) string {
 	}
 
 	var parts []string
-	for k, v := range m {
-		// Quote key if needed
+	for _, k := range slices.Sorted(maps.Keys(m)) {
 		var key string
 		if tscommon.NeedsQuoting(k) {
 			key = fmt.Sprintf("%q", k)
 		} else {
 			key = k
 		}
-		parts = append(parts, fmt.Sprintf("%s: %s", key, formatLiteral(v)))
+		parts = append(parts, fmt.Sprintf("%s: %s", key, formatLiteral(m[k])))
 	}
 	return fmt.Sprintf("{ %s }", strings.Join(parts, ", "))
 }
@@ -98,14 +99,14 @@ func formatZodObject(m map[string]interface{}) string {
 	}
 
 	var parts []string
-	for k, v := range m {
+	for _, k := range slices.Sorted(maps.Keys(m)) {
 		var key string
 		if tscommon.NeedsQuoting(k) {
 			key = fmt.Sprintf("%q", k)
 		} else {
 			key = k
 		}
-		parts = append(parts, fmt.Sprintf("%s: %s", key, formatZodLiteral(v)))
+		parts = append(parts, fmt.Sprintf("%s: %s", key, formatZodLiteral(m[k])))
 	}
 	return fmt.Sprintf("z.object({ %s }).strict()", strings.Join(parts, ", "))
 }

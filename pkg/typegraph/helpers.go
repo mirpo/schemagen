@@ -1,7 +1,8 @@
 package typegraph
 
 import (
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/schema"
@@ -84,11 +85,7 @@ func GetOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string
 
 			// Add any keys not in order (shouldn't happen, but be safe)
 			if len(mapKeys) > 0 {
-				extra := make([]string, 0, len(mapKeys))
-				for key := range mapKeys {
-					extra = append(extra, key)
-				}
-				sort.Strings(extra)
+				extra := slices.Sorted(maps.Keys(mapKeys))
 				result = append(result, extra...)
 			}
 
@@ -97,11 +94,7 @@ func GetOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string
 	}
 
 	// Fallback to alphabetical sorting for backward compatibility
-	names := make([]string, 0, len(*properties))
-	for name := range *properties {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(*properties))
 	return names
 }
 

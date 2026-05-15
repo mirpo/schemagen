@@ -231,3 +231,34 @@ func TestPlanOutput_BundleDeps(t *testing.T) {
 	assert.True(t, typeNames["Base"])
 	assert.False(t, typeNames["Unused"])
 }
+
+func TestPlanOutput_MultiFile_DeterministicOrder(t *testing.T) {
+	schemas := make([]*schema.Schema, 10)
+	types := make([]*typegraph.Type, 10)
+	for i := range 10 {
+		name := string(rune('A' + i))
+		schemas[i] = &schema.Schema{Name: name, RelativePath: name + ".json"}
+		types[i] = &typegraph.Type{Name: name}
+	}
+
+	graph := &typegraph.Graph{Types: types}
+
+	var firstOrder []string
+	for run := range 50 {
+		plan, err := PlanOutput(graph, schemas, StrategyMultiFile, "ts", "")
+		require.NoError(t, err)
+		require.Len(t, plan.Files, 10)
+
+		var order []string
+		for _, f := range plan.Files {
+			order = append(order, f.RelativePath)
+		}
+
+		if run == 0 {
+			firstOrder = order
+		} else {
+			assert.Equal(t, firstOrder, order,
+				"file order must be deterministic across runs (failed on run %d)", run)
+		}
+	}
+}
