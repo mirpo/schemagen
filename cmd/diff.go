@@ -43,7 +43,9 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	input := args[0]
 
 	if noColor {
+		old := color.NoColor
 		color.NoColor = true
+		defer func() { color.NoColor = old }()
 	}
 
 	flags := GetGenerationFlags(cmd)
