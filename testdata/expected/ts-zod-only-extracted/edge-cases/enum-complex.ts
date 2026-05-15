@@ -5,6 +5,6 @@ import { z } from 'zod';
 /**
  * Enum with complex values (objects/arrays) - all preserved in output
  */
-export const EnumComplexSchema = z.union([z.literal("simple"), z.object({ complex: z.literal(true) }).strict(), z.literal(42), z.tuple([z.literal("array"), z.literal("value")])]).meta({ description: "Enum with complex values (objects/arrays) - all preserved in output" });
+export const EnumComplexSchema = z.union([z.literal("simple"), z.object({ complex: z.literal(true) }).strict(), z.literal(42), z.tuple([z.literal("array"), z.literal("value")]), z.object({ alpha: z.literal(2), beta: z.literal(4), mango: z.literal(3), zebra: z.literal(1) }).strict()]).meta({ description: "Enum with complex values (objects/arrays) - all preserved in output" });
 
 export type EnumComplex = z.infer<typeof EnumComplexSchema>;
