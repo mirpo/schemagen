@@ -53,7 +53,7 @@ func TestComputeRelativeImport_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ComputeRelativeImport(tt.from, tt.to)
+			result := computeRelativeImport(tt.from, tt.to)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

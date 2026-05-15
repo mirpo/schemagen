@@ -41,7 +41,6 @@ const (
 
 // Type represents a type in the type graph.
 type Type struct {
-	ID          string   // Unique identifier
 	Name        string   // Type name (PascalCase)
 	Kind        TypeKind // Type kind
 	Description string   // From schema description
@@ -70,12 +69,10 @@ type AdditionalPropsConfig struct {
 
 // Field represents a struct field.
 type Field struct {
-	Name        string   // Field name (PascalCase)
 	JSONName    string   // JSON tag name
 	Type        *TypeRef // Field type
 	Description string   // From schema
 	Required    bool     // Is this field required?
-	OmitEmpty   bool     // Should we add omitempty?
 
 	// Validation constraints
 	MinLength        *int     // minLength for strings
@@ -151,8 +148,7 @@ type Graph struct {
 	typeIndex map[string]*Type // O(1) type lookup by name
 }
 
-// NewGraph creates a new Graph with initialized index.
-func NewGraph() *Graph {
+func newGraph() *Graph {
 	return &Graph{
 		Types:     make([]*Type, 0),
 		typeIndex: make(map[string]*Type),
@@ -187,8 +183,7 @@ type BuildConfig struct {
 	ExtractInlined bool // Extract inline enums/objects to named types
 }
 
-// BuildContext carries per-schema state through the build pipeline.
-type BuildContext struct {
+type buildContext struct {
 	Order *schema.PropertyOrder
 	Path  string
 }

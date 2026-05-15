@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func ComputeRelativeImport(fromFile, toFile string) string {
+func computeRelativeImport(fromFile, toFile string) string {
 	fromDir := filepath.Dir(fromFile)
 
 	if filepath.Dir(toFile) == fromDir {

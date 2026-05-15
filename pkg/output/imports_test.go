@@ -10,7 +10,7 @@ import (
 )
 
 func TestImportTracker_BasicBehavior(t *testing.T) {
-	tracker := NewImportTracker("event.ts")
+	tracker := newImportTracker("event.ts")
 
 	tracker.AddImport("header.ts", "Header")
 	tracker.AddImport("meta.ts", "Meta")
@@ -28,7 +28,7 @@ func TestImportTracker_BasicBehavior(t *testing.T) {
 }
 
 func TestImportTracker_SelfReferenceSkipped(t *testing.T) {
-	tracker := NewImportTracker("event.ts")
+	tracker := newImportTracker("event.ts")
 
 	tracker.AddImport("event.ts", "Event")
 	tracker.AddImport("other.ts", "Other")
@@ -40,7 +40,7 @@ func TestImportTracker_SelfReferenceSkipped(t *testing.T) {
 }
 
 func TestImportTracker_TypeNamesSorted(t *testing.T) {
-	tracker := NewImportTracker("a.ts")
+	tracker := newImportTracker("a.ts")
 
 	tracker.AddImport("b.ts", "Z")
 	tracker.AddImport("b.ts", "A")
@@ -74,7 +74,7 @@ func TestCollectTypeReferences_DeepTraversal(t *testing.T) {
 		},
 	}
 
-	tracker := NewImportTracker("wrapper.ts")
+	tracker := newImportTracker("wrapper.ts")
 	typeToFile := map[string]string{
 		"A": "a.ts",
 		"B": "b.ts",
@@ -100,7 +100,7 @@ func TestCollectTypeReferences_UnionMembers(t *testing.T) {
 		},
 	}
 
-	tracker := NewImportTracker("shape.ts")
+	tracker := newImportTracker("shape.ts")
 	typeToFile := map[string]string{
 		"Circle":   "circle.ts",
 		"Square":   "square.ts",
@@ -127,7 +127,6 @@ func TestComputeImports_Integration(t *testing.T) {
 					Name: "Event",
 					Fields: []*typegraph.Field{
 						{
-							Name: "Header",
 							Type: &typegraph.TypeRef{
 								TypeName: "Header",
 							},

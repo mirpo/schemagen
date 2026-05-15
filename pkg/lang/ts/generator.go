@@ -39,22 +39,20 @@ type Config struct {
 
 // Generator generates TypeScript code from a type graph.
 type Generator struct {
-	graph  *typegraph.Graph
 	config *Config
 }
 
 // NewGenerator creates a new TypeScript generator.
-func NewGenerator(graph *typegraph.Graph) *Generator {
-	return NewGeneratorWithConfig(graph, &Config{})
+func NewGenerator() *Generator {
+	return NewGeneratorWithConfig(&Config{})
 }
 
 // NewGeneratorWithConfig creates a TypeScript generator with custom config.
-func NewGeneratorWithConfig(graph *typegraph.Graph, cfg *Config) *Generator {
+func NewGeneratorWithConfig(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{}
 	}
 	return &Generator{
-		graph:  graph,
 		config: cfg,
 	}
 }
@@ -121,7 +119,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 	// Create Zod emitter if needed
 	var zodEmitter *zod.Emitter
 	if g.config.ZodMode != ZodModeOff {
-		zodEmitter = zod.NewEmitter(g.graph, &zod.Config{
+		zodEmitter = zod.NewEmitter(&zod.Config{
 			CoerceDates: g.config.ZodCoerceDates,
 			Strict:      g.config.ZodStrict,
 		})

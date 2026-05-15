@@ -85,7 +85,7 @@ func (e *ExitCodeError) Unwrap() error {
 }
 
 const (
-	ExitGeneral = 1
+	exitGeneral = 1
 )
 
 // Wrap wraps an error with context and returns an ExitCodeError.
@@ -96,7 +96,7 @@ func Wrap(err error, msg string) *ExitCodeError {
 	}
 	return &ExitCodeError{
 		Message: msg,
-		Code:    ExitGeneral,
+		Code:    exitGeneral,
 		Cause:   err,
 	}
 }

@@ -13,13 +13,10 @@ import (
 // Helper functions
 
 func createTestGenerator(config *Config) *Generator {
-	graph := &typegraph.Graph{
-		Types: []*typegraph.Type{},
-	}
 	if config == nil {
-		return NewGenerator(graph)
+		return NewGenerator()
 	}
-	return NewGeneratorWithConfig(graph, config)
+	return NewGeneratorWithConfig(config)
 }
 
 func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {
@@ -32,7 +29,6 @@ func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {
 
 func createTestField(name string, jsonName string, prim typegraph.PrimitiveKind, required bool) *typegraph.Field {
 	return &typegraph.Field{
-		Name:     name,
 		JSONName: jsonName,
 		Type: &typegraph.TypeRef{
 			Kind:      typegraph.KindPrimitive,
@@ -342,7 +338,6 @@ func TestGenerateInterface_FieldDescriptions(t *testing.T) {
 	typ := createTestType("User", typegraph.KindStruct)
 	typ.Fields = []*typegraph.Field{
 		{
-			Name:        "Email",
 			JSONName:    "email",
 			Description: "User email address",
 			Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
@@ -360,7 +355,6 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 	typ := createTestType("Event", typegraph.KindStruct)
 	typ.Fields = []*typegraph.Field{
 		{
-			Name:     "ID",
 			JSONName: "id",
 			Type: &typegraph.TypeRef{
 				Kind:      typegraph.KindPrimitive,
@@ -370,7 +364,6 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 			Required: true,
 		},
 		{
-			Name:        "Timestamp",
 			JSONName:    "timestamp",
 			Description: "Event timestamp",
 			Type: &typegraph.TypeRef{
@@ -497,7 +490,7 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("quoted description", func(t *testing.T) {
 		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{{Name: "Name", JSONName: "name", Description: `This is a "quoted" description`, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}}
+		typ.Fields = []*typegraph.Field{{JSONName: "name", Description: `This is a "quoted" description`, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, `"quoted"`)
@@ -533,7 +526,6 @@ func TestGenerateFile_CompleteInterface(t *testing.T) {
 	// No extends - use regular interface to test format annotations
 	typ.Fields = []*typegraph.Field{
 		{
-			Name:     "ID",
 			JSONName: "id",
 			Type: &typegraph.TypeRef{
 				Kind:      typegraph.KindPrimitive,
@@ -543,7 +535,6 @@ func TestGenerateFile_CompleteInterface(t *testing.T) {
 			Required: true,
 		},
 		{
-			Name:        "Email",
 			JSONName:    "email",
 			Description: "User email address",
 			Type: &typegraph.TypeRef{
@@ -554,7 +545,6 @@ func TestGenerateFile_CompleteInterface(t *testing.T) {
 			Required: true,
 		},
 		{
-			Name:     "Age",
 			JSONName: "age",
 			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt},
 			Required: false,
@@ -678,7 +668,6 @@ func TestGenerateFile_AllConfigOptions(t *testing.T) {
 	typ.Description = "This comment should appear"
 	typ.Fields = []*typegraph.Field{
 		{
-			Name:     "Data",
 			JSONName: "data",
 			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUnknown},
 			Required: true,
@@ -704,7 +693,6 @@ func TestGenerateFile_ZodBothModeImportsSchemas(t *testing.T) {
 	typ := createTestType("Event", typegraph.KindStruct)
 	typ.Fields = []*typegraph.Field{
 		{
-			Name:     "Header",
 			JSONName: "header",
 			Type:     &typegraph.TypeRef{Kind: typegraph.KindRef, TypeName: "EventHeader"},
 			Required: true,

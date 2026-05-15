@@ -89,7 +89,7 @@ func generateFiles(
 	cfg *Config,
 	writer FileWriter,
 ) error {
-	generator, err := createGenerator(graph, cfg)
+	generator, err := createGenerator(cfg)
 	if err != nil {
 		return err
 	}

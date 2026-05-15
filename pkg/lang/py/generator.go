@@ -21,19 +21,17 @@ type Config struct {
 
 // Generator generates Python (Pydantic) code from a type graph.
 type Generator struct {
-	graph    *typegraph.Graph
 	config   *Config
 	imports  map[string]bool
 	needsAny bool // Track if typing.Any is needed
 }
 
 // NewGeneratorWithConfig creates a Python generator with custom config.
-func NewGeneratorWithConfig(graph *typegraph.Graph, cfg *Config) *Generator {
+func NewGeneratorWithConfig(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{}
 	}
 	return &Generator{
-		graph:    graph,
 		config:   cfg,
 		imports:  make(map[string]bool),
 		needsAny: false,

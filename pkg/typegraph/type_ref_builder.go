@@ -7,26 +7,24 @@ import (
 	"github.com/mirpo/schemagen/pkg/naming"
 )
 
-// TypeRefBuilder builds type references from JSON schemas.
-// Implements FieldBuilder interface.
-type TypeRefBuilder struct {
-	registry *TypeRegistry
-	resolver *RefResolver
+type typeRefBuilder struct {
+	registry *typeRegistry
+	resolver *refResolver
 	config   *BuildConfig
 }
 
-func NewTypeRefBuilder(registry *TypeRegistry, resolver *RefResolver, config *BuildConfig) *TypeRefBuilder {
+func newTypeRefBuilder(registry *typeRegistry, resolver *refResolver, config *BuildConfig) *typeRefBuilder {
 	if config == nil {
 		config = &BuildConfig{}
 	}
-	return &TypeRefBuilder{
+	return &typeRefBuilder{
 		registry: registry,
 		resolver: resolver,
 		config:   config,
 	}
 }
 
-func (b *TypeRefBuilder) BuildTypeRef(ctx *BuildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
+func (b *typeRefBuilder) BuildTypeRef(ctx *buildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
 	ref := &TypeRef{Nullable: b.isNullable(schema)}
 
 	// Dispatch to specific handlers based on schema structure
@@ -54,11 +52,11 @@ func (b *TypeRefBuilder) BuildTypeRef(ctx *BuildContext, schema *jsonschema.Sche
 	}
 }
 
-func (b *TypeRefBuilder) isNullable(schema *jsonschema.Schema) bool {
+func (b *typeRefBuilder) isNullable(schema *jsonschema.Schema) bool {
 	return b.hasType(schema, "null")
 }
 
-func (b *TypeRefBuilder) hasType(schema *jsonschema.Schema, typeName string) bool {
+func (b *typeRefBuilder) hasType(schema *jsonschema.Schema, typeName string) bool {
 	for _, t := range schema.Type {
 		if t == typeName {
 			return true
@@ -68,8 +66,8 @@ func (b *TypeRefBuilder) hasType(schema *jsonschema.Schema, typeName string) boo
 }
 
 // buildRefTypeRef handles $ref schemas.
-func (b *TypeRefBuilder) buildRefTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
-	typeName := b.resolver.ExtractTypeName(schema.Ref)
+func (b *typeRefBuilder) buildRefTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
+	typeName := b.resolver.extractTypeName(schema.Ref)
 	if typeName != "" {
 		ref.Kind = KindRef
 		ref.TypeName = typeName
@@ -82,7 +80,7 @@ func (b *TypeRefBuilder) buildRefTypeRef(ref *TypeRef, schema *jsonschema.Schema
 }
 
 // buildConstTypeRef handles const (single-value enum) schemas.
-func (b *TypeRefBuilder) buildConstTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
+func (b *typeRefBuilder) buildConstTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
 	constValue := schema.Const.Value
 	ref.Kind = KindEnum
 	ref.EnumValues = []interface{}{constValue}
@@ -92,7 +90,7 @@ func (b *TypeRefBuilder) buildConstTypeRef(ref *TypeRef, schema *jsonschema.Sche
 }
 
 // buildEnumTypeRef handles inline enum schemas.
-func (b *TypeRefBuilder) buildEnumTypeRef(ctx *BuildContext, ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
+func (b *typeRefBuilder) buildEnumTypeRef(ctx *buildContext, ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
 	// Check if we should extract as separate named type
 	if b.config.ExtractInlined && fieldName != "" {
 		return b.extractEnumType(ref, schema, fieldName)
@@ -107,11 +105,10 @@ func (b *TypeRefBuilder) buildEnumTypeRef(ctx *BuildContext, ref *TypeRef, schem
 }
 
 // extractEnumType extracts an inline enum as a separate named type.
-func (b *TypeRefBuilder) extractEnumType(ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
-	enumTypeName := b.registry.EnsureUniqueName(naming.ToPascalCase(fieldName))
+func (b *typeRefBuilder) extractEnumType(ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
+	enumTypeName := b.registry.ensureUniqueName(naming.ToPascalCase(fieldName))
 
 	enumType := &Type{
-		ID:          b.registry.NextID(),
 		Name:        enumTypeName,
 		Kind:        KindEnum,
 		Description: getDescription(schema),
@@ -126,14 +123,14 @@ func (b *TypeRefBuilder) extractEnumType(ref *TypeRef, schema *jsonschema.Schema
 		})
 	}
 
-	b.registry.Add(enumType)
+	b.registry.add(enumType)
 	ref.Kind = KindRef
 	ref.TypeName = enumTypeName
 	return ref
 }
 
 // buildArrayTypeRef handles array schemas.
-func (b *TypeRefBuilder) buildArrayTypeRef(ctx *BuildContext, ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
+func (b *typeRefBuilder) buildArrayTypeRef(ctx *buildContext, ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
 	ref.Kind = KindArray
 	if schema.Items != nil {
 		itemFieldName := ""
@@ -148,7 +145,7 @@ func (b *TypeRefBuilder) buildArrayTypeRef(ctx *BuildContext, ref *TypeRef, sche
 }
 
 // buildObjectTypeRef handles object schemas.
-func (b *TypeRefBuilder) buildObjectTypeRef(ctx *BuildContext, ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
+func (b *typeRefBuilder) buildObjectTypeRef(ctx *buildContext, ref *TypeRef, schema *jsonschema.Schema, fieldName string) *TypeRef {
 	hasProps := schema.Properties != nil && len(*schema.Properties) > 0
 
 	if !hasProps {
@@ -164,9 +161,9 @@ func (b *TypeRefBuilder) buildObjectTypeRef(ctx *BuildContext, ref *TypeRef, sch
 
 	// Object with properties
 	if b.config.ExtractInlined && fieldName != "" {
-		objectTypeName := b.registry.EnsureUniqueName(naming.ToPascalCase(fieldName))
-		extractedType := b.ExtractInlineObjectType(ctx, objectTypeName, schema)
-		b.registry.Add(extractedType)
+		objectTypeName := b.registry.ensureUniqueName(naming.ToPascalCase(fieldName))
+		extractedType := b.extractInlineObjectType(ctx, objectTypeName, schema)
+		b.registry.add(extractedType)
 		ref.Kind = KindRef
 		ref.TypeName = extractedType.Name
 		return ref
@@ -175,14 +172,14 @@ func (b *TypeRefBuilder) buildObjectTypeRef(ctx *BuildContext, ref *TypeRef, sch
 	// Keep inline - create inline object with fields
 	ref.Kind = KindInterface
 	ref.Primitive = PrimUnknown
-	ref.ObjectFields = b.BuildFieldsFromProperties(ctx, schema, "")
+	ref.ObjectFields = b.buildFieldsFromProperties(ctx, schema, "")
 	return ref
 }
 
 // buildPrimitiveTypeRef handles primitive type schemas.
-func (b *TypeRefBuilder) buildPrimitiveTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
+func (b *typeRefBuilder) buildPrimitiveTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
 	ref.Kind = KindPrimitive
-	ref.Primitive = MapPrimitiveSchema(schema)
+	ref.Primitive = mapPrimitiveSchema(schema)
 
 	if schema.Format != nil && *schema.Format != "" {
 		ref.Format = *schema.Format
@@ -190,7 +187,7 @@ func (b *TypeRefBuilder) buildPrimitiveTypeRef(ref *TypeRef, schema *jsonschema.
 	return ref
 }
 
-func (b *TypeRefBuilder) inferPrimitiveFromValue(val interface{}) PrimitiveKind {
+func (b *typeRefBuilder) inferPrimitiveFromValue(val interface{}) PrimitiveKind {
 	switch val.(type) {
 	case string:
 		return PrimString
@@ -202,7 +199,7 @@ func (b *TypeRefBuilder) inferPrimitiveFromValue(val interface{}) PrimitiveKind 
 }
 
 // inferEnumType infers enum type (string/int) from first value.
-func (b *TypeRefBuilder) inferEnumType(val interface{}) string {
+func (b *typeRefBuilder) inferEnumType(val interface{}) string {
 	switch val.(type) {
 	case string:
 		return "string"
@@ -213,8 +210,8 @@ func (b *TypeRefBuilder) inferEnumType(val interface{}) string {
 	}
 }
 
-// ShouldExtractInlineObject checks if a schema represents an inline object that should be extracted.
-func (b *TypeRefBuilder) ShouldExtractInlineObject(schema *jsonschema.Schema) bool {
+// shouldExtractInlineObject checks if a schema represents an inline object that should be extracted.
+func (b *typeRefBuilder) shouldExtractInlineObject(schema *jsonschema.Schema) bool {
 	// Don't extract if it's a $ref (already a named type)
 	if schema.Ref != "" {
 		return false
@@ -228,10 +225,9 @@ func (b *TypeRefBuilder) ShouldExtractInlineObject(schema *jsonschema.Schema) bo
 	return false
 }
 
-// ExtractInlineObjectType extracts an inline object as a separate Type.
-func (b *TypeRefBuilder) ExtractInlineObjectType(ctx *BuildContext, baseName string, schema *jsonschema.Schema) *Type {
+// extractInlineObjectType extracts an inline object as a separate Type.
+func (b *typeRefBuilder) extractInlineObjectType(ctx *buildContext, baseName string, schema *jsonschema.Schema) *Type {
 	typ := &Type{
-		ID:          b.registry.NextID(),
 		Name:        baseName,
 		Kind:        KindStruct,
 		Description: getDescription(schema),
@@ -239,20 +235,20 @@ func (b *TypeRefBuilder) ExtractInlineObjectType(ctx *BuildContext, baseName str
 	}
 
 	// Capture additionalProperties configuration
-	typ.AdditionalProps = ExtractAdditionalProperties(schema, func(s *jsonschema.Schema, fieldName string) *TypeRef { return b.BuildTypeRef(ctx, s, fieldName) })
+	typ.AdditionalProps = extractAdditionalProperties(schema, func(s *jsonschema.Schema, fieldName string) *TypeRef { return b.BuildTypeRef(ctx, s, fieldName) })
 
 	return typ
 }
 
-// BuildFieldsFromProperties extracts fields from schema properties for inline objects.
+// buildFieldsFromProperties extracts fields from schema properties for inline objects.
 // This is used to populate ObjectFields in TypeRef for anonymous interfaces.
 // Implements FieldBuilder interface.
-func (b *TypeRefBuilder) BuildFieldsFromProperties(ctx *BuildContext, schema *jsonschema.Schema, orderPath string) []*Field {
+func (b *typeRefBuilder) buildFieldsFromProperties(ctx *buildContext, schema *jsonschema.Schema, orderPath string) []*Field {
 	return buildFieldsFromSchema(ctx, schema, orderPath, b.BuildTypeRef)
 }
 
-// MapPrimitiveSchema maps a JSON schema to a PrimitiveKind.
-func MapPrimitiveSchema(schema *jsonschema.Schema) PrimitiveKind {
+// mapPrimitiveSchema maps a JSON schema to a PrimitiveKind.
+func mapPrimitiveSchema(schema *jsonschema.Schema) PrimitiveKind {
 	if schema.Format != nil {
 		switch *schema.Format {
 		case "uuid":
@@ -302,10 +298,10 @@ func MapPrimitiveSchema(schema *jsonschema.Schema) PrimitiveKind {
 
 // buildUnionMembers builds TypeRefs for union members (oneOf/anyOf).
 // Extracts inline objects as separate types when applicable.
-func (b *TypeRefBuilder) buildUnionMembers(ctx *BuildContext, members []*jsonschema.Schema, fieldName string) []*TypeRef {
+func (b *typeRefBuilder) buildUnionMembers(ctx *buildContext, members []*jsonschema.Schema, fieldName string) []*TypeRef {
 	result := make([]*TypeRef, 0, len(members))
 	for i, memberSchema := range members {
-		if b.ShouldExtractInlineObject(memberSchema) {
+		if b.shouldExtractInlineObject(memberSchema) {
 			// Extract as separate type with field-based name
 			var typeName string
 			if fieldName != "" {
@@ -318,8 +314,8 @@ func (b *TypeRefBuilder) buildUnionMembers(ctx *BuildContext, members []*jsonsch
 			} else {
 				typeName = fmt.Sprintf("Variant%d", i) // Fallback
 			}
-			extractedType := b.ExtractInlineObjectType(ctx, typeName, memberSchema)
-			b.registry.Add(extractedType)
+			extractedType := b.extractInlineObjectType(ctx, typeName, memberSchema)
+			b.registry.add(extractedType)
 			result = append(result, &TypeRef{
 				Kind:     KindRef,
 				TypeName: extractedType.Name,

@@ -2,41 +2,28 @@ package typegraph
 
 import "fmt"
 
-// TypeRegistry manages type storage, ID generation, and unique naming.
-type TypeRegistry struct {
+type typeRegistry struct {
 	types   []*Type
 	nameSet map[string]bool // O(1) name lookup for uniqueness checks
-	nextID  int
 }
 
-// NewTypeRegistry creates a new type registry.
-func NewTypeRegistry() *TypeRegistry {
-	return &TypeRegistry{
+func newTypeRegistry() *typeRegistry {
+	return &typeRegistry{
 		types:   make([]*Type, 0),
 		nameSet: make(map[string]bool),
 	}
 }
 
-// NextID generates the next unique type ID.
-func (r *TypeRegistry) NextID() string {
-	r.nextID++
-	return fmt.Sprintf("type_%d", r.nextID)
-}
-
-// Add adds a type to the registry.
-func (r *TypeRegistry) Add(t *Type) {
+func (r *typeRegistry) add(t *Type) {
 	r.types = append(r.types, t)
 	r.nameSet[t.Name] = true
 }
 
-// All returns all registered types.
-func (r *TypeRegistry) All() []*Type {
+func (r *typeRegistry) all() []*Type {
 	return r.types
 }
 
-// EnsureUniqueName ensures a type name is unique by appending numbers if needed.
-// Uses O(1) lookup via nameSet instead of O(n) linear scan.
-func (r *TypeRegistry) EnsureUniqueName(baseName string) string {
+func (r *typeRegistry) ensureUniqueName(baseName string) string {
 	name := baseName
 	counter := 1
 

@@ -9,31 +9,31 @@ import (
 
 func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	t.Run("ref", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Ref: "#/$defs/MyType"}, "")
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Ref: "#/$defs/MyType"}, "")
 		assert.Equal(t, KindRef, ref.Kind)
 		assert.Equal(t, "MyType", ref.TypeName)
 	})
 
 	t.Run("enum inline", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{ExtractInlined: false})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{ExtractInlined: false})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
 		assert.Equal(t, KindEnum, ref.Kind)
 		assert.Len(t, ref.EnumValues, 3)
 	})
 
 	t.Run("enum extracted", func(t *testing.T) {
-		registry := NewTypeRegistry()
-		trb := NewTypeRefBuilder(registry, NewRefResolver(nil), &BuildConfig{ExtractInlined: true})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
+		registry := newTypeRegistry()
+		trb := newTypeRefBuilder(registry, newRefResolver(nil), &BuildConfig{ExtractInlined: true})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Enum: []interface{}{"a", "b", "c"}}, "status")
 		assert.Equal(t, KindRef, ref.Kind)
 		assert.Equal(t, "Status", ref.TypeName)
-		assert.Len(t, registry.All(), 1)
+		assert.Len(t, registry.all(), 1)
 	})
 
 	t.Run("union oneOf", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{
 			OneOf: []*jsonschema.Schema{{Type: []string{"string"}}, {Type: []string{"integer"}}},
 		}, "")
 		assert.Equal(t, KindUnion, ref.Kind)
@@ -41,8 +41,8 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	})
 
 	t.Run("array", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{
 			Type:  []string{"array"},
 			Items: &jsonschema.Schema{Type: []string{"string"}},
 		}, "tags")
@@ -51,35 +51,35 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	})
 
 	t.Run("object as map", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"object"}}, "")
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Type: []string{"object"}}, "")
 		assert.Equal(t, KindMap, ref.Kind)
 	})
 
 	t.Run("primitive", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"string"}}, "")
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Type: []string{"string"}}, "")
 		assert.Equal(t, KindPrimitive, ref.Kind)
 		assert.Equal(t, PrimString, ref.Primitive)
 	})
 
 	t.Run("primitive with format", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
 		format := "email"
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"string"}, Format: &format}, "")
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Type: []string{"string"}, Format: &format}, "")
 		assert.Equal(t, "email", ref.Format)
 	})
 
 	t.Run("nullable", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{Type: []string{"string", "null"}}, "")
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{Type: []string{"string", "null"}}, "")
 		assert.True(t, ref.Nullable)
 		assert.Equal(t, KindPrimitive, ref.Kind)
 	})
 
 	t.Run("nullable array with null first", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{
 			Type:  []string{"null", "array"},
 			Items: &jsonschema.Schema{Type: []string{"string"}},
 		}, "tags")
@@ -89,8 +89,8 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 	})
 
 	t.Run("nullable object with null first", func(t *testing.T) {
-		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-		ref := trb.BuildTypeRef(&BuildContext{}, &jsonschema.Schema{
+		trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
+		ref := trb.BuildTypeRef(&buildContext{}, &jsonschema.Schema{
 			Type: []string{"null", "object"},
 		}, "")
 		assert.True(t, ref.Nullable)
@@ -99,14 +99,14 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 }
 
 func TestTypeRefBuilder_ShouldExtractInlineObject(t *testing.T) {
-	trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
+	trb := newTypeRefBuilder(newTypeRegistry(), newRefResolver(nil), &BuildConfig{})
 
-	assert.True(t, trb.ShouldExtractInlineObject(&jsonschema.Schema{
+	assert.True(t, trb.shouldExtractInlineObject(&jsonschema.Schema{
 		Type:       []string{"object"},
 		Properties: &jsonschema.SchemaMap{"name": &jsonschema.Schema{Type: []string{"string"}}},
 	}))
-	assert.False(t, trb.ShouldExtractInlineObject(&jsonschema.Schema{Type: []string{"object"}}))
-	assert.False(t, trb.ShouldExtractInlineObject(&jsonschema.Schema{Ref: "#/$defs/SomeType"}))
+	assert.False(t, trb.shouldExtractInlineObject(&jsonschema.Schema{Type: []string{"object"}}))
+	assert.False(t, trb.shouldExtractInlineObject(&jsonschema.Schema{Ref: "#/$defs/SomeType"}))
 }
 
 func strPtr(s string) *string { return &s }

@@ -93,11 +93,11 @@ func TestExitCodeError(t *testing.T) {
 	t.Run("without cause", func(t *testing.T) {
 		err := &ExitCodeError{
 			Message: "command failed",
-			Code:    ExitGeneral,
+			Code:    exitGeneral,
 		}
 
 		assert.Equal(t, "command failed", err.Error())
-		assert.Equal(t, ExitGeneral, err.Code)
+		assert.Equal(t, exitGeneral, err.Code)
 		assert.NoError(t, err.Unwrap())
 	})
 
@@ -105,7 +105,7 @@ func TestExitCodeError(t *testing.T) {
 		cause := fmt.Errorf("underlying error")
 		err := &ExitCodeError{
 			Message: "command failed",
-			Code:    ExitGeneral,
+			Code:    exitGeneral,
 			Cause:   cause,
 		}
 
@@ -120,7 +120,7 @@ func TestWrap(t *testing.T) {
 		err := Wrap(cause, "operation failed")
 
 		assert.Equal(t, "operation failed: original error", err.Error())
-		assert.Equal(t, ExitGeneral, err.Code)
+		assert.Equal(t, exitGeneral, err.Code)
 		assert.ErrorIs(t, err, cause)
 	})
 

@@ -14,7 +14,7 @@ type mockFieldBuilder struct {
 	returnFields      []*Field
 }
 
-func (m *mockFieldBuilder) BuildTypeRef(_ *BuildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
+func (m *mockFieldBuilder) BuildTypeRef(_ *buildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
 	m.buildTypeRefCalls++
 	if m.returnTypeRef != nil {
 		return m.returnTypeRef
@@ -22,19 +22,19 @@ func (m *mockFieldBuilder) BuildTypeRef(_ *BuildContext, schema *jsonschema.Sche
 	return &TypeRef{Kind: KindPrimitive, Primitive: PrimString}
 }
 
-func (m *mockFieldBuilder) BuildFieldsFromProperties(_ *BuildContext, schema *jsonschema.Schema, orderPath string) []*Field {
+func (m *mockFieldBuilder) buildFieldsFromProperties(_ *buildContext, schema *jsonschema.Schema, orderPath string) []*Field {
 	return m.returnFields
 }
 
 func TestStructBuilder_Build(t *testing.T) {
 	t.Run("simple object", func(t *testing.T) {
-		registry := NewTypeRegistry()
-		sb := NewStructBuilder(registry, NewRefResolver(nil))
+		registry := newTypeRegistry()
+		sb := newStructBuilder(registry, newRefResolver(nil))
 		mock := &mockFieldBuilder{}
-		sb.SetFieldBuilder(mock)
+		sb.setFieldBuilder(mock)
 
-		typ := &Type{ID: "1", Name: "Person"}
-		err := sb.Build(&BuildContext{}, typ, &jsonschema.Schema{
+		typ := &Type{Name: "Person"}
+		err := sb.Build(&buildContext{}, typ, &jsonschema.Schema{
 			Type: []string{"object"},
 			Properties: &jsonschema.SchemaMap{
 				"name": &jsonschema.Schema{Type: []string{"string"}},
@@ -50,11 +50,11 @@ func TestStructBuilder_Build(t *testing.T) {
 	})
 
 	t.Run("allOf with ref", func(t *testing.T) {
-		sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(jsonschema.NewCompiler()))
-		sb.SetFieldBuilder(&mockFieldBuilder{})
+		sb := newStructBuilder(newTypeRegistry(), newRefResolver(jsonschema.NewCompiler()))
+		sb.setFieldBuilder(&mockFieldBuilder{})
 
-		typ := &Type{ID: "1", Name: "ExtendedType"}
-		err := sb.Build(&BuildContext{}, typ, &jsonschema.Schema{
+		typ := &Type{Name: "ExtendedType"}
+		err := sb.Build(&buildContext{}, typ, &jsonschema.Schema{
 			AllOf: []*jsonschema.Schema{
 				{Ref: "#/$defs/BaseType"},
 				{Properties: &jsonschema.SchemaMap{"extra": &jsonschema.Schema{Type: []string{"string"}}}},
@@ -68,9 +68,9 @@ func TestStructBuilder_Build(t *testing.T) {
 }
 
 func TestStructBuilder_DeduplicateFields(t *testing.T) {
-	sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
+	sb := newStructBuilder(newTypeRegistry(), newRefResolver(nil))
 
-	result := sb.DeduplicateFields([]*Field{
+	result := sb.deduplicateFields([]*Field{
 		{JSONName: "id", Type: &TypeRef{Kind: KindInterface, Primitive: PrimUnknown}},
 		{JSONName: "id", Type: &TypeRef{Kind: KindPrimitive, Primitive: PrimString}},
 		{JSONName: "name", Type: &TypeRef{Kind: KindPrimitive, Primitive: PrimString}},

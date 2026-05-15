@@ -137,8 +137,8 @@ func TestExtractTypeNameFromRef_ExternalRefs(t *testing.T) {
 				tt.setupCompiler(compiler)
 			}
 
-			builder := NewBuilder(compiler)
-			result := builder.resolver.ExtractTypeName(tt.ref)
+			builder := newBuilder(compiler)
+			result := builder.resolver.extractTypeName(tt.ref)
 			assert.Equal(t, tt.expectedResult, result)
 		})
 	}
@@ -205,8 +205,8 @@ func TestExtractTypeNameFromRef_InternalDefs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			compiler := jsonschema.NewCompiler()
-			builder := NewBuilder(compiler)
-			result := builder.resolver.ExtractTypeName(tt.ref)
+			builder := newBuilder(compiler)
+			result := builder.resolver.extractTypeName(tt.ref)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -254,11 +254,11 @@ func TestExtractTypeNameFromRef_RootSelfReference(t *testing.T) {
 
 			compiler.SetSchema("test.json", schema)
 
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 			// Set the root schema context for the resolver
-			builder.resolver.SetCurrentSchema(schema)
+			builder.resolver.setCurrentSchema(schema)
 
-			result := builder.resolver.ExtractTypeName(tt.ref)
+			result := builder.resolver.extractTypeName(tt.ref)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -440,7 +440,7 @@ func TestExtractTypeNameFromFilename(t *testing.T) {
 
 func TestBuild_EmptySchemaList(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 
 	graph, err := builder.Build([]*schema.Schema{})
 
@@ -524,7 +524,7 @@ func TestBuild_BasicTypes(t *testing.T) {
 				Compiled:     compiled,
 			}
 
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 			graph, err := builder.Build([]*schema.Schema{testSchema})
 
 			require.NoError(t, err)
@@ -582,7 +582,7 @@ func TestBuild_WithDefs(t *testing.T) {
 		Compiled:     compiled,
 	}
 
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
 	require.NoError(t, err)
@@ -659,7 +659,7 @@ func TestBuild_ValidationConstraints(t *testing.T) {
 		PropertyOrder: nil,
 	}
 
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
 	require.NoError(t, err)
@@ -751,7 +751,7 @@ func TestBuild_ArrayType(t *testing.T) {
 		PropertyOrder: nil,
 	}
 
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
 	require.NoError(t, err)
@@ -841,7 +841,7 @@ func TestBuild_MultipleSchemas(t *testing.T) {
 		},
 	}
 
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 	graph, err := builder.Build(schemas)
 
 	require.NoError(t, err)
@@ -901,7 +901,7 @@ func TestBuild_WithAnyOf(t *testing.T) {
 		PropertyOrder: nil,
 	}
 
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 	graph, err := builder.Build([]*schema.Schema{testSchema})
 
 	require.NoError(t, err)
@@ -1018,7 +1018,7 @@ func TestBuild_AllOf(t *testing.T) {
 				Compiled:     compiled,
 			}
 
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 			graph, err := builder.Build([]*schema.Schema{testSchema})
 
 			require.NoError(t, err)
@@ -1090,7 +1090,7 @@ func TestMapPrimitiveSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			schema := &jsonschema.Schema{Type: tt.typ, Format: tt.format}
-			assert.Equal(t, tt.expected, MapPrimitiveSchema(schema))
+			assert.Equal(t, tt.expected, mapPrimitiveSchema(schema))
 		})
 	}
 }
@@ -1110,7 +1110,7 @@ func TestBuild_SpecialFeatures(t *testing.T) {
 		require.NoError(t, err)
 
 		testSchema := &schema.Schema{Path: "config.json", RelativePath: "config.json", Name: "Config", Compiled: compiled}
-		builder := NewBuilder(compiler)
+		builder := newBuilder(compiler)
 		graph, err := builder.Build([]*schema.Schema{testSchema})
 
 		require.NoError(t, err)
@@ -1131,7 +1131,7 @@ func TestBuild_SpecialFeatures(t *testing.T) {
 		require.NoError(t, err)
 
 		testSchema := &schema.Schema{Path: "user.json", RelativePath: "user.json", Name: "User", Compiled: compiled}
-		builder := NewBuilder(compiler)
+		builder := newBuilder(compiler)
 		graph, err := builder.Build([]*schema.Schema{testSchema})
 
 		require.NoError(t, err)
@@ -1154,11 +1154,11 @@ func TestEnsureUniqueTypeName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := NewTypeRegistry()
+			registry := newTypeRegistry()
 			for _, typeName := range tt.existingTypes {
-				registry.Add(&Type{Name: typeName})
+				registry.add(&Type{Name: typeName})
 			}
-			result := registry.EnsureUniqueName(tt.requestName)
+			result := registry.ensureUniqueName(tt.requestName)
 			assert.Equal(t, tt.expectedResult, result)
 		})
 	}
@@ -1170,11 +1170,11 @@ func TestBuildTypeRef_InlineEnum(t *testing.T) {
 		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: true})
 		schema := &jsonschema.Schema{Enum: []interface{}{"active", "inactive", "pending"}}
 
-		ref := builder.BuildTypeRef(&BuildContext{}, schema, "status")
+		ref := builder.BuildTypeRef(&buildContext{}, schema, "status")
 
 		assert.Equal(t, KindRef, ref.Kind)
 		assert.Equal(t, "Status", ref.TypeName)
-		assert.Len(t, builder.registry.All(), 1)
+		assert.Len(t, builder.registry.all(), 1)
 	})
 
 	t.Run("without extraction", func(t *testing.T) {
@@ -1182,7 +1182,7 @@ func TestBuildTypeRef_InlineEnum(t *testing.T) {
 		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: false})
 		schema := &jsonschema.Schema{Enum: []interface{}{"option1", "option2", "option3"}}
 
-		ref := builder.BuildTypeRef(&BuildContext{}, schema, "status")
+		ref := builder.BuildTypeRef(&buildContext{}, schema, "status")
 
 		assert.Equal(t, KindEnum, ref.Kind)
 		assert.Len(t, ref.EnumValues, 3)
@@ -1205,10 +1205,10 @@ func TestDeriveTypeName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			compiler := jsonschema.NewCompiler()
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 
 			schema := &jsonschema.Schema{Title: tt.title}
-			result := builder.resolver.DeriveTypeName(schema, tt.uri)
+			result := builder.resolver.deriveTypeName(schema, tt.uri)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -1216,18 +1216,18 @@ func TestDeriveTypeName(t *testing.T) {
 
 func TestExtractDefinition_PrimitiveType(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 
 	schema := &jsonschema.Schema{
 		Type: []string{"string"},
 	}
 
-	err := builder.walker.extractDefinition(&BuildContext{}, "CustomString", schema)
+	err := builder.walker.extractDefinition(&buildContext{}, "CustomString", schema)
 
 	require.NoError(t, err)
-	assert.Len(t, builder.registry.All(), 1)
-	assert.Equal(t, "CustomString", builder.registry.All()[0].Name)
-	assert.Equal(t, KindPrimitive, builder.registry.All()[0].Kind)
+	assert.Len(t, builder.registry.all(), 1)
+	assert.Equal(t, "CustomString", builder.registry.all()[0].Name)
+	assert.Equal(t, KindPrimitive, builder.registry.all()[0].Kind)
 }
 
 func TestGetDescription(t *testing.T) {
@@ -1277,17 +1277,17 @@ func TestProcessSchema_WithDefs(t *testing.T) {
 		Compiled:     compiled,
 	}
 
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 	err = builder.walker.Process(testSchema)
 
 	require.NoError(t, err)
 	// Should have SubType from $defs + Root
-	assert.GreaterOrEqual(t, len(builder.registry.All()), 2)
+	assert.GreaterOrEqual(t, len(builder.registry.all()), 2)
 }
 
 func TestExtractInlineObjectType(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 
 	schema := &jsonschema.Schema{
 		Type: []string{"object"},
@@ -1298,7 +1298,7 @@ func TestExtractInlineObjectType(t *testing.T) {
 		Required: []string{"id"},
 	}
 
-	typ := builder.typeRefBuilder.ExtractInlineObjectType(&BuildContext{}, "Property", schema)
+	typ := builder.typeRefBuilder.extractInlineObjectType(&buildContext{}, "Property", schema)
 
 	assert.NotNil(t, typ)
 	assert.Equal(t, "Property", typ.Name)
@@ -1314,7 +1314,7 @@ func TestExtractInlineObjectType(t *testing.T) {
 
 func TestBuildFieldsFromProperties(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 
 	schema := &jsonschema.Schema{
 		Properties: &jsonschema.SchemaMap{
@@ -1324,7 +1324,7 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 		Required: []string{"name"},
 	}
 
-	fields := builder.typeRefBuilder.BuildFieldsFromProperties(&BuildContext{}, schema, "")
+	fields := builder.typeRefBuilder.buildFieldsFromProperties(&buildContext{}, schema, "")
 
 	assert.Len(t, fields, 2)
 	// Should be alphabetically ordered
@@ -1337,7 +1337,7 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 func TestBuildStruct(t *testing.T) {
 	t.Run("allOf with ref", func(t *testing.T) {
 		compiler := jsonschema.NewCompiler()
-		builder := NewBuilder(compiler)
+		builder := newBuilder(compiler)
 		schema := &jsonschema.Schema{
 			Type: []string{"object"},
 			AllOf: []*jsonschema.Schema{
@@ -1345,8 +1345,8 @@ func TestBuildStruct(t *testing.T) {
 				{Type: []string{"object"}, Properties: &jsonschema.SchemaMap{"extra": &jsonschema.Schema{Type: []string{"string"}}}},
 			},
 		}
-		typ := &Type{ID: "1", Name: "Extended"}
-		err := builder.BuildStruct(&BuildContext{}, typ, schema)
+		typ := &Type{Name: "Extended"}
+		err := builder.BuildStruct(&buildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindStruct, typ.Kind)
 		assert.Contains(t, typ.Extends, "BaseType")
@@ -1354,14 +1354,14 @@ func TestBuildStruct(t *testing.T) {
 
 	t.Run("with additionalProperties", func(t *testing.T) {
 		compiler := jsonschema.NewCompiler()
-		builder := NewBuilder(compiler)
+		builder := newBuilder(compiler)
 		schema := &jsonschema.Schema{
 			Type:                 []string{"object"},
 			Properties:           &jsonschema.SchemaMap{"name": &jsonschema.Schema{Type: []string{"string"}}},
 			AdditionalProperties: &jsonschema.Schema{Type: []string{"string"}},
 		}
-		typ := &Type{ID: "1", Name: "TestType"}
-		err := builder.BuildStruct(&BuildContext{}, typ, schema)
+		typ := &Type{Name: "TestType"}
+		err := builder.BuildStruct(&buildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindStruct, typ.Kind)
 		assert.NotNil(t, typ.AdditionalProps)
@@ -1404,7 +1404,7 @@ func TestMapPrimitiveSchema_AllFormats(t *testing.T) {
 			if tt.format != "" {
 				schema.Format = &tt.format
 			}
-			assert.Equal(t, tt.expected, MapPrimitiveSchema(schema))
+			assert.Equal(t, tt.expected, mapPrimitiveSchema(schema))
 		})
 	}
 }
@@ -1568,10 +1568,10 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			compiler := jsonschema.NewCompiler()
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 
 			schema := tt.setupSchema()
-			ref := builder.BuildTypeRef(&BuildContext{}, schema, tt.fieldName)
+			ref := builder.BuildTypeRef(&buildContext{}, schema, tt.fieldName)
 
 			assert.Equal(t, tt.expectKind, ref.Kind)
 			if tt.expectChecks != nil {
@@ -1623,9 +1623,9 @@ func TestShouldExtractInlineObject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			compiler := jsonschema.NewCompiler()
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 
-			result := builder.typeRefBuilder.ShouldExtractInlineObject(tt.schema)
+			result := builder.typeRefBuilder.shouldExtractInlineObject(tt.schema)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -1702,7 +1702,7 @@ func TestBuild_PropertyNames(t *testing.T) {
 				Compiled:     compiled,
 			}
 
-			builder := NewBuilder(compiler)
+			builder := newBuilder(compiler)
 			graph, err := builder.Build([]*schema.Schema{testSchema})
 
 			require.NoError(t, err)
@@ -1825,7 +1825,7 @@ func TestIsUnion(t *testing.T) {
 
 func TestBuildUnion(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 
 	t.Run("anyOf with primitives", func(t *testing.T) {
 		schema := &jsonschema.Schema{
@@ -1837,11 +1837,10 @@ func TestBuildUnion(t *testing.T) {
 		}
 
 		typ := &Type{
-			ID:   "test",
 			Name: "UnionNullable",
 		}
 
-		err := builder.BuildUnion(&BuildContext{}, typ, schema)
+		err := builder.BuildUnion(&buildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 3)
@@ -1856,11 +1855,10 @@ func TestBuildUnion(t *testing.T) {
 		}
 
 		typ := &Type{
-			ID:   "test",
 			Name: "SimpleUnion",
 		}
 
-		err := builder.BuildUnion(&BuildContext{}, typ, schema)
+		err := builder.BuildUnion(&buildContext{}, typ, schema)
 		require.NoError(t, err)
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 2)
@@ -1869,7 +1867,7 @@ func TestBuildUnion(t *testing.T) {
 
 func TestProcessSchema_Union(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	builder := NewBuilder(compiler)
+	builder := newBuilder(compiler)
 
 	// Create a schema with anyOf
 	compiled := &jsonschema.Schema{
@@ -1889,9 +1887,9 @@ func TestProcessSchema_Union(t *testing.T) {
 
 	err := builder.walker.Process(s)
 	require.NoError(t, err)
-	assert.Len(t, builder.registry.All(), 1)
+	assert.Len(t, builder.registry.all(), 1)
 
-	typ := builder.registry.All()[0]
+	typ := builder.registry.all()[0]
 	assert.Equal(t, "UnionNullable", typ.Name)
 	assert.Equal(t, KindUnion, typ.Kind)
 	assert.Len(t, typ.UnionMembers, 3)

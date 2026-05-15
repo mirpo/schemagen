@@ -4,34 +4,31 @@ import (
 	"fmt"
 
 	"github.com/kaptinlin/jsonschema"
-	"github.com/mirpo/schemagen/pkg/naming"
 )
 
-// FieldBuilder interface for building fields/type refs.
-// Breaks circular dependency between StructBuilder and TypeRefBuilder.
-type FieldBuilder interface {
-	BuildTypeRef(ctx *BuildContext, schema *jsonschema.Schema, fieldName string) *TypeRef
-	BuildFieldsFromProperties(ctx *BuildContext, schema *jsonschema.Schema, orderPath string) []*Field
+type fieldBuilder interface {
+	BuildTypeRef(ctx *buildContext, schema *jsonschema.Schema, fieldName string) *TypeRef
+	buildFieldsFromProperties(ctx *buildContext, schema *jsonschema.Schema, orderPath string) []*Field
 }
 
-type StructBuilder struct {
-	registry     *TypeRegistry
-	resolver     *RefResolver
-	fieldBuilder FieldBuilder
+type structBuilder struct {
+	registry     *typeRegistry
+	resolver     *refResolver
+	fieldBuilder fieldBuilder
 }
 
-func NewStructBuilder(registry *TypeRegistry, resolver *RefResolver) *StructBuilder {
-	return &StructBuilder{
+func newStructBuilder(registry *typeRegistry, resolver *refResolver) *structBuilder {
+	return &structBuilder{
 		registry: registry,
 		resolver: resolver,
 	}
 }
 
-func (b *StructBuilder) SetFieldBuilder(fb FieldBuilder) {
+func (b *structBuilder) setFieldBuilder(fb fieldBuilder) {
 	b.fieldBuilder = fb
 }
 
-func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error {
+func (b *structBuilder) Build(ctx *buildContext, typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindStruct
 
 	// Pre-allocate based on expected sizes
@@ -51,7 +48,7 @@ func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.S
 			// Check if this is a $ref to another type
 			if allOfSchema.Ref != "" {
 				// Extract type name from $ref
-				typeName := b.resolver.ExtractTypeName(allOfSchema.Ref)
+				typeName := b.resolver.extractTypeName(allOfSchema.Ref)
 
 				if typeName != "" {
 					typ.Extends = append(typ.Extends, typeName)
@@ -71,17 +68,15 @@ func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.S
 			if allOfSchema.Properties != nil {
 				// Construct path for this allOf branch
 				allOfPath := fmt.Sprintf("%s#/allOf/%d", ctx.Path, allOfIndex)
-				for _, propName := range GetOrderedPropertyNames(allOfSchema.Properties, allOfPath, ctx.Order) {
+				for _, propName := range getOrderedPropertyNames(allOfSchema.Properties, allOfPath, ctx.Order) {
 					propSchema := (*allOfSchema.Properties)[propName]
 					field := &Field{
-						Name:        naming.ToPascalCase(propName),
 						JSONName:    propName,
 						Description: getDescription(propSchema),
 						Required:    requiredMap[propName],
-						OmitEmpty:   !requiredMap[propName],
 						Type:        b.fieldBuilder.BuildTypeRef(ctx, propSchema, propName),
 					}
-					ExtractConstraints(field, propSchema)
+					extractConstraints(field, propSchema)
 					typ.Fields = append(typ.Fields, field)
 				}
 			}
@@ -89,25 +84,24 @@ func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.S
 	}
 
 	if schema.Properties != nil {
-		fields := buildFieldsFromSchema(ctx, schema, ctx.Path, func(c *BuildContext, s *jsonschema.Schema, name string) *TypeRef {
+		fields := buildFieldsFromSchema(ctx, schema, ctx.Path, func(c *buildContext, s *jsonschema.Schema, name string) *TypeRef {
 			return b.fieldBuilder.BuildTypeRef(c, s, name)
 		})
 		typ.Fields = append(typ.Fields, fields...)
 	}
 
 	// Deduplicate fields (in case allOf branches define the same field)
-	typ.Fields = b.DeduplicateFields(typ.Fields)
+	typ.Fields = b.deduplicateFields(typ.Fields)
 
 	// Capture additionalProperties configuration
-	typ.AdditionalProps = ExtractAdditionalProperties(schema, func(s *jsonschema.Schema, fieldName string) *TypeRef {
+	typ.AdditionalProps = extractAdditionalProperties(schema, func(s *jsonschema.Schema, fieldName string) *TypeRef {
 		return b.fieldBuilder.BuildTypeRef(ctx, s, fieldName)
 	})
 
 	return nil
 }
 
-// DeduplicateFields removes duplicate fields, keeping the most specific one.
-func (b *StructBuilder) DeduplicateFields(fields []*Field) []*Field {
+func (b *structBuilder) deduplicateFields(fields []*Field) []*Field {
 	seen := make(map[string]*Field)
 	result := make([]*Field, 0, len(fields))
 

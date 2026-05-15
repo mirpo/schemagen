@@ -16,16 +16,16 @@ type Generator interface {
 }
 
 // createGenerator creates a language-specific generator based on the config
-func createGenerator(graph *typegraph.Graph, cfg *Config) (Generator, error) {
+func createGenerator(cfg *Config) (Generator, error) {
 	switch cfg.Language {
 	case LanguageTypeScript:
-		return newTypeScriptGenerator(graph, cfg), nil
+		return newTypeScriptGenerator(cfg), nil
 
 	case LanguagePython:
-		return newPythonGenerator(graph, cfg), nil
+		return newPythonGenerator(cfg), nil
 
 	case LanguageGo:
-		return newGoGenerator(graph, cfg), nil
+		return newGoGenerator(cfg), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported language: %s", cfg.Language)

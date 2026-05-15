@@ -14,7 +14,6 @@ import (
 
 // Generator generates Go code from a type graph.
 type Generator struct {
-	graph   *typegraph.Graph
 	config  *Config
 	imports map[string]bool // import path → used
 }
@@ -30,7 +29,7 @@ type Config struct {
 }
 
 // NewGenerator creates a new Go generator.
-func NewGenerator(graph *typegraph.Graph, cfg *Config) *Generator {
+func NewGenerator(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{
 			PackageName: "models",
@@ -39,7 +38,6 @@ func NewGenerator(graph *typegraph.Graph, cfg *Config) *Generator {
 		}
 	}
 	return &Generator{
-		graph:   graph,
 		config:  cfg,
 		imports: make(map[string]bool),
 	}

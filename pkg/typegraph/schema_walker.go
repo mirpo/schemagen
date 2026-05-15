@@ -11,7 +11,7 @@ import (
 )
 
 // getOrderedDefNames returns $defs names in original schema order.
-func (w *SchemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jsonschema.Schema) []string {
+func (w *schemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jsonschema.Schema) []string {
 	// PropertyOrder may be nil in tests that create schemas manually
 	if s.PropertyOrder == nil {
 		return slices.Sorted(maps.Keys(defs))
@@ -43,27 +43,24 @@ func (w *SchemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jso
 	return result
 }
 
-// TypeBuilder interface for building specific type kinds.
-// Used to break circular dependency between SchemaWalker and type builders.
-type TypeBuilder interface {
-	BuildStruct(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error
+type typeBuilder interface {
+	BuildStruct(ctx *buildContext, typ *Type, schema *jsonschema.Schema) error
 	BuildEnum(typ *Type, schema *jsonschema.Schema) error
-	BuildUnion(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error
+	BuildUnion(ctx *buildContext, typ *Type, schema *jsonschema.Schema) error
 }
 
-// SchemaWalker handles schema traversal and type detection.
-type SchemaWalker struct {
-	registry    *TypeRegistry
-	resolver    *RefResolver
-	typeBuilder TypeBuilder
+type schemaWalker struct {
+	registry    *typeRegistry
+	resolver    *refResolver
+	typeBuilder typeBuilder
 	config      *BuildConfig
 }
 
-func NewSchemaWalker(registry *TypeRegistry, resolver *RefResolver, tb TypeBuilder, config *BuildConfig) *SchemaWalker {
+func newSchemaWalker(registry *typeRegistry, resolver *refResolver, tb typeBuilder, config *BuildConfig) *schemaWalker {
 	if config == nil {
 		config = &BuildConfig{}
 	}
-	return &SchemaWalker{
+	return &schemaWalker{
 		registry:    registry,
 		resolver:    resolver,
 		typeBuilder: tb,
@@ -72,21 +69,21 @@ func NewSchemaWalker(registry *TypeRegistry, resolver *RefResolver, tb TypeBuild
 }
 
 // Process processes a single schema and extracts types.
-func (w *SchemaWalker) Process(s *schema.Schema) error {
-	ctx := &BuildContext{
+func (w *schemaWalker) Process(s *schema.Schema) error {
+	ctx := &buildContext{
 		Order: s.PropertyOrder,
 		Path:  s.RelativePath,
 	}
 
 	compiled := s.Compiled
-	w.resolver.SetCurrentSchema(compiled)
+	w.resolver.setCurrentSchema(compiled)
 
 	if compiled.Defs != nil {
 		defNames := w.getOrderedDefNames(s, compiled.Defs)
 
 		for _, defName := range defNames {
 			defSchema := compiled.Defs[defName]
-			defCtx := &BuildContext{
+			defCtx := &buildContext{
 				Order: ctx.Order,
 				Path:  fmt.Sprintf("%s#/$defs/%s", s.RelativePath, defName),
 			}
@@ -98,7 +95,6 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 	}
 
 	typ := &Type{
-		ID:          w.registry.NextID(),
 		Name:        s.Name,
 		Description: getDescription(compiled),
 	}
@@ -107,13 +103,12 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 		return err
 	}
 
-	w.registry.Add(typ)
+	w.registry.add(typ)
 	return nil
 }
 
-func (w *SchemaWalker) extractDefinition(ctx *BuildContext, name string, schema *jsonschema.Schema) error {
+func (w *schemaWalker) extractDefinition(ctx *buildContext, name string, schema *jsonschema.Schema) error {
 	typ := &Type{
-		ID:          w.registry.NextID(),
 		Name:        naming.ToPascalCase(name),
 		Description: getDescription(schema),
 	}
@@ -122,11 +117,11 @@ func (w *SchemaWalker) extractDefinition(ctx *BuildContext, name string, schema 
 		return err
 	}
 
-	w.registry.Add(typ)
+	w.registry.add(typ)
 	return nil
 }
 
-func (w *SchemaWalker) buildType(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error {
+func (w *schemaWalker) buildType(ctx *buildContext, typ *Type, schema *jsonschema.Schema) error {
 	if isObject(schema) {
 		return w.typeBuilder.BuildStruct(ctx, typ, schema)
 	}
@@ -137,6 +132,6 @@ func (w *SchemaWalker) buildType(ctx *BuildContext, typ *Type, schema *jsonschem
 		return w.typeBuilder.BuildUnion(ctx, typ, schema)
 	}
 	typ.Kind = KindPrimitive
-	typ.Primitive = MapPrimitiveSchema(schema)
+	typ.Primitive = mapPrimitiveSchema(schema)
 	return nil
 }

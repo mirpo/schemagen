@@ -11,7 +11,7 @@ import (
 // Helper functions
 
 func createTestEmitter(cfg *Config) *Emitter {
-	return NewEmitter(&typegraph.Graph{Types: []*typegraph.Type{}}, cfg)
+	return NewEmitter(cfg)
 }
 
 func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {

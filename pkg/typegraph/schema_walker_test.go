@@ -15,7 +15,7 @@ type mockTypeBuilder struct {
 	buildUnionCalled  bool
 }
 
-func (m *mockTypeBuilder) BuildStruct(_ *BuildContext, typ *Type, s *jsonschema.Schema) error {
+func (m *mockTypeBuilder) BuildStruct(_ *buildContext, typ *Type, s *jsonschema.Schema) error {
 	m.buildStructCalled = true
 	typ.Kind = KindStruct
 	return nil
@@ -27,7 +27,7 @@ func (m *mockTypeBuilder) BuildEnum(typ *Type, s *jsonschema.Schema) error {
 	return nil
 }
 
-func (m *mockTypeBuilder) BuildUnion(_ *BuildContext, typ *Type, s *jsonschema.Schema) error {
+func (m *mockTypeBuilder) BuildUnion(_ *buildContext, typ *Type, s *jsonschema.Schema) error {
 	m.buildUnionCalled = true
 	typ.Kind = KindUnion
 	return nil
@@ -74,9 +74,9 @@ func TestSchemaWalker_Process(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			registry := NewTypeRegistry()
+			registry := newTypeRegistry()
 			mock := &mockTypeBuilder{}
-			walker := NewSchemaWalker(registry, NewRefResolver(jsonschema.NewCompiler()), mock, nil)
+			walker := newSchemaWalker(registry, newRefResolver(jsonschema.NewCompiler()), mock, nil)
 
 			err := walker.Process(&schema.Schema{Name: "Test", Compiled: tt.compiled})
 
@@ -84,15 +84,15 @@ func TestSchemaWalker_Process(t *testing.T) {
 			assert.Equal(t, tt.wantStruct, mock.buildStructCalled)
 			assert.Equal(t, tt.wantEnum, mock.buildEnumCalled)
 			assert.Equal(t, tt.wantUnion, mock.buildUnionCalled)
-			assert.Len(t, registry.All(), 1)
-			assert.Equal(t, tt.wantKind, registry.All()[0].Kind)
+			assert.Len(t, registry.all(), 1)
+			assert.Equal(t, tt.wantKind, registry.all()[0].Kind)
 		})
 	}
 }
 
 func TestSchemaWalker_ExtractDefs(t *testing.T) {
-	registry := NewTypeRegistry()
-	walker := NewSchemaWalker(registry, NewRefResolver(jsonschema.NewCompiler()), &mockTypeBuilder{}, nil)
+	registry := newTypeRegistry()
+	walker := newSchemaWalker(registry, newRefResolver(jsonschema.NewCompiler()), &mockTypeBuilder{}, nil)
 
 	err := walker.Process(&schema.Schema{
 		Name: "Root",
@@ -109,15 +109,15 @@ func TestSchemaWalker_ExtractDefs(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, registry.All(), 2)
-	assert.Equal(t, "SubType", registry.All()[0].Name)
-	assert.Equal(t, "Root", registry.All()[1].Name)
+	assert.Len(t, registry.all(), 2)
+	assert.Equal(t, "SubType", registry.all()[0].Name)
+	assert.Equal(t, "Root", registry.all()[1].Name)
 }
 
 func TestSchemaWalker_ExtractDefs_Union(t *testing.T) {
-	registry := NewTypeRegistry()
+	registry := newTypeRegistry()
 	mock := &mockTypeBuilder{}
-	walker := NewSchemaWalker(registry, NewRefResolver(jsonschema.NewCompiler()), mock, nil)
+	walker := newSchemaWalker(registry, newRefResolver(jsonschema.NewCompiler()), mock, nil)
 
 	err := walker.Process(&schema.Schema{
 		Name: "Root",
@@ -136,9 +136,9 @@ func TestSchemaWalker_ExtractDefs_Union(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, registry.All(), 2)
+	assert.Len(t, registry.all(), 2)
 
-	payload := registry.All()[0]
+	payload := registry.all()[0]
 	assert.Equal(t, "Payload", payload.Name)
 	assert.Equal(t, KindUnion, payload.Kind, "union $def should be KindUnion, not KindPrimitive")
 	assert.True(t, mock.buildUnionCalled, "BuildUnion should be called for union $defs")

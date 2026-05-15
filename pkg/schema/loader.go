@@ -102,7 +102,7 @@ func (l *Loader) loadFile(path string) (*Schema, error) {
 	}
 	relPath = filepath.ToSlash(relPath)
 
-	order, err := ExtractPropertyOrder(data, relPath)
+	order, err := extractPropertyOrder(data, relPath)
 	if err != nil {
 		return nil, schemaErr(relPath, "extract property order", err)
 	}

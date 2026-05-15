@@ -14,7 +14,7 @@ Helpers
 */
 
 func gen(cfg *Config) *Generator {
-	return NewGenerator(&typegraph.Graph{}, cfg)
+	return NewGenerator(cfg)
 }
 
 func structType(name string, fields ...*typegraph.Field) *typegraph.Type {

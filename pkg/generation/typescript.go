@@ -2,11 +2,10 @@ package generation
 
 import (
 	"github.com/mirpo/schemagen/pkg/lang/ts"
-	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
 // newTypeScriptGenerator creates a new TypeScript generator with the given config
-func newTypeScriptGenerator(graph *typegraph.Graph, cfg *Config) Generator {
+func newTypeScriptGenerator(cfg *Config) Generator {
 	tsCfg := &ts.Config{
 		DisableHeaders:       cfg.DisableHeaders,
 		DisableTimestamp:     cfg.DisableTimestamp,
@@ -24,7 +23,7 @@ func newTypeScriptGenerator(graph *typegraph.Graph, cfg *Config) Generator {
 	}
 
 	return newCombinedGenerator(
-		ts.NewGeneratorWithConfig(graph, tsCfg),
+		ts.NewGeneratorWithConfig(tsCfg),
 		&PassthroughConverter{},
 	)
 }

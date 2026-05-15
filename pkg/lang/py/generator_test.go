@@ -14,7 +14,7 @@ func newGen(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	return NewGeneratorWithConfig(&typegraph.Graph{}, cfg)
+	return NewGeneratorWithConfig(cfg)
 }
 
 func TestGenerateFile_SimpleStruct(t *testing.T) {
@@ -25,7 +25,6 @@ func TestGenerateFile_SimpleStruct(t *testing.T) {
 		Kind: typegraph.KindStruct,
 		Fields: []*typegraph.Field{
 			{
-				Name:     "ID",
 				JSONName: "id",
 				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 				Required: true,
@@ -49,7 +48,6 @@ func TestGenerateFile_OptionalField(t *testing.T) {
 		Kind: typegraph.KindStruct,
 		Fields: []*typegraph.Field{
 			{
-				Name:     "Email",
 				JSONName: "email",
 				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 				Required: false,
@@ -132,7 +130,6 @@ func TestGenerateFile_SnakeCaseWithAlias(t *testing.T) {
 		Kind: typegraph.KindStruct,
 		Fields: []*typegraph.Field{
 			{
-				Name:     "FirstName",
 				JSONName: "firstName",
 				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 				Required: true,

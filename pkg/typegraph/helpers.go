@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/kaptinlin/jsonschema"
-	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
@@ -17,9 +16,7 @@ func buildRequiredMap(required []string) map[string]bool {
 	return m
 }
 
-// ExtractConstraints extracts validation constraints from a JSON schema into a field.
-// This is a standalone helper to avoid circular dependencies between builders.
-func ExtractConstraints(field *Field, sch *jsonschema.Schema) {
+func extractConstraints(field *Field, sch *jsonschema.Schema) {
 	// String constraints
 	if sch.MinLength != nil {
 		minLen := int(*sch.MinLength)
@@ -67,10 +64,7 @@ func ExtractConstraints(field *Field, sch *jsonschema.Schema) {
 	}
 }
 
-// GetOrderedPropertyNames returns property names in schema file order.
-// Falls back to alphabetical sorting if order information is not available.
-// This is a standalone helper to avoid circular dependencies between builders.
-func GetOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string, order *schema.PropertyOrder) []string {
+func getOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string, order *schema.PropertyOrder) []string {
 	if properties == nil {
 		return nil
 	}
@@ -107,7 +101,7 @@ func GetOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string
 	return names
 }
 
-func buildFieldsFromSchema(ctx *BuildContext, sch *jsonschema.Schema, orderPath string, buildTypeRef func(*BuildContext, *jsonschema.Schema, string) *TypeRef) []*Field {
+func buildFieldsFromSchema(ctx *buildContext, sch *jsonschema.Schema, orderPath string, buildTypeRef func(*buildContext, *jsonschema.Schema, string) *TypeRef) []*Field {
 	if sch.Properties == nil {
 		return nil
 	}
@@ -116,30 +110,24 @@ func buildFieldsFromSchema(ctx *BuildContext, sch *jsonschema.Schema, orderPath 
 
 	fields := make([]*Field, 0, len(*sch.Properties))
 
-	for _, propName := range GetOrderedPropertyNames(sch.Properties, orderPath, ctx.Order) {
+	for _, propName := range getOrderedPropertyNames(sch.Properties, orderPath, ctx.Order) {
 		propSchema := (*sch.Properties)[propName]
 		field := &Field{
-			Name:        naming.ToPascalCase(propName),
 			JSONName:    propName,
 			Description: getDescription(propSchema),
 			Required:    requiredMap[propName],
-			OmitEmpty:   !requiredMap[propName],
 			Type:        buildTypeRef(ctx, propSchema, propName),
 		}
-		ExtractConstraints(field, propSchema)
+		extractConstraints(field, propSchema)
 		fields = append(fields, field)
 	}
 
 	return fields
 }
 
-// TypeRefBuilder callback type for building type references.
-type TypeRefBuilderFunc func(sch *jsonschema.Schema, fieldName string) *TypeRef
+type typeRefBuilderFunc func(sch *jsonschema.Schema, fieldName string) *TypeRef
 
-// ExtractAdditionalProperties extracts additionalProperties config from a schema.
-// Uses buildTypeRef callback to build the TypeRef for typed additional properties.
-// This is a standalone helper to avoid circular dependencies between builders.
-func ExtractAdditionalProperties(sch *jsonschema.Schema, buildTypeRef TypeRefBuilderFunc) *AdditionalPropsConfig {
+func extractAdditionalProperties(sch *jsonschema.Schema, buildTypeRef typeRefBuilderFunc) *AdditionalPropsConfig {
 	if sch.AdditionalProperties == nil {
 		return nil
 	}

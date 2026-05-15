@@ -13,11 +13,10 @@ import (
 
 // Config contains configuration for compare operations.
 type Config struct {
-	Input       string
-	Schemas     []*schema.Schema
-	Loader      *schema.Loader
-	Flags       *generation.GenerationFlags
-	ExistingDir string
+	Input   string
+	Schemas []*schema.Schema
+	Loader  *schema.Loader
+	Flags   *generation.GenerationFlags
 }
 
 // FileStatus represents the status of a file comparison.

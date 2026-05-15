@@ -13,9 +13,9 @@ func TestGenerators_ValidImports(t *testing.T) {
 		name string
 		gen  Generator
 	}{
-		{"go", newGoGenerator(&typegraph.Graph{}, &Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}})},
-		{"python", newPythonGenerator(&typegraph.Graph{}, &Config{Language: LanguagePython, Python: &PythonConfig{}})},
-		{"typescript", newTypeScriptGenerator(&typegraph.Graph{}, &Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
+		{"go", newGoGenerator(&Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}})},
+		{"python", newPythonGenerator(&Config{Language: LanguagePython, Python: &PythonConfig{}})},
+		{"typescript", newTypeScriptGenerator(&Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
 	}
 
 	for _, tt := range tests {
@@ -32,8 +32,8 @@ func TestGenerators_TypedNilImports(t *testing.T) {
 		name string
 		gen  Generator
 	}{
-		{"python", newPythonGenerator(&typegraph.Graph{}, &Config{Language: LanguagePython, Python: &PythonConfig{}})},
-		{"typescript", newTypeScriptGenerator(&typegraph.Graph{}, &Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
+		{"python", newPythonGenerator(&Config{Language: LanguagePython, Python: &PythonConfig{}})},
+		{"typescript", newTypeScriptGenerator(&Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
 	}
 
 	for _, tt := range tests {
@@ -51,9 +51,9 @@ func TestGenerators_NilImports(t *testing.T) {
 		name string
 		gen  Generator
 	}{
-		{"go", newGoGenerator(&typegraph.Graph{}, &Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}})},
-		{"python", newPythonGenerator(&typegraph.Graph{}, &Config{Language: LanguagePython, Python: &PythonConfig{}})},
-		{"typescript", newTypeScriptGenerator(&typegraph.Graph{}, &Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
+		{"go", newGoGenerator(&Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}})},
+		{"python", newPythonGenerator(&Config{Language: LanguagePython, Python: &PythonConfig{}})},
+		{"typescript", newTypeScriptGenerator(&Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
 	}
 
 	for _, tt := range tests {
@@ -140,7 +140,7 @@ func TestCreateGenerator_UnsupportedLanguages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gen, err := createGenerator(&typegraph.Graph{}, &Config{
+			gen, err := createGenerator(&Config{
 				Language: tt.language,
 			})
 

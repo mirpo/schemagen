@@ -17,17 +17,16 @@ type Config struct {
 
 // Emitter generates Zod schemas from types.
 type Emitter struct {
-	graph       *typegraph.Graph
 	config      *Config
 	currentType string // Track current type for detecting self-references
 }
 
 // NewEmitter creates a new Zod emitter.
-func NewEmitter(graph *typegraph.Graph, cfg *Config) *Emitter {
+func NewEmitter(cfg *Config) *Emitter {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	return &Emitter{graph: graph, config: cfg}
+	return &Emitter{config: cfg}
 }
 
 // GenerateSchema generates a Zod schema for a type (without type export).

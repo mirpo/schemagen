@@ -9,13 +9,13 @@ import (
 
 func TestPropertyOrder(t *testing.T) {
 	t.Run("new", func(t *testing.T) {
-		po := NewPropertyOrder()
+		po := newPropertyOrder()
 		require.NotNil(t, po)
 		assert.Empty(t, po.orders)
 	})
 
 	t.Run("get order", func(t *testing.T) {
-		po := NewPropertyOrder()
+		po := newPropertyOrder()
 		po.orders["test.json"] = []string{"id", "name", "email"}
 		result := po.GetOrder("test.json")
 		require.Len(t, result, 3)
@@ -23,7 +23,7 @@ func TestPropertyOrder(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		po := NewPropertyOrder()
+		po := newPropertyOrder()
 		assert.Nil(t, po.GetOrder("nonexistent.json"))
 	})
 }
@@ -45,7 +45,7 @@ func TestDecodeOrderedObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fields, err := DecodeOrderedObject(tt.data)
+			fields, err := decodeOrderedObject(tt.data)
 			if tt.expectErr {
 				require.Error(t, err)
 				return
@@ -62,7 +62,7 @@ func TestDecodeOrderedObject(t *testing.T) {
 func TestExtractPropertyOrder(t *testing.T) {
 	t.Run("simple object", func(t *testing.T) {
 		schemaJSON := []byte(`{"type":"object","properties":{"id":{},"name":{},"email":{}}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "user.json")
+		po, err := extractPropertyOrder(schemaJSON, "user.json")
 		require.NoError(t, err)
 		order := po.GetOrder("user.json")
 		assert.Equal(t, []string{"id", "name", "email"}, order)
@@ -70,7 +70,7 @@ func TestExtractPropertyOrder(t *testing.T) {
 
 	t.Run("with $defs", func(t *testing.T) {
 		schemaJSON := []byte(`{"type":"object","properties":{"user":{}},"$defs":{"Address":{"properties":{"street":{},"city":{}}}}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "user.json")
+		po, err := extractPropertyOrder(schemaJSON, "user.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"user"}, po.GetOrder("user.json"))
 		assert.Equal(t, []string{"street", "city"}, po.GetOrder("user.json#/$defs/Address"))
@@ -78,14 +78,14 @@ func TestExtractPropertyOrder(t *testing.T) {
 
 	t.Run("with definitions", func(t *testing.T) {
 		schemaJSON := []byte(`{"definitions":{"Person":{"properties":{"firstName":{},"lastName":{}}}}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "schema.json")
+		po, err := extractPropertyOrder(schemaJSON, "schema.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"firstName", "lastName"}, po.GetOrder("schema.json#/definitions/Person"))
 	})
 
 	t.Run("with allOf", func(t *testing.T) {
 		schemaJSON := []byte(`{"allOf":[{"properties":{"id":{},"name":{}}},{"properties":{"createdAt":{}}}]}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "model.json")
+		po, err := extractPropertyOrder(schemaJSON, "model.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id", "name"}, po.GetOrder("model.json#/allOf/0"))
 		assert.Equal(t, []string{"createdAt"}, po.GetOrder("model.json#/allOf/1"))
@@ -93,7 +93,7 @@ func TestExtractPropertyOrder(t *testing.T) {
 
 	t.Run("with oneOf", func(t *testing.T) {
 		schemaJSON := []byte(`{"oneOf":[{"properties":{"type":{},"value":{}}},{"properties":{"type":{},"text":{}}}]}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "union.json")
+		po, err := extractPropertyOrder(schemaJSON, "union.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"type", "value"}, po.GetOrder("union.json#/oneOf/0"))
 		assert.Equal(t, []string{"type", "text"}, po.GetOrder("union.json#/oneOf/1"))
@@ -101,7 +101,7 @@ func TestExtractPropertyOrder(t *testing.T) {
 
 	t.Run("with anyOf", func(t *testing.T) {
 		schemaJSON := []byte(`{"anyOf":[{"properties":{"a":{},"b":{}}},{"properties":{"c":{},"d":{}}}]}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "any.json")
+		po, err := extractPropertyOrder(schemaJSON, "any.json")
 		require.NoError(t, err)
 		assert.Len(t, po.GetOrder("any.json#/anyOf/0"), 2)
 		assert.Len(t, po.GetOrder("any.json#/anyOf/1"), 2)
@@ -109,7 +109,7 @@ func TestExtractPropertyOrder(t *testing.T) {
 
 	t.Run("complex nested", func(t *testing.T) {
 		schemaJSON := []byte(`{"properties":{"id":{},"data":{}},"$defs":{"Metadata":{"allOf":[{"properties":{"created":{},"modified":{}}}]}}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "complex.json")
+		po, err := extractPropertyOrder(schemaJSON, "complex.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id", "data"}, po.GetOrder("complex.json"))
 		assert.Equal(t, []string{"created", "modified"}, po.GetOrder("complex.json#/$defs/Metadata#/allOf/0"))
@@ -117,34 +117,34 @@ func TestExtractPropertyOrder(t *testing.T) {
 
 	t.Run("no properties", func(t *testing.T) {
 		schemaJSON := []byte(`{"type":"string","enum":["a","b"]}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "enum.json")
+		po, err := extractPropertyOrder(schemaJSON, "enum.json")
 		require.NoError(t, err)
 		assert.Nil(t, po.GetOrder("enum.json"))
 	})
 
 	t.Run("empty properties", func(t *testing.T) {
 		schemaJSON := []byte(`{"type":"object","properties":{}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "empty.json")
+		po, err := extractPropertyOrder(schemaJSON, "empty.json")
 		require.NoError(t, err)
 		assert.Empty(t, po.GetOrder("empty.json"))
 	})
 
 	t.Run("multiple defs", func(t *testing.T) {
 		schemaJSON := []byte(`{"$defs":{"User":{"properties":{"name":{},"age":{}}},"Admin":{"properties":{"role":{}}}}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "users.json")
+		po, err := extractPropertyOrder(schemaJSON, "users.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"name", "age"}, po.GetOrder("users.json#/$defs/User"))
 		assert.Equal(t, []string{"role"}, po.GetOrder("users.json#/$defs/Admin"))
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
-		_, err := ExtractPropertyOrder([]byte(`{invalid`), "invalid.json")
+		_, err := extractPropertyOrder([]byte(`{invalid`), "invalid.json")
 		require.Error(t, err)
 	})
 
 	t.Run("order preserved", func(t *testing.T) {
 		schemaJSON := []byte(`{"type":"object","properties":{"z":{},"a":{},"m":{}}}`)
-		po, err := ExtractPropertyOrder(schemaJSON, "order.json")
+		po, err := extractPropertyOrder(schemaJSON, "order.json")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"z", "a", "m"}, po.GetOrder("order.json"))
 	})

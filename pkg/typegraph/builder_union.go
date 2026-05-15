@@ -4,7 +4,7 @@ import (
 	"github.com/kaptinlin/jsonschema"
 )
 
-func (b *Builder) BuildUnion(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error {
+func (b *Builder) BuildUnion(ctx *buildContext, typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindUnion
 
 	members := schema.AnyOf
