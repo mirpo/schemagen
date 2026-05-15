@@ -28,6 +28,10 @@ var (
 	}
 )
 
+func IsWholeNumber(v float64) bool {
+	return v == float64(int64(v))
+}
+
 // FormatValue formats a literal value according to the language's conventions.
 func (f LiteralFormatter) FormatValue(val interface{}) string {
 	switch v := val.(type) {
@@ -35,7 +39,7 @@ func (f LiteralFormatter) FormatValue(val interface{}) string {
 		return fmt.Sprintf("%q", v)
 	case float64:
 		// Check if it's a whole number
-		if v == float64(int64(v)) {
+		if IsWholeNumber(v) {
 			return fmt.Sprintf("%d", int64(v))
 		}
 		return fmt.Sprintf("%g", v)

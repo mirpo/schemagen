@@ -198,70 +198,47 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 			sb.WriteString(" & ")
 		}
 
-		// Add inline object with fields
 		sb.WriteString("{\n")
-		for _, field := range typ.Fields {
-			// Field comment
-			tscommon.WriteJSDocSingleLine(&sb, "  ", field.Description)
-
-			tsType := g.typeRefToTS(field.Type)
-			optional := ""
-			if !field.Required {
-				optional = "?"
-			}
-
-			// Quote property name if it's not a valid identifier
-			propName := field.JSONName
-			if tscommon.NeedsQuoting(propName) {
-				propName = fmt.Sprintf("%q", propName)
-			}
-
-			fmt.Fprintf(&sb, "  %s%s: %s;\n", propName, optional, tsType)
-		}
-
-		// Add index signature if AdditionalProperties is configured and flag is enabled
-		if indexSig := g.generateIndexSignature(typ); indexSig != "" {
-			sb.WriteString(indexSig)
-		}
-
+		g.writeFields(&sb, typ, false)
 		sb.WriteString("};")
 	} else {
-		// Regular interface
 		fmt.Fprintf(&sb, "export interface %s {\n", typ.Name)
-
-		// Fields
-		for _, field := range typ.Fields {
-			// Field comment with format annotation if present
-			format := ""
-			if field.Type != nil {
-				format = field.Type.Format
-			}
-			tscommon.WriteJSDocWithFormat(&sb, "  ", field.Description, format)
-
-			tsType := g.typeRefToTS(field.Type)
-			optional := ""
-			if !field.Required {
-				optional = "?"
-			}
-
-			// Quote property name if it's not a valid identifier
-			propName := field.JSONName
-			if tscommon.NeedsQuoting(propName) {
-				propName = fmt.Sprintf("%q", propName)
-			}
-
-			fmt.Fprintf(&sb, "  %s%s: %s;\n", propName, optional, tsType)
-		}
-
-		// Add index signature if AdditionalProperties is configured and flag is enabled
-		if indexSig := g.generateIndexSignature(typ); indexSig != "" {
-			sb.WriteString(indexSig)
-		}
-
+		g.writeFields(&sb, typ, true)
 		sb.WriteString("}")
 	}
 
 	return sb.String(), nil
+}
+
+func (g *Generator) writeFields(sb *strings.Builder, typ *typegraph.Type, withFormat bool) {
+	for _, field := range typ.Fields {
+		if withFormat {
+			format := ""
+			if field.Type != nil {
+				format = field.Type.Format
+			}
+			tscommon.WriteJSDocWithFormat(sb, "  ", field.Description, format)
+		} else {
+			tscommon.WriteJSDocSingleLine(sb, "  ", field.Description)
+		}
+
+		tsType := g.typeRefToTS(field.Type)
+		optional := ""
+		if !field.Required {
+			optional = "?"
+		}
+
+		propName := field.JSONName
+		if tscommon.NeedsQuoting(propName) {
+			propName = fmt.Sprintf("%q", propName)
+		}
+
+		fmt.Fprintf(sb, "  %s%s: %s;\n", propName, optional, tsType)
+	}
+
+	if indexSig := g.generateIndexSignature(typ); indexSig != "" {
+		sb.WriteString(indexSig)
+	}
 }
 
 // generateIndexSignature generates an index signature for additionalProperties if applicable.

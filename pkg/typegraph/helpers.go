@@ -9,6 +9,14 @@ import (
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
+func buildRequiredMap(required []string) map[string]bool {
+	m := make(map[string]bool, len(required))
+	for _, r := range required {
+		m[r] = true
+	}
+	return m
+}
+
 // ExtractConstraints extracts validation constraints from a JSON schema into a field.
 // This is a standalone helper to avoid circular dependencies between builders.
 func ExtractConstraints(field *Field, sch *jsonschema.Schema) {
@@ -104,10 +112,7 @@ func buildFieldsFromSchema(ctx *BuildContext, sch *jsonschema.Schema, orderPath 
 		return nil
 	}
 
-	requiredMap := make(map[string]bool, len(sch.Required))
-	for _, req := range sch.Required {
-		requiredMap[req] = true
-	}
+	requiredMap := buildRequiredMap(sch.Required)
 
 	fields := make([]*Field, 0, len(*sch.Properties))
 

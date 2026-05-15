@@ -108,11 +108,7 @@ func (e *Emitter) generateObjectSchema(typ *typegraph.Type, schemaName string) s
 		sb.WriteString(catchall)
 	}
 
-	// Add metadata
-	if typ.Description != "" {
-		fmt.Fprintf(&sb, ".meta({ description: %q })", typ.Description)
-	}
-
+	sb.WriteString(metaSuffix(typ.Description))
 	sb.WriteString(";")
 	return sb.String()
 }
@@ -165,13 +161,7 @@ func (e *Emitter) generateEnumSchema(typ *typegraph.Type, schemaName string) str
 		schema = sb.String()
 	}
 
-	result := fmt.Sprintf("export const %s = %s", schemaName, schema)
-
-	if typ.Description != "" {
-		result += fmt.Sprintf(".meta({ description: %q })", typ.Description)
-	}
-
-	return result + ";"
+	return wrapSchemaExport(schemaName, schema, typ.Description)
 }
 
 func (e *Emitter) generateUnionSchema(typ *typegraph.Type, schemaName string) string {
@@ -180,31 +170,25 @@ func (e *Emitter) generateUnionSchema(typ *typegraph.Type, schemaName string) st
 		for i, member := range typ.UnionMembers {
 			members[i] = e.typeRefToZod(member, nil)
 		}
-
-		result := fmt.Sprintf("export const %s = z.union([%s])", schemaName, strings.Join(members, ", "))
-
-		if typ.Description != "" {
-			result += fmt.Sprintf(".meta({ description: %q })", typ.Description)
-		}
-
-		return result + ";"
+		return wrapSchemaExport(schemaName, fmt.Sprintf("z.union([%s])", strings.Join(members, ", ")), typ.Description)
 	}
 
-	// Fallback to unknown
 	return fmt.Sprintf("export const %s = z.unknown();", schemaName)
 }
 
-// generatePrimitiveSchema generates a Zod schema for a primitive type alias.
 func (e *Emitter) generatePrimitiveSchema(typ *typegraph.Type, schemaName string) string {
-	zodType := e.primitiveToZod(typ.Primitive, nil)
+	return wrapSchemaExport(schemaName, e.primitiveToZod(typ.Primitive, nil), typ.Description)
+}
 
-	result := fmt.Sprintf("export const %s = %s", schemaName, zodType)
+func wrapSchemaExport(schemaName, schema, description string) string {
+	return fmt.Sprintf("export const %s = %s", schemaName, schema) + metaSuffix(description) + ";"
+}
 
-	if typ.Description != "" {
-		result += fmt.Sprintf(".meta({ description: %q })", typ.Description)
+func metaSuffix(description string) string {
+	if description == "" {
+		return ""
 	}
-
-	return result + ";"
+	return fmt.Sprintf(".meta({ description: %q })", description)
 }
 
 // generateField generates a single field for an object schema.
@@ -223,10 +207,7 @@ func (e *Emitter) generateField(field *typegraph.Field) string {
 		zodType += ".optional()"
 	}
 
-	// Add field description via meta
-	if field.Description != "" {
-		zodType += fmt.Sprintf(".meta({ description: %q })", field.Description)
-	}
+	zodType += metaSuffix(field.Description)
 
 	// Check if this field contains a self-reference (recursive type)
 	// Use getter syntax for Zod v4: get fieldName() { return Schema }

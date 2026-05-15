@@ -43,10 +43,7 @@ func (b *StructBuilder) Build(ctx *BuildContext, typ *Type, schema *jsonschema.S
 	typ.Extends = make([]string, 0, len(schema.AllOf))
 
 	// Track required fields with pre-allocated map
-	requiredMap := make(map[string]bool, len(schema.Required))
-	for _, req := range schema.Required {
-		requiredMap[req] = true
-	}
+	requiredMap := buildRequiredMap(schema.Required)
 
 	// Handle allOf composition
 	if len(schema.AllOf) > 0 {

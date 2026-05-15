@@ -95,6 +95,14 @@ type Field struct {
 	MaxItems         *int     // maxItems for arrays
 }
 
+func (f *Field) HasConstraints() bool {
+	return f.MinLength != nil || f.MaxLength != nil ||
+		f.Pattern != nil ||
+		f.Minimum != nil || f.Maximum != nil ||
+		f.ExclusiveMinimum != nil || f.ExclusiveMaximum != nil ||
+		f.MinItems != nil || f.MaxItems != nil
+}
+
 // TypeRef is a reference to another type.
 type TypeRef struct {
 	Kind      TypeKind      // Kind of referenced type

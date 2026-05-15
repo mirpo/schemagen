@@ -103,21 +103,8 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 		Description: getDescription(compiled),
 	}
 
-	if isObject(compiled) {
-		if err := w.typeBuilder.BuildStruct(ctx, typ, compiled); err != nil {
-			return err
-		}
-	} else if isEnum(compiled) {
-		if err := w.typeBuilder.BuildEnum(typ, compiled); err != nil {
-			return err
-		}
-	} else if isUnion(compiled) {
-		if err := w.typeBuilder.BuildUnion(ctx, typ, compiled); err != nil {
-			return err
-		}
-	} else {
-		typ.Kind = KindPrimitive
-		typ.Primitive = MapPrimitiveSchema(compiled)
+	if err := w.buildType(ctx, typ, compiled); err != nil {
+		return err
 	}
 
 	w.registry.Add(typ)
@@ -131,23 +118,25 @@ func (w *SchemaWalker) extractDefinition(ctx *BuildContext, name string, schema 
 		Description: getDescription(schema),
 	}
 
-	if isObject(schema) {
-		if err := w.typeBuilder.BuildStruct(ctx, typ, schema); err != nil {
-			return err
-		}
-	} else if isEnum(schema) {
-		if err := w.typeBuilder.BuildEnum(typ, schema); err != nil {
-			return err
-		}
-	} else if isUnion(schema) {
-		if err := w.typeBuilder.BuildUnion(ctx, typ, schema); err != nil {
-			return err
-		}
-	} else {
-		typ.Kind = KindPrimitive
-		typ.Primitive = MapPrimitiveSchema(schema)
+	if err := w.buildType(ctx, typ, schema); err != nil {
+		return err
 	}
 
 	w.registry.Add(typ)
+	return nil
+}
+
+func (w *SchemaWalker) buildType(ctx *BuildContext, typ *Type, schema *jsonschema.Schema) error {
+	if isObject(schema) {
+		return w.typeBuilder.BuildStruct(ctx, typ, schema)
+	}
+	if isEnum(schema) {
+		return w.typeBuilder.BuildEnum(typ, schema)
+	}
+	if isUnion(schema) {
+		return w.typeBuilder.BuildUnion(ctx, typ, schema)
+	}
+	typ.Kind = KindPrimitive
+	typ.Primitive = MapPrimitiveSchema(schema)
 	return nil
 }

@@ -10,13 +10,7 @@ import (
 // needsAlias is true when the Python field name differs from the JSON key (e.g. snake_case
 // conversion or Python-keyword escaping) and an alias= parameter must be emitted.
 func needsField(field *typegraph.Field, needsAlias bool) bool {
-	return field.Description != "" ||
-		field.MinLength != nil || field.MaxLength != nil ||
-		field.Pattern != nil ||
-		field.Minimum != nil || field.Maximum != nil ||
-		field.ExclusiveMinimum != nil || field.ExclusiveMaximum != nil ||
-		field.MinItems != nil || field.MaxItems != nil ||
-		needsAlias
+	return field.Description != "" || field.HasConstraints() || needsAlias
 }
 
 // buildFieldParams generates Pydantic Field() parameters for a field.

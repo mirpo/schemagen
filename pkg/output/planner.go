@@ -171,30 +171,12 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 	return plan
 }
 
-// markOrphanedTypes recursively marks orphaned types (types without a source schema)
-// that are referenced by the given type.
 func markOrphanedTypes(typ *typegraph.Type, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
-	markOrphanedRef := func(r *typegraph.TypeRef) {
-		if r.TypeName != "" && !belongsToFile[r.TypeName] && typeSourceMap[r.TypeName] == nil {
-			if refType := graph.GetType(r.TypeName); refType != nil {
-				belongsToFile[r.TypeName] = true
-				markOrphanedTypes(refType, graph, typeSourceMap, belongsToFile)
-			}
-		}
-	}
-
-	for _, field := range typ.Fields {
-		field.Type.Walk(markOrphanedRef)
-	}
-
-	for _, baseName := range typ.Extends {
-		if !belongsToFile[baseName] && typeSourceMap[baseName] == nil {
-			if baseType := graph.GetType(baseName); baseType != nil {
-				belongsToFile[baseName] = true
-				markOrphanedTypes(baseType, graph, typeSourceMap, belongsToFile)
-			}
-		}
-	}
+	walkReachableTypes(typ, graph, func(name string) bool {
+		return !belongsToFile[name] && typeSourceMap[name] == nil
+	}, func(name string) {
+		belongsToFile[name] = true
+	})
 }
 
 func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string, bundleName string) *OutputPlan {
@@ -232,49 +214,34 @@ func collectDependentTypes(graph *typegraph.Graph, rootSchema *schema.Schema, ty
 }
 
 func collectReferencedTypes(typ *typegraph.Type, graph *typegraph.Graph, included map[string]bool, result *[]*typegraph.Type) {
-	for _, field := range typ.Fields {
-		collectFieldReferences(field.Type, graph, included, result)
-	}
+	walkReachableTypes(typ, graph, func(name string) bool {
+		return !included[name]
+	}, func(name string) {
+		included[name] = true
+		*result = append(*result, graph.GetType(name))
+	})
+}
 
-	for _, baseName := range typ.Extends {
-		if !included[baseName] {
-			if baseType := graph.GetType(baseName); baseType != nil {
-				included[baseName] = true
-				*result = append(*result, baseType)
-				collectReferencedTypes(baseType, graph, included, result)
+func walkReachableTypes(typ *typegraph.Type, graph *typegraph.Graph, shouldVisit func(string) bool, onVisit func(string)) {
+	visit := func(name string) {
+		if shouldVisit(name) {
+			if t := graph.GetType(name); t != nil {
+				onVisit(name)
+				walkReachableTypes(t, graph, shouldVisit, onVisit)
 			}
 		}
 	}
-}
 
-// collectFieldReferences recursively collects all types referenced by a TypeRef
-func collectFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, included map[string]bool, result *[]*typegraph.Type) {
-	if ref == nil {
-		return
+	for _, field := range typ.Fields {
+		field.Type.Walk(func(r *typegraph.TypeRef) {
+			if r.TypeName != "" {
+				visit(r.TypeName)
+			}
+		})
 	}
 
-	// Collect direct type reference
-	if ref.TypeName != "" && !included[ref.TypeName] {
-		if refType := graph.GetType(ref.TypeName); refType != nil {
-			included[ref.TypeName] = true
-			*result = append(*result, refType)
-			collectReferencedTypes(refType, graph, included, result)
-		}
-	}
-
-	// Collect union members
-	for _, member := range ref.UnionMembers {
-		collectFieldReferences(member, graph, included, result)
-	}
-
-	// Collect array item types
-	if ref.ItemType != nil {
-		collectFieldReferences(ref.ItemType, graph, included, result)
-	}
-
-	// Collect map value types
-	if ref.ValueType != nil {
-		collectFieldReferences(ref.ValueType, graph, included, result)
+	for _, baseName := range typ.Extends {
+		visit(baseName)
 	}
 }
 
