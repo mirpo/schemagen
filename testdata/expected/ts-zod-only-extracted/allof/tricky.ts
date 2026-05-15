@@ -29,7 +29,11 @@ export const NodeSchema = z.object({
 
 export type Node = z.infer<typeof NodeSchema>;
 
-export const StatusSchema = z.union([z.literal("active"), z.literal("paused"), z.object({ complex: z.literal(true) }).strict()]);
+export const StatusSchema = z.union([
+  z.literal("active"),
+  z.literal("paused"),
+  z.object({ complex: z.literal(true) }).strict(),
+]);
 
 export type Status = z.infer<typeof StatusSchema>;
 

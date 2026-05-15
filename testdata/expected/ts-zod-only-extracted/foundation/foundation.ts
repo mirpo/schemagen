@@ -65,14 +65,23 @@ export type Constraints = z.infer<typeof ConstraintsSchema>;
 /**
  * Mixed type enumeration
  */
-export const MixedEnumSchema = z.union([z.literal("string"), z.literal(42), z.literal(true), z.literal(null)]).meta({ description: "Mixed type enumeration" });
+export const MixedEnumSchema = z.union([
+  z.literal("string"),
+  z.literal(42),
+  z.literal(true),
+  z.literal(null),
+]).meta({ description: "Mixed type enumeration" });
 
 export type MixedEnum = z.infer<typeof MixedEnumSchema>;
 
 /**
  * Number enumeration
  */
-export const NumberEnumSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]).meta({ description: "Number enumeration" });
+export const NumberEnumSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+]).meta({ description: "Number enumeration" });
 
 export type NumberEnum = z.infer<typeof NumberEnumSchema>;
 

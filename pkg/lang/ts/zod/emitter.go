@@ -164,12 +164,13 @@ func (e *Emitter) generateEnumSchema(typ *typegraph.Type, schemaName string) str
 		}
 		schema = fmt.Sprintf("z.enum([%s])", strings.Join(values, ", "))
 	} else {
-		// Use union of literals for mixed types (including objects/arrays)
-		literals := make([]string, len(typ.EnumValues))
-		for i, ev := range typ.EnumValues {
-			literals[i] = formatZodLiteral(ev.Value)
+		var sb strings.Builder
+		sb.WriteString("z.union([\n")
+		for _, ev := range typ.EnumValues {
+			fmt.Fprintf(&sb, "  %s,\n", formatZodLiteral(ev.Value))
 		}
-		schema = fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
+		sb.WriteString("])")
+		schema = sb.String()
 	}
 
 	result := fmt.Sprintf("export const %s = %s", schemaName, schema)

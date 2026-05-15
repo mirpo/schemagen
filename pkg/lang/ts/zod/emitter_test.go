@@ -155,22 +155,22 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 		{
 			"numeric enum",
 			[]typegraph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}},
-			[]string{"z.union([z.literal(1), z.literal(2)])"},
+			[]string{"z.union([\n", "  z.literal(1),\n", "  z.literal(2),\n"},
 		},
 		{
 			"mixed types",
 			[]typegraph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Bool", Value: true}},
-			[]string{"z.union([", `z.literal("text")`, "z.literal(42)", "z.literal(true)"},
+			[]string{"z.union([\n", "  z.literal(\"text\"),\n", "  z.literal(42),\n", "  z.literal(true),\n"},
 		},
 		{
 			"with object value",
 			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Complex", Value: map[string]interface{}{"complex": true}}},
-			[]string{"z.union([", `z.literal("simple")`, "z.object({ complex: z.literal(true) }).strict()"},
+			[]string{"z.union([\n", "  z.literal(\"simple\"),\n", "  z.object({ complex: z.literal(true) }).strict(),\n"},
 		},
 		{
 			"with array value",
 			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Array", Value: []interface{}{"a", "b"}}},
-			[]string{"z.union([", `z.literal("simple")`, `z.tuple([z.literal("a"), z.literal("b")])`},
+			[]string{"z.union([\n", "  z.literal(\"simple\"),\n", `  z.tuple([z.literal("a"), z.literal("b")]),` + "\n"},
 		},
 	}
 

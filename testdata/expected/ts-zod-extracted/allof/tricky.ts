@@ -54,7 +54,11 @@ export const NodeSchema = z.object({
 
 export type Status = "active" | "paused";
 
-export const StatusSchema = z.union([z.literal("active"), z.literal("paused"), z.object({ complex: z.literal(true) }).strict()]);
+export const StatusSchema = z.union([
+  z.literal("active"),
+  z.literal("paused"),
+  z.object({ complex: z.literal(true) }).strict(),
+]);
 
 export interface Payload {
   data: string;
