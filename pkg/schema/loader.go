@@ -107,11 +107,6 @@ func (l *Loader) loadFile(path string) (*Schema, error) {
 		return nil, schemaErr(relPath, "extract property order", err)
 	}
 
-	data, err = ensureSchemaID(data, relPath)
-	if err != nil {
-		return nil, schemaErr(relPath, "inject $id", err)
-	}
-
 	compiled, err := l.compiler.Compile(data, relPath)
 	if err != nil {
 		return nil, schemaErr(relPath, "compile schema", err)
@@ -142,19 +137,6 @@ func readAndNormalizeSchema(path string) ([]byte, error) {
 	}
 
 	return raw, nil
-}
-
-func ensureSchemaID(data []byte, id string) ([]byte, error) {
-	var obj map[string]interface{}
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return nil, err
-	}
-
-	if _, ok := obj["$id"]; !ok {
-		obj["$id"] = id
-	}
-
-	return json.Marshal(obj)
 }
 
 func schemaErr(path, msg string, err error) error {
