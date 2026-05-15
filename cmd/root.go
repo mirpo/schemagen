@@ -4,7 +4,8 @@ import (
 	"os"
 
 	"github.com/mirpo/schemagen/pkg/errors"
-	"github.com/mirpo/schemagen/pkg/logger"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -24,10 +25,13 @@ TypeScript interfaces, Python Pydantic v2 models, and Go structs.`,
 			verbose, _ := cmd.Flags().GetBool("verbose")
 			jsonOutput, _ := cmd.Flags().GetBool("json")
 
-			logger.ConfigLogger(logger.LoggerConfig{
-				Verbose:    verbose,
-				JSONOutput: jsonOutput,
-			})
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			if verbose {
+				zerolog.SetGlobalLevel(zerolog.DebugLevel)
+			}
+			if !jsonOutput {
+				log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+			}
 		},
 	}
 
