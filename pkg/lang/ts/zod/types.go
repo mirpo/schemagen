@@ -7,7 +7,6 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
-// typeRefToZod converts a TypeRef to Zod schema code.
 func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) string {
 	if ref == nil {
 		return "z.unknown()"
@@ -20,7 +19,7 @@ func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) s
 		zodType = ref.TypeName + "Schema"
 
 	case typegraph.KindPrimitive:
-		zodType = e.primitiveToZod(ref.GoType, ref.Format, field)
+		zodType = e.primitiveToZod(ref.Primitive, field)
 
 	case typegraph.KindArray:
 		itemType := e.typeRefToZod(ref.ItemType, nil)
@@ -61,55 +60,45 @@ func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) s
 	return zodType
 }
 
-// primitiveToZod converts primitive types using Zod v4 top-level schemas.
-func (e *Emitter) primitiveToZod(goType, format string, field *typegraph.Field) string {
-	// Handle format-specific types first (Zod v4 top-level)
-	switch format {
-	case "email":
+func (e *Emitter) primitiveToZod(p typegraph.PrimitiveKind, field *typegraph.Field) string {
+	switch p {
+	case typegraph.PrimEmail:
 		return "z.email()" + stringConstraints(field)
-	case "uri", "url":
+	case typegraph.PrimURI:
 		return "z.url()" + stringConstraints(field)
-	case "uuid":
+	case typegraph.PrimUUID:
 		return "z.uuid()"
-	case "ipv4":
+	case typegraph.PrimIPv4:
 		return "z.ipv4()"
-	case "ipv6":
+	case typegraph.PrimIPv6:
 		return "z.ipv6()"
-	case "date-time":
+	case typegraph.PrimDateTime:
 		if e.config.CoerceDates {
 			return "z.coerce.date()"
 		}
 		return "z.iso.datetime()"
-	case "date":
+	case typegraph.PrimDate:
 		return "z.iso.date()"
-	case "time":
+	case typegraph.PrimTime:
 		return "z.iso.time()"
-	}
-
-	// Handle base types
-	switch goType {
-	case "string":
+	case typegraph.PrimString, typegraph.PrimHostname:
 		return "z.string()" + stringConstraints(field)
-	case "int", "int32", "int64":
+	case typegraph.PrimInt, typegraph.PrimInt32, typegraph.PrimInt64:
 		return "z.int()" + numberConstraints(field)
-	case "float64", "float32":
+	case typegraph.PrimFloat32, typegraph.PrimFloat64:
 		return "z.number()" + numberConstraints(field)
-	case "bool":
+	case typegraph.PrimBool:
 		return "z.boolean()"
-	case "interface{}":
-		return "z.unknown()"
 	default:
 		return "z.unknown()"
 	}
 }
 
-// enumValuesToZod converts enum values to a Zod schema.
 func (e *Emitter) enumValuesToZod(values []interface{}) string {
 	if len(values) == 0 {
 		return "z.never()"
 	}
 
-	// Check if all values are strings
 	allStrings := true
 	for _, v := range values {
 		if _, ok := v.(string); !ok {
@@ -119,7 +108,6 @@ func (e *Emitter) enumValuesToZod(values []interface{}) string {
 	}
 
 	if allStrings {
-		// Use z.enum for string enums
 		strValues := make([]string, len(values))
 		for i, v := range values {
 			strValues[i] = fmt.Sprintf("%q", v.(string))
@@ -127,7 +115,6 @@ func (e *Emitter) enumValuesToZod(values []interface{}) string {
 		return fmt.Sprintf("z.enum([%s])", strings.Join(strValues, ", "))
 	}
 
-	// Use union of literals for mixed types (including objects/arrays)
 	literals := make([]string, len(values))
 	for i, v := range values {
 		literals[i] = formatZodLiteral(v)
@@ -135,13 +122,9 @@ func (e *Emitter) enumValuesToZod(values []interface{}) string {
 	return fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
 }
 
-// generateInlineObject generates a Zod object schema for inline object fields.
-// Note: Inline objects don't have schema-level additionalProperties info,
-// so we only use the --ts-zod-strict flag as a fallback default.
 func (e *Emitter) generateInlineObject(fields []*typegraph.Field) string {
 	var sb strings.Builder
 
-	// Use strictObject when --ts-zod-strict flag is set
 	objectFunc := "z.object"
 	if e.config.Strict {
 		objectFunc = "z.strictObject"

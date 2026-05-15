@@ -87,7 +87,7 @@ func (b *TypeRefBuilder) buildRefTypeRef(ref *TypeRef, schema *jsonschema.Schema
 	}
 	// Unresolved ref - fall back to interface{}
 	ref.Kind = KindInterface
-	ref.GoType = "interface{}"
+	ref.Primitive = PrimUnknown
 	return ref
 }
 
@@ -96,7 +96,8 @@ func (b *TypeRefBuilder) buildConstTypeRef(ref *TypeRef, schema *jsonschema.Sche
 	constValue := schema.Const.Value
 	ref.Kind = KindEnum
 	ref.EnumValues = []interface{}{constValue}
-	ref.GoType = b.inferGoTypeFromValue(constValue)
+	ref.Primitive = b.inferPrimitiveFromValue(constValue)
+
 	return ref
 }
 
@@ -110,7 +111,7 @@ func (b *TypeRefBuilder) buildEnumTypeRef(ref *TypeRef, schema *jsonschema.Schem
 	ref.Kind = KindEnum
 	ref.EnumValues = schema.Enum
 	if len(schema.Enum) > 0 {
-		ref.GoType = b.inferGoTypeFromValue(schema.Enum[0])
+		ref.Primitive = b.inferPrimitiveFromValue(schema.Enum[0])
 	}
 	return ref
 }
@@ -151,7 +152,7 @@ func (b *TypeRefBuilder) buildArrayTypeRef(ref *TypeRef, schema *jsonschema.Sche
 		}
 		ref.ItemType = b.BuildTypeRef(schema.Items, itemFieldName)
 	} else {
-		ref.ItemType = &TypeRef{Kind: KindPrimitive, GoType: "interface{}"}
+		ref.ItemType = &TypeRef{Kind: KindPrimitive, Primitive: PrimUnknown}
 	}
 	return ref
 }
@@ -166,7 +167,7 @@ func (b *TypeRefBuilder) buildObjectTypeRef(ref *TypeRef, schema *jsonschema.Sch
 		if schema.AdditionalProperties != nil && schema.AdditionalProperties.Boolean == nil {
 			ref.ValueType = b.BuildTypeRef(schema.AdditionalProperties, "additionalProperty")
 		} else {
-			ref.ValueType = &TypeRef{Kind: KindPrimitive, GoType: "interface{}"}
+			ref.ValueType = &TypeRef{Kind: KindPrimitive, Primitive: PrimUnknown}
 		}
 		return ref
 	}
@@ -183,7 +184,7 @@ func (b *TypeRefBuilder) buildObjectTypeRef(ref *TypeRef, schema *jsonschema.Sch
 
 	// Keep inline - create inline object with fields
 	ref.Kind = KindInterface
-	ref.GoType = "map[string]interface{}"
+	ref.Primitive = PrimUnknown
 	ref.ObjectFields = b.BuildFieldsFromProperties(schema, "")
 	return ref
 }
@@ -191,22 +192,22 @@ func (b *TypeRefBuilder) buildObjectTypeRef(ref *TypeRef, schema *jsonschema.Sch
 // buildPrimitiveTypeRef handles primitive type schemas.
 func (b *TypeRefBuilder) buildPrimitiveTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
 	ref.Kind = KindPrimitive
-	ref.GoType = b.MapPrimitiveType(schema)
+	ref.Primitive = MapPrimitiveSchema(schema)
+
 	if schema.Format != nil && *schema.Format != "" {
 		ref.Format = *schema.Format
 	}
 	return ref
 }
 
-// inferGoTypeFromValue infers Go type from a value.
-func (b *TypeRefBuilder) inferGoTypeFromValue(val interface{}) string {
+func (b *TypeRefBuilder) inferPrimitiveFromValue(val interface{}) PrimitiveKind {
 	switch val.(type) {
 	case string:
-		return "string"
+		return PrimString
 	case float64, int, int64:
-		return "int"
+		return PrimInt
 	default:
-		return "interface{}"
+		return PrimUnknown
 	}
 }
 
@@ -319,62 +320,53 @@ func (b *TypeRefBuilder) BuildFieldsFromProperties(schema *jsonschema.Schema, or
 	return fields
 }
 
-// MapPrimitiveType maps a JSON schema type to a Go type.
-// Implements FieldBuilder interface.
-func (b *TypeRefBuilder) MapPrimitiveType(schema *jsonschema.Schema) string {
-	// Check for format-specific mappings first
+// MapPrimitiveSchema maps a JSON schema to a PrimitiveKind.
+func MapPrimitiveSchema(schema *jsonschema.Schema) PrimitiveKind {
 	if schema.Format != nil {
 		switch *schema.Format {
 		case "uuid":
-			return "uuid.UUID"
+			return PrimUUID
 		case "date-time":
-			return "time.Time"
+			return PrimDateTime
 		case "date":
-			return "time.Time"
+			return PrimDate
 		case "time":
-			return "string" // No standard Go type for time-only
-		case "email", "uri", "hostname", "ipv4", "ipv6":
-			return "string" // Validated strings
+			return PrimTime
+		case "email":
+			return PrimEmail
+		case "uri":
+			return PrimURI
+		case "hostname":
+			return PrimHostname
+		case "ipv4":
+			return PrimIPv4
+		case "ipv6":
+			return PrimIPv6
+		case "int32":
+			return PrimInt32
+		case "int64":
+			return PrimInt64
+		case "float":
+			return PrimFloat32
+		case "double":
+			return PrimFloat64
 		}
 	}
 
-	// Check type
 	if len(schema.Type) > 0 {
 		switch schema.Type[0] {
 		case "string":
-			return "string"
+			return PrimString
 		case "integer":
-			// Check for specific integer formats
-			if schema.Format != nil {
-				switch *schema.Format {
-				case "int32":
-					return "int32"
-				case "int64":
-					return "int64"
-				}
-			}
-			return "int"
+			return PrimInt
 		case "number":
-			// Check for specific number formats
-			if schema.Format != nil {
-				switch *schema.Format {
-				case "float":
-					return "float32"
-				case "double":
-					return "float64"
-				}
-			}
-			return "float64"
+			return PrimFloat64
 		case "boolean":
-			return "bool"
-		case "array":
-			return "[]interface{}"
-		case "object":
-			return "map[string]interface{}"
+			return PrimBool
 		}
 	}
 
-	return "interface{}"
+	return PrimUnknown
 }
 
 // buildUnionMembers builds TypeRefs for union members (oneOf/anyOf).

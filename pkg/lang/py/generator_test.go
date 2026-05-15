@@ -26,7 +26,7 @@ func TestGenerateFile_SimpleStruct(t *testing.T) {
 			{
 				Name:     "ID",
 				JSONName: "id",
-				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 				Required: true,
 			},
 		},
@@ -50,7 +50,7 @@ func TestGenerateFile_OptionalField(t *testing.T) {
 			{
 				Name:     "Email",
 				JSONName: "email",
-				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 				Required: false,
 			},
 		},
@@ -133,7 +133,7 @@ func TestGenerateFile_SnakeCaseWithAlias(t *testing.T) {
 			{
 				Name:     "FirstName",
 				JSONName: "firstName",
-				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+				Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 				Required: true,
 			},
 		},

@@ -60,7 +60,7 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 		trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
 		ref := trb.BuildTypeRef(&jsonschema.Schema{Type: []string{"string"}}, "")
 		assert.Equal(t, KindPrimitive, ref.Kind)
-		assert.Equal(t, "string", ref.GoType)
+		assert.Equal(t, PrimString, ref.Primitive)
 	})
 
 	t.Run("primitive with format", func(t *testing.T) {
@@ -96,26 +96,6 @@ func TestTypeRefBuilder_BuildTypeRef(t *testing.T) {
 		assert.True(t, ref.Nullable)
 		assert.Equal(t, KindMap, ref.Kind, "should detect object even when null is listed first")
 	})
-}
-
-func TestTypeRefBuilder_MapPrimitiveType(t *testing.T) {
-	trb := NewTypeRefBuilder(NewTypeRegistry(), NewRefResolver(nil), &BuildConfig{})
-	tests := []struct {
-		schemaType []string
-		format     *string
-		expected   string
-	}{
-		{[]string{"string"}, nil, "string"},
-		{[]string{"integer"}, nil, "int"},
-		{[]string{"number"}, nil, "float64"},
-		{[]string{"boolean"}, nil, "bool"},
-		{[]string{"string"}, strPtr("uuid"), "uuid.UUID"},
-		{[]string{"string"}, strPtr("date-time"), "time.Time"},
-	}
-	for _, tt := range tests {
-		schema := &jsonschema.Schema{Type: tt.schemaType, Format: tt.format}
-		assert.Equal(t, tt.expected, trb.MapPrimitiveType(schema))
-	}
 }
 
 func TestTypeRefBuilder_ShouldExtractInlineObject(t *testing.T) {

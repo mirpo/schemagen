@@ -33,8 +33,6 @@ func (m *mockTypeBuilder) BuildUnion(typ *Type, s *jsonschema.Schema) error {
 	return nil
 }
 
-func (m *mockTypeBuilder) MapPrimitiveType(s *jsonschema.Schema) string { return "string" }
-
 func TestSchemaWalker_Process(t *testing.T) {
 	tests := []struct {
 		name       string

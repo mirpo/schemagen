@@ -238,7 +238,7 @@ func (e *Emitter) generateAliasSchema(typ *typegraph.Type, schemaName string) st
 
 // generatePrimitiveSchema generates a Zod schema for a primitive type alias.
 func (e *Emitter) generatePrimitiveSchema(typ *typegraph.Type, schemaName string) string {
-	zodType := e.primitiveToZod(typ.GoType, "", nil)
+	zodType := e.primitiveToZod(typ.Primitive, nil)
 
 	result := fmt.Sprintf("export const %s = %s", schemaName, zodType)
 

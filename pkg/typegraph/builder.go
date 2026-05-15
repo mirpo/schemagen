@@ -66,12 +66,6 @@ func (b *Builder) Build(schemas []*schema.Schema) (*Graph, error) {
 	return graph, nil
 }
 
-// MapPrimitiveType maps a JSON schema type to a Go type (implements TypeBuilder).
-// Delegates to typeRefBuilder.
-func (b *Builder) MapPrimitiveType(schema *jsonschema.Schema) string {
-	return b.typeRefBuilder.MapPrimitiveType(schema)
-}
-
 // Helper functions
 
 func getDescription(schema *jsonschema.Schema) string {

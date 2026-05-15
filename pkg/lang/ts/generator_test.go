@@ -30,13 +30,13 @@ func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {
 	}
 }
 
-func createTestField(name string, jsonName string, tsType string, required bool) *typegraph.Field {
+func createTestField(name string, jsonName string, prim typegraph.PrimitiveKind, required bool) *typegraph.Field {
 	return &typegraph.Field{
 		Name:     name,
 		JSONName: jsonName,
 		Type: &typegraph.TypeRef{
-			Kind:   typegraph.KindPrimitive,
-			GoType: tsType,
+			Kind:      typegraph.KindPrimitive,
+			Primitive: prim,
 		},
 		Required: required,
 	}
@@ -47,7 +47,7 @@ func TestGenerateInterface(t *testing.T) {
 
 	t.Run("simple", func(t *testing.T) {
 		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("ID", "id", "string", true), createTestField("Name", "name", "string", true)}
+		typ.Fields = []*typegraph.Field{createTestField("ID", "id", typegraph.PrimString, true), createTestField("Name", "name", typegraph.PrimString, true)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export interface User {")
@@ -57,7 +57,7 @@ func TestGenerateInterface(t *testing.T) {
 	t.Run("with description", func(t *testing.T) {
 		typ := createTestType("User", typegraph.KindStruct)
 		typ.Description = "Represents a user"
-		typ.Fields = []*typegraph.Field{createTestField("ID", "id", "string", true)}
+		typ.Fields = []*typegraph.Field{createTestField("ID", "id", typegraph.PrimString, true)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "* Represents a user")
@@ -73,9 +73,9 @@ func TestGenerateInterface(t *testing.T) {
 	t.Run("multiple fields", func(t *testing.T) {
 		typ := createTestType("Product", typegraph.KindStruct)
 		typ.Fields = []*typegraph.Field{
-			createTestField("ID", "id", "string", true),
-			createTestField("Price", "price", "float64", true),
-			createTestField("Available", "available", "bool", true),
+			createTestField("ID", "id", typegraph.PrimString, true),
+			createTestField("Price", "price", typegraph.PrimFloat64, true),
+			createTestField("Available", "available", typegraph.PrimBool, true),
 		}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestGenerateInterface(t *testing.T) {
 
 	t.Run("optional fields", func(t *testing.T) {
 		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("ID", "id", "string", true), createTestField("Email", "email", "string", false)}
+		typ.Fields = []*typegraph.Field{createTestField("ID", "id", typegraph.PrimString, true), createTestField("Email", "email", typegraph.PrimString, false)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "email?: string;")
@@ -142,22 +142,22 @@ func TestGenerateEnum(t *testing.T) {
 func TestTypeRefToTS_Primitives(t *testing.T) {
 	tests := []struct {
 		name     string
-		goType   string
+		prim     typegraph.PrimitiveKind
 		expected string
 	}{
-		{"string type", "string", "string"},
-		{"int type", "int", "number"},
-		{"float64 type", "float64", "number"},
-		{"bool type", "bool", "boolean"},
-		{"interface type", "interface{}", "any"},
+		{"string type", typegraph.PrimString, "string"},
+		{"int type", typegraph.PrimInt, "number"},
+		{"float64 type", typegraph.PrimFloat64, "number"},
+		{"bool type", typegraph.PrimBool, "boolean"},
+		{"unknown type", typegraph.PrimUnknown, "any"},
 	}
 
 	g := createTestGenerator(nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ref := &typegraph.TypeRef{
-				Kind:   typegraph.KindPrimitive,
-				GoType: tt.goType,
+				Kind:      typegraph.KindPrimitive,
+				Primitive: tt.prim,
 			}
 			result := g.typeRefToTS(ref)
 			assert.Equal(t, tt.expected, result)
@@ -166,7 +166,7 @@ func TestTypeRefToTS_Primitives(t *testing.T) {
 }
 
 func TestTypeRefToTS_UnknownVsAny(t *testing.T) {
-	ref := &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "interface{}"}
+	ref := &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUnknown}
 	assert.Equal(t, "any", createTestGenerator(nil).typeRefToTS(ref))
 	assert.Equal(t, "unknown", createTestGenerator(&Config{UnknownAny: true}).typeRefToTS(ref))
 }
@@ -175,12 +175,12 @@ func TestTypeRefToTS_Complex(t *testing.T) {
 	g := createTestGenerator(nil)
 
 	t.Run("arrays", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}}
+		ref := &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}
 		assert.Equal(t, "string[]", g.typeRefToTS(ref))
 	})
 
 	t.Run("maps", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"}}
+		ref := &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}
 		assert.Equal(t, "Record<string, number>", g.typeRefToTS(ref))
 	})
 
@@ -190,14 +190,14 @@ func TestTypeRefToTS_Complex(t *testing.T) {
 	})
 
 	t.Run("union", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindUnion, UnionMembers: []*typegraph.TypeRef{{Kind: typegraph.KindPrimitive, GoType: "string"}, {Kind: typegraph.KindPrimitive, GoType: "int"}}}
+		ref := &typegraph.TypeRef{Kind: typegraph.KindUnion, UnionMembers: []*typegraph.TypeRef{{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, {Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}}
 		result := g.typeRefToTS(ref)
 		assert.Contains(t, result, "string")
 		assert.Contains(t, result, "number")
 	})
 
 	t.Run("nested array of maps", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}}}
+		ref := &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}}
 		assert.Equal(t, "Record<string, string>[]", g.typeRefToTS(ref))
 	})
 }
@@ -267,10 +267,10 @@ func TestGenerateInterface_QuotedPropertyNames(t *testing.T) {
 	g := createTestGenerator(nil)
 	typ := createTestType("Special", typegraph.KindStruct)
 	typ.Fields = []*typegraph.Field{
-		createTestField("ValidName", "validName", "string", true),
-		createTestField("KebabCase", "kebab-case", "string", true),
-		createTestField("WithSpace", "with space", "string", true),
-		createTestField("AtSign", "@special", "string", true),
+		createTestField("ValidName", "validName", typegraph.PrimString, true),
+		createTestField("KebabCase", "kebab-case", typegraph.PrimString, true),
+		createTestField("WithSpace", "with space", typegraph.PrimString, true),
+		createTestField("AtSign", "@special", typegraph.PrimString, true),
 	}
 
 	result, err := g.generateInterface(typ)
@@ -291,7 +291,7 @@ func TestGenerateInterface_FieldDescriptions(t *testing.T) {
 			Name:        "Email",
 			JSONName:    "email",
 			Description: "User email address",
-			Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+			Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 			Required:    true,
 		},
 	}
@@ -309,9 +309,9 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 			Name:     "ID",
 			JSONName: "id",
 			Type: &typegraph.TypeRef{
-				Kind:   typegraph.KindPrimitive,
-				GoType: "string",
-				Format: "uuid",
+				Kind:      typegraph.KindPrimitive,
+				Primitive: typegraph.PrimString,
+				Format:    "uuid",
 			},
 			Required: true,
 		},
@@ -320,9 +320,9 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 			JSONName:    "timestamp",
 			Description: "Event timestamp",
 			Type: &typegraph.TypeRef{
-				Kind:   typegraph.KindPrimitive,
-				GoType: "string",
-				Format: "date-time",
+				Kind:      typegraph.KindPrimitive,
+				Primitive: typegraph.PrimString,
+				Format:    "date-time",
 			},
 			Required: true,
 		},
@@ -342,7 +342,7 @@ func TestGenerateInterface_WithExtends(t *testing.T) {
 	typ := createTestType("User", typegraph.KindStruct)
 	typ.Extends = []string{"BaseModel"}
 	typ.Fields = []*typegraph.Field{
-		createTestField("Name", "name", "string", true),
+		createTestField("Name", "name", typegraph.PrimString, true),
 	}
 
 	result, err := g.generateInterface(typ)
@@ -356,7 +356,7 @@ func TestGenerateInterface_MultipleExtends(t *testing.T) {
 	typ := createTestType("User", typegraph.KindStruct)
 	typ.Extends = []string{"BaseModel", "Timestamped", "Auditable"}
 	typ.Fields = []*typegraph.Field{
-		createTestField("Name", "name", "string", true),
+		createTestField("Name", "name", typegraph.PrimString, true),
 	}
 
 	result, err := g.generateInterface(typ)
@@ -395,7 +395,7 @@ func TestGenerateIndexSignature(t *testing.T) {
 	t.Run("disabled", func(t *testing.T) {
 		g := createTestGenerator(&Config{AdditionalProperties: false})
 		typ := createTestType("Config", typegraph.KindStruct)
-		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}}
+		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}
 		assert.Empty(t, g.generateIndexSignature(typ))
 	})
 
@@ -409,15 +409,15 @@ func TestGenerateIndexSignature(t *testing.T) {
 	t.Run("typed string", func(t *testing.T) {
 		g := createTestGenerator(&Config{AdditionalProperties: true})
 		typ := createTestType("Config", typegraph.KindStruct)
-		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}}
+		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}
 		assert.Contains(t, g.generateIndexSignature(typ), "[key: string]: string;")
 	})
 
 	t.Run("in interface", func(t *testing.T) {
 		g := createTestGenerator(&Config{AdditionalProperties: true})
 		typ := createTestType("Config", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("Name", "name", "string", true)}
-		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"}}
+		typ.Fields = []*typegraph.Field{createTestField("Name", "name", typegraph.PrimString, true)}
+		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "[key: string]: number;")
@@ -443,7 +443,7 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("quoted description", func(t *testing.T) {
 		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{{Name: "Name", JSONName: "name", Description: `This is a "quoted" description`, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}, Required: true}}
+		typ.Fields = []*typegraph.Field{{Name: "Name", JSONName: "name", Description: `This is a "quoted" description`, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, `"quoted"`)
@@ -451,7 +451,7 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("unicode in names", func(t *testing.T) {
 		typ := createTestType("Café", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("Naïve", "naïve", "string", true)}
+		typ.Fields = []*typegraph.Field{createTestField("Naïve", "naïve", typegraph.PrimString, true)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export interface Café")
@@ -482,9 +482,9 @@ func TestGenerateFile_CompleteInterface(t *testing.T) {
 			Name:     "ID",
 			JSONName: "id",
 			Type: &typegraph.TypeRef{
-				Kind:   typegraph.KindPrimitive,
-				GoType: "string",
-				Format: "uuid",
+				Kind:      typegraph.KindPrimitive,
+				Primitive: typegraph.PrimString,
+				Format:    "uuid",
 			},
 			Required: true,
 		},
@@ -493,16 +493,16 @@ func TestGenerateFile_CompleteInterface(t *testing.T) {
 			JSONName:    "email",
 			Description: "User email address",
 			Type: &typegraph.TypeRef{
-				Kind:   typegraph.KindPrimitive,
-				GoType: "string",
-				Format: "email",
+				Kind:      typegraph.KindPrimitive,
+				Primitive: typegraph.PrimString,
+				Format:    "email",
 			},
 			Required: true,
 		},
 		{
 			Name:     "Age",
 			JSONName: "age",
-			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"},
+			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt},
 			Required: false,
 		},
 	}
@@ -557,7 +557,7 @@ func TestGenerateFile_MixedTypes(t *testing.T) {
 
 	interfaceType := createTestType("User", typegraph.KindStruct)
 	interfaceType.Fields = []*typegraph.Field{
-		createTestField("Name", "name", "string", true),
+		createTestField("Name", "name", typegraph.PrimString, true),
 	}
 
 	enumType := createTestType("Status", typegraph.KindEnum)
@@ -586,11 +586,11 @@ func TestGenerateFile_WithImportsAndAdditionalProps(t *testing.T) {
 
 	typ := createTestType("Config", typegraph.KindStruct)
 	typ.Fields = []*typegraph.Field{
-		createTestField("Name", "name", "string", true),
+		createTestField("Name", "name", typegraph.PrimString, true),
 	}
 	typ.AdditionalProps = &typegraph.AdditionalPropsConfig{
 		Allowed: true,
-		Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+		Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 	}
 
 	imports := []typegraph.ImportSpec{
@@ -626,7 +626,7 @@ func TestGenerateFile_AllConfigOptions(t *testing.T) {
 		{
 			Name:     "Data",
 			JSONName: "data",
-			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "interface{}"},
+			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUnknown},
 			Required: true,
 		},
 	}

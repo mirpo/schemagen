@@ -13,7 +13,6 @@ import (
 type FieldBuilder interface {
 	BuildTypeRef(schema *jsonschema.Schema, fieldName string) *TypeRef
 	BuildFieldsFromProperties(schema *jsonschema.Schema, orderPath string) []*Field
-	MapPrimitiveType(schema *jsonschema.Schema) string
 }
 
 // StructBuilder builds struct types from JSON schemas.

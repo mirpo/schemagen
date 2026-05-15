@@ -49,7 +49,6 @@ type TypeBuilder interface {
 	BuildStruct(typ *Type, schema *jsonschema.Schema) error
 	BuildEnum(typ *Type, schema *jsonschema.Schema) error
 	BuildUnion(typ *Type, schema *jsonschema.Schema) error
-	MapPrimitiveType(schema *jsonschema.Schema) string
 }
 
 // SchemaWalker handles schema traversal and type detection.
@@ -149,9 +148,8 @@ func (w *SchemaWalker) Process(s *schema.Schema) error {
 			return err
 		}
 	} else {
-		// Primitive or other type
 		typ.Kind = KindPrimitive
-		typ.GoType = w.typeBuilder.MapPrimitiveType(compiled)
+		typ.Primitive = MapPrimitiveSchema(compiled)
 	}
 
 	w.registry.Add(typ)
@@ -180,7 +178,7 @@ func (w *SchemaWalker) ExtractDefinition(name string, schema *jsonschema.Schema)
 		}
 	} else {
 		typ.Kind = KindPrimitive
-		typ.GoType = w.typeBuilder.MapPrimitiveType(schema)
+		typ.Primitive = MapPrimitiveSchema(schema)
 	}
 
 	w.registry.Add(typ)

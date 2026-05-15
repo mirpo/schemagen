@@ -1,5 +1,28 @@
 package typegraph
 
+// PrimitiveKind identifies a language-neutral primitive type.
+type PrimitiveKind int
+
+const (
+	PrimUnknown PrimitiveKind = iota
+	PrimString
+	PrimInt
+	PrimInt32
+	PrimInt64
+	PrimFloat32
+	PrimFloat64
+	PrimBool
+	PrimDateTime
+	PrimDate
+	PrimTime
+	PrimUUID
+	PrimEmail
+	PrimURI
+	PrimHostname
+	PrimIPv4
+	PrimIPv6
+)
+
 // TypeKind represents the kind of type.
 type TypeKind string
 
@@ -33,7 +56,7 @@ type Type struct {
 	HasComplexValues bool // true if enum contains non-primitive values (objects/arrays)
 
 	// For primitives
-	GoType string // e.g., "string", "int", "float64"
+	Primitive PrimitiveKind
 
 	// For arrays
 	ItemType *TypeRef
@@ -77,11 +100,11 @@ type Field struct {
 
 // TypeRef is a reference to another type.
 type TypeRef struct {
-	Kind     TypeKind // Kind of referenced type
-	TypeName string   // Name of type (if named)
-	GoType   string   // Direct Go type (if primitive)
-	Nullable bool     // Is this nullable?
-	Format   string   // JSON Schema format (email, uri, uuid, date-time, etc.)
+	Kind      TypeKind      // Kind of referenced type
+	TypeName  string        // Name of type (if named)
+	Primitive PrimitiveKind // Language-neutral primitive kind
+	Nullable  bool          // Is this nullable?
+	Format    string        // JSON Schema format (email, uri, uuid, date-time, etc.)
 
 	// For composite types
 	ItemType     *TypeRef   // For arrays

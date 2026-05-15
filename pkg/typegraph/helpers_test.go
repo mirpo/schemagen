@@ -76,7 +76,7 @@ func TestExtractAdditionalProperties(t *testing.T) {
 
 	t.Run("typed additional properties", func(t *testing.T) {
 		buildTypeRef := func(s *jsonschema.Schema, name string) *TypeRef {
-			return &TypeRef{Kind: KindPrimitive, GoType: "string"}
+			return &TypeRef{Kind: KindPrimitive, Primitive: PrimString}
 		}
 
 		config := ExtractAdditionalProperties(&jsonschema.Schema{

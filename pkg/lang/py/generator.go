@@ -92,8 +92,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 				g.checkTypeRefForImports(typ.TargetType)
 			}
 		case typegraph.KindPrimitive:
-			// Check if primitive type will use Any
-			if typ.GoType == "interface{}" || typ.GoType == "" {
+			if typ.Primitive == typegraph.PrimUnknown {
 				g.needsAny = true
 			}
 		case typegraph.KindEnum:
@@ -520,7 +519,7 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	var sb strings.Builder
 
 	// Python type alias using TypeAlias (Python 3.10+) or simple assignment
-	pyType := g.primitiveToPython(typ.GoType, "")
+	pyType := g.primitiveToPython(typ.Primitive)
 	fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 

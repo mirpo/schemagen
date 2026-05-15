@@ -33,12 +33,12 @@ func enumType(name string, values ...typegraph.EnumValue) *typegraph.Type {
 	}
 }
 
-func field(json, goType string, required bool) *typegraph.Field {
+func field(json string, prim typegraph.PrimitiveKind, required bool) *typegraph.Field {
 	return &typegraph.Field{
 		JSONName: json,
 		Type: &typegraph.TypeRef{
-			Kind:   typegraph.KindPrimitive,
-			GoType: goType,
+			Kind:      typegraph.KindPrimitive,
+			Primitive: prim,
 		},
 		Required: required,
 	}
@@ -56,8 +56,8 @@ func TestGenerateFile_Struct(t *testing.T) {
 	})
 
 	user := structType("User",
-		field("id", "uuid.UUID", true),
-		field("name", "string", false),
+		field("id", typegraph.PrimUUID, true),
+		field("name", typegraph.PrimString, false),
 	)
 
 	out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
@@ -129,8 +129,8 @@ func TestGenerateFile_Imports(t *testing.T) {
 	g := gen(nil)
 
 	event := structType("Event",
-		field("id", "uuid.UUID", true),
-		field("created_at", "time.Time", true),
+		field("id", typegraph.PrimUUID, true),
+		field("created_at", typegraph.PrimDateTime, true),
 	)
 
 	out, err := g.GenerateFile([]*typegraph.Type{event}, nil)
@@ -152,7 +152,7 @@ func TestGenerateFile_ConfigFlags(t *testing.T) {
 		OmitEmpty:       false,
 	})
 
-	user := structType("User", field("name", "string", false))
+	user := structType("User", field("name", typegraph.PrimString, false))
 
 	out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
 	require.NoError(t, err)

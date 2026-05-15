@@ -1060,29 +1060,37 @@ func TestBuild_AllOf(t *testing.T) {
 	}
 }
 
-func TestMapGoType(t *testing.T) {
+func TestMapPrimitiveSchema(t *testing.T) {
 	tests := []struct {
-		name       string
-		goType     string
-		targetLang string
-		expected   string
+		name     string
+		typ      []string
+		format   *string
+		expected PrimitiveKind
 	}{
-		{"string to TypeScript", "string", "typescript", "string"},
-		{"int to TypeScript", "int", "typescript", "number"},
-		{"float64 to TypeScript", "float64", "typescript", "number"},
-		{"bool to TypeScript", "bool", "typescript", "boolean"},
-		{"string to Python", "string", "python", "str"},
-		{"int to Python", "int", "python", "int"},
-		{"float64 to Python", "float64", "python", "float"},
-		{"bool to Python", "bool", "python", "bool"},
-		{"time.Time to TypeScript", "time.Time", "typescript", "string"},
-		{"time.Time to Python", "time.Time", "python", "datetime"},
+		{"string", []string{"string"}, nil, PrimString},
+		{"integer", []string{"integer"}, nil, PrimInt},
+		{"number", []string{"number"}, nil, PrimFloat64},
+		{"boolean", []string{"boolean"}, nil, PrimBool},
+		{"uuid", []string{"string"}, strPtr("uuid"), PrimUUID},
+		{"date-time", []string{"string"}, strPtr("date-time"), PrimDateTime},
+		{"date", []string{"string"}, strPtr("date"), PrimDate},
+		{"time", []string{"string"}, strPtr("time"), PrimTime},
+		{"email", []string{"string"}, strPtr("email"), PrimEmail},
+		{"uri", []string{"string"}, strPtr("uri"), PrimURI},
+		{"hostname", []string{"string"}, strPtr("hostname"), PrimHostname},
+		{"ipv4", []string{"string"}, strPtr("ipv4"), PrimIPv4},
+		{"ipv6", []string{"string"}, strPtr("ipv6"), PrimIPv6},
+		{"int32", []string{"integer"}, strPtr("int32"), PrimInt32},
+		{"int64", []string{"integer"}, strPtr("int64"), PrimInt64},
+		{"float", []string{"number"}, strPtr("float"), PrimFloat32},
+		{"double", []string{"number"}, strPtr("double"), PrimFloat64},
+		{"no type", nil, nil, PrimUnknown},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := MapGoType(tt.goType, tt.targetLang)
-			assert.Equal(t, tt.expected, result)
+			schema := &jsonschema.Schema{Type: tt.typ, Format: tt.format}
+			assert.Equal(t, tt.expected, MapPrimitiveSchema(schema))
 		})
 	}
 }
@@ -1360,49 +1368,35 @@ func TestBuildStruct(t *testing.T) {
 	})
 }
 
-func TestMapPrimitiveType_AllFormats(t *testing.T) {
+func TestMapPrimitiveSchema_AllFormats(t *testing.T) {
 	tests := []struct {
 		name       string
 		schemaType string
 		format     string
-		expected   string
+		expected   PrimitiveKind
 	}{
-		// String formats
-		{"uuid format", "string", "uuid", "uuid.UUID"},
-		{"date-time format", "string", "date-time", "time.Time"},
-		{"date format", "string", "date", "time.Time"},
-		{"time format", "string", "time", "string"},
-		{"email format", "string", "email", "string"},
-		{"uri format", "string", "uri", "string"},
-		{"hostname format", "string", "hostname", "string"},
-		{"ipv4 format", "string", "ipv4", "string"},
-		{"ipv6 format", "string", "ipv6", "string"},
-		{"plain string", "string", "", "string"},
-
-		// Integer formats
-		{"int32 format", "integer", "int32", "int32"},
-		{"int64 format", "integer", "int64", "int64"},
-		{"plain integer", "integer", "", "int"},
-
-		// Number formats
-		{"float format", "number", "float", "float32"},
-		{"double format", "number", "double", "float64"},
-		{"plain number", "number", "", "float64"},
-
-		// Other types
-		{"boolean type", "boolean", "", "bool"},
-		{"array type", "array", "", "[]interface{}"},
-		{"object type", "object", "", "map[string]interface{}"},
-
-		// No type specified
-		{"no type", "", "", "interface{}"},
+		{"uuid format", "string", "uuid", PrimUUID},
+		{"date-time format", "string", "date-time", PrimDateTime},
+		{"date format", "string", "date", PrimDate},
+		{"time format", "string", "time", PrimTime},
+		{"email format", "string", "email", PrimEmail},
+		{"uri format", "string", "uri", PrimURI},
+		{"hostname format", "string", "hostname", PrimHostname},
+		{"ipv4 format", "string", "ipv4", PrimIPv4},
+		{"ipv6 format", "string", "ipv6", PrimIPv6},
+		{"plain string", "string", "", PrimString},
+		{"int32 format", "integer", "int32", PrimInt32},
+		{"int64 format", "integer", "int64", PrimInt64},
+		{"plain integer", "integer", "", PrimInt},
+		{"float format", "number", "float", PrimFloat32},
+		{"double format", "number", "double", PrimFloat64},
+		{"plain number", "number", "", PrimFloat64},
+		{"boolean type", "boolean", "", PrimBool},
+		{"no type", "", "", PrimUnknown},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			compiler := jsonschema.NewCompiler()
-			builder := NewBuilder(compiler)
-
 			schema := &jsonschema.Schema{}
 			if tt.schemaType != "" {
 				schema.Type = []string{tt.schemaType}
@@ -1410,9 +1404,7 @@ func TestMapPrimitiveType_AllFormats(t *testing.T) {
 			if tt.format != "" {
 				schema.Format = &tt.format
 			}
-
-			result := builder.MapPrimitiveType(schema)
-			assert.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.expected, MapPrimitiveSchema(schema))
 		})
 	}
 }
@@ -1433,7 +1425,7 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			fieldName:  "",
 			expectKind: KindPrimitive,
 			expectChecks: func(t *testing.T, ref *TypeRef) {
-				assert.Equal(t, "string", ref.GoType)
+				assert.Equal(t, PrimString, ref.Primitive)
 			},
 		},
 		{
@@ -1444,7 +1436,7 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			fieldName:  "",
 			expectKind: KindPrimitive,
 			expectChecks: func(t *testing.T, ref *TypeRef) {
-				assert.Equal(t, "int", ref.GoType)
+				assert.Equal(t, PrimInt, ref.Primitive)
 			},
 		},
 		{
@@ -1455,7 +1447,7 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			fieldName:  "",
 			expectKind: KindPrimitive,
 			expectChecks: func(t *testing.T, ref *TypeRef) {
-				assert.Equal(t, "bool", ref.GoType)
+				assert.Equal(t, PrimBool, ref.Primitive)
 			},
 		},
 		{
@@ -1504,7 +1496,7 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 			expectKind: KindArray,
 			expectChecks: func(t *testing.T, ref *TypeRef) {
 				assert.NotNil(t, ref.ItemType)
-				assert.Equal(t, "interface{}", ref.ItemType.GoType)
+				assert.Equal(t, PrimUnknown, ref.ItemType.Primitive)
 			},
 		},
 		{

@@ -354,7 +354,7 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
 	// Generate type alias
-	tsType := g.primitiveToTS(typ.GoType)
+	tsType := g.primitiveToTS(typ.Primitive)
 	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 
 	return sb.String(), nil

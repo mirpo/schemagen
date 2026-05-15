@@ -19,14 +19,12 @@ func (m *mockFieldBuilder) BuildTypeRef(schema *jsonschema.Schema, fieldName str
 	if m.returnTypeRef != nil {
 		return m.returnTypeRef
 	}
-	return &TypeRef{Kind: KindPrimitive, GoType: "string"}
+	return &TypeRef{Kind: KindPrimitive, Primitive: PrimString}
 }
 
 func (m *mockFieldBuilder) BuildFieldsFromProperties(schema *jsonschema.Schema, orderPath string) []*Field {
 	return m.returnFields
 }
-
-func (m *mockFieldBuilder) MapPrimitiveType(schema *jsonschema.Schema) string { return "string" }
 
 func TestStructBuilder_Build(t *testing.T) {
 	t.Run("simple object", func(t *testing.T) {
@@ -73,9 +71,9 @@ func TestStructBuilder_DeduplicateFields(t *testing.T) {
 	sb := NewStructBuilder(NewTypeRegistry(), NewRefResolver(nil))
 
 	result := sb.DeduplicateFields([]*Field{
-		{JSONName: "id", Type: &TypeRef{Kind: KindInterface, GoType: "interface{}"}},
-		{JSONName: "id", Type: &TypeRef{Kind: KindPrimitive, GoType: "string"}},
-		{JSONName: "name", Type: &TypeRef{Kind: KindPrimitive, GoType: "string"}},
+		{JSONName: "id", Type: &TypeRef{Kind: KindInterface, Primitive: PrimUnknown}},
+		{JSONName: "id", Type: &TypeRef{Kind: KindPrimitive, Primitive: PrimString}},
+		{JSONName: "name", Type: &TypeRef{Kind: KindPrimitive, Primitive: PrimString}},
 	})
 
 	assert.Len(t, result, 2)
