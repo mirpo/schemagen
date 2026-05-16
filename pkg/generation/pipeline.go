@@ -11,6 +11,7 @@ func Run(cfg *Config) error {
 	if err := validateConfig(cfg); err != nil {
 		return err
 	}
+	applyDefaults(cfg)
 
 	graph, err := buildTypeGraph(cfg)
 	if err != nil {
@@ -127,23 +128,7 @@ func generateBarrelFiles(plan *output.OutputPlan, cfg *Config, writer FileWriter
 	return nil
 }
 
-func validateConfig(cfg *Config) error {
-	if cfg == nil {
-		return &pkgerrors.ValidationError{Field: "config", Message: "config is nil"}
-	}
-	if len(cfg.Schemas) == 0 {
-		return &pkgerrors.ValidationError{Field: "schemas", Message: "no schemas provided"}
-	}
-	if cfg.Compiler == nil {
-		return &pkgerrors.ValidationError{Field: "compiler", Message: "compiler is nil"}
-	}
-	if cfg.OutDir == "" {
-		return &pkgerrors.ValidationError{Field: "output-directory", Message: "output directory is empty"}
-	}
-	if cfg.Language == "" {
-		return &pkgerrors.ValidationError{Field: "language", Message: "language not specified"}
-	}
-
+func applyDefaults(cfg *Config) {
 	if cfg.OutputStrategy == "" {
 		cfg.OutputStrategy = output.StrategyBundle
 	}
@@ -165,6 +150,28 @@ func validateConfig(cfg *Config) error {
 				OmitEmpty:   true,
 			}
 		}
+	}
+}
+
+func validateConfig(cfg *Config) error {
+	if cfg == nil {
+		return &pkgerrors.ValidationError{Field: "config", Message: "config is nil"}
+	}
+	if len(cfg.Schemas) == 0 {
+		return &pkgerrors.ValidationError{Field: "schemas", Message: "no schemas provided"}
+	}
+	if cfg.Compiler == nil {
+		return &pkgerrors.ValidationError{Field: "compiler", Message: "compiler is nil"}
+	}
+	if cfg.OutDir == "" {
+		return &pkgerrors.ValidationError{Field: "output-directory", Message: "output directory is empty"}
+	}
+	if cfg.Language == "" {
+		return &pkgerrors.ValidationError{Field: "language", Message: "language not specified"}
+	}
+
+	switch cfg.Language {
+	case LanguageTypeScript, LanguagePython, LanguageGo:
 	default:
 		return &pkgerrors.ValidationError{
 			Field:   "language",

@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -53,9 +52,5 @@ TypeScript interfaces, Python Pydantic v2 models, and Go structs.`,
 var rootCmd = NewRootCmd()
 
 func Execute() error {
-	err := rootCmd.Execute()
-	if exitErr, ok := err.(*errors.ExitCodeError); ok {
-		os.Exit(exitErr.Code)
-	}
-	return err
+	return rootCmd.Execute()
 }

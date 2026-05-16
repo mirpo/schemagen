@@ -153,6 +153,41 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+func TestApplyDefaults(t *testing.T) {
+	t.Run("sets output strategy", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript}
+		applyDefaults(cfg)
+		assert.Equal(t, output.StrategyBundle, cfg.OutputStrategy)
+	})
+
+	t.Run("does not override existing strategy", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript, OutputStrategy: output.StrategyMultiFile}
+		applyDefaults(cfg)
+		assert.Equal(t, output.StrategyMultiFile, cfg.OutputStrategy)
+	})
+
+	t.Run("initializes TypeScript config", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript}
+		applyDefaults(cfg)
+		assert.NotNil(t, cfg.TypeScript)
+	})
+
+	t.Run("initializes Go config with defaults", func(t *testing.T) {
+		cfg := &Config{Language: LanguageGo}
+		applyDefaults(cfg)
+		require.NotNil(t, cfg.Go)
+		assert.Equal(t, "models", cfg.Go.PackageName)
+		assert.True(t, cfg.Go.UsePointers)
+		assert.True(t, cfg.Go.OmitEmpty)
+	})
+
+	t.Run("does not override existing Go config", func(t *testing.T) {
+		cfg := &Config{Language: LanguageGo, Go: &GoConfig{PackageName: "custom"}}
+		applyDefaults(cfg)
+		assert.Equal(t, "custom", cfg.Go.PackageName)
+	})
+}
+
 /*
  Run – happy paths
 */
