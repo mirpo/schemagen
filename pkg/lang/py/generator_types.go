@@ -14,30 +14,17 @@ func (g *Generator) checkTypeRefForImports(ref *typegraph.TypeRef) {
 		return
 	}
 
-	if imp := importsForPrimitive(ref.Primitive); imp != "" {
-		g.imports[imp] = true
-	}
-
-	if ref.Kind == typegraph.KindEnum && len(ref.EnumValues) > 0 {
-		g.imports["typing_literal"] = true
-	}
-
-	switch ref.Kind {
-	case typegraph.KindInterface:
-		g.needsAny = true
-	case typegraph.KindPrimitive:
-		if ref.Primitive == typegraph.PrimUnknown {
+	ref.Walk(func(r *typegraph.TypeRef) {
+		if imp := importsForPrimitive(r.Primitive); imp != "" {
+			g.imports[imp] = true
+		}
+		if r.Kind == typegraph.KindEnum && len(r.EnumValues) > 0 {
+			g.imports["typing_literal"] = true
+		}
+		if r.Kind == typegraph.KindInterface || (r.Kind == typegraph.KindPrimitive && r.Primitive == typegraph.PrimUnknown) {
 			g.needsAny = true
 		}
-	case typegraph.KindMap:
-		g.checkTypeRefForImports(ref.ValueType)
-	case typegraph.KindUnion:
-		for _, member := range ref.UnionMembers {
-			g.checkTypeRefForImports(member)
-		}
-	case typegraph.KindArray:
-		g.checkTypeRefForImports(ref.ItemType)
-	}
+	})
 }
 
 func (g *Generator) typeRefToPython(ref *typegraph.TypeRef, optional bool) string {

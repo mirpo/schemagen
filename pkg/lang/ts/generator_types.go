@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
-	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -105,24 +104,7 @@ func (g *Generator) generateAnonymousInterface(fields []*typegraph.Field) string
 	sb.WriteString("{\n")
 
 	for _, field := range fields {
-		format := ""
-		if field.Type != nil {
-			format = field.Type.Format
-		}
-		tscommon.WriteJSDocWithFormat(&sb, "    ", field.Description, format)
-
-		tsType := g.typeRefToTS(field.Type)
-		optional := ""
-		if !field.Required {
-			optional = "?"
-		}
-
-		propName := field.JSONName
-		if tscommon.NeedsQuoting(propName) {
-			propName = fmt.Sprintf("%q", propName)
-		}
-
-		fmt.Fprintf(&sb, "    %s%s: %s;\n", propName, optional, tsType)
+		g.renderField(&sb, field, "    ", true)
 	}
 
 	sb.WriteString("  }")

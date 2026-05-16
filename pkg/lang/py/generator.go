@@ -423,19 +423,9 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 
 		literals := make([]string, 0, len(typ.EnumValues))
 		for _, val := range typ.EnumValues {
-			switch v := val.Value.(type) {
-			case string:
-				literals = append(literals, fmt.Sprintf("%q", v))
-			case float64, int, int64:
-				literals = append(literals, fmt.Sprintf("%v", v))
-			case bool:
-				if v {
-					literals = append(literals, "True")
-				} else {
-					literals = append(literals, "False")
-				}
-			case nil:
-				literals = append(literals, "None")
+			switch val.Value.(type) {
+			case string, float64, int, int64, int32, bool, nil:
+				literals = append(literals, common.PyLiterals.FormatValue(val.Value))
 			}
 		}
 		fmt.Fprintf(&sb, "%s = Literal[%s]\n", typ.Name, strings.Join(literals, ", "))

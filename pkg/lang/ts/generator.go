@@ -208,30 +208,34 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 	return sb.String(), nil
 }
 
+func (g *Generator) renderField(sb *strings.Builder, field *typegraph.Field, indent string, withFormat bool) {
+	if withFormat {
+		format := ""
+		if field.Type != nil {
+			format = field.Type.Format
+		}
+		tscommon.WriteJSDocWithFormat(sb, indent, field.Description, format)
+	} else {
+		tscommon.WriteJSDocSingleLine(sb, indent, field.Description)
+	}
+
+	tsType := g.typeRefToTS(field.Type)
+	optional := ""
+	if !field.Required {
+		optional = "?"
+	}
+
+	propName := field.JSONName
+	if tscommon.NeedsQuoting(propName) {
+		propName = fmt.Sprintf("%q", propName)
+	}
+
+	fmt.Fprintf(sb, "%s%s%s: %s;\n", indent, propName, optional, tsType)
+}
+
 func (g *Generator) writeFields(sb *strings.Builder, typ *typegraph.Type, withFormat bool) {
 	for _, field := range typ.Fields {
-		if withFormat {
-			format := ""
-			if field.Type != nil {
-				format = field.Type.Format
-			}
-			tscommon.WriteJSDocWithFormat(sb, "  ", field.Description, format)
-		} else {
-			tscommon.WriteJSDocSingleLine(sb, "  ", field.Description)
-		}
-
-		tsType := g.typeRefToTS(field.Type)
-		optional := ""
-		if !field.Required {
-			optional = "?"
-		}
-
-		propName := field.JSONName
-		if tscommon.NeedsQuoting(propName) {
-			propName = fmt.Sprintf("%q", propName)
-		}
-
-		fmt.Fprintf(sb, "  %s%s: %s;\n", propName, optional, tsType)
+		g.renderField(sb, field, "  ", withFormat)
 	}
 
 	if indexSig := g.generateIndexSignature(typ); indexSig != "" {

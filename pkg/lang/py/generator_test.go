@@ -111,6 +111,8 @@ func TestGenerateFile_MixedEnum_UsesLiteral(t *testing.T) {
 		EnumValues: []typegraph.EnumValue{
 			{Name: "A", Value: "x"},
 			{Name: "B", Value: 42},
+			{Name: "C", Value: true},
+			{Name: "D", Value: nil},
 		},
 	}
 
@@ -120,6 +122,8 @@ func TestGenerateFile_MixedEnum_UsesLiteral(t *testing.T) {
 	assert.Contains(t, out, "Literal[")
 	assert.Contains(t, out, `"x"`)
 	assert.Contains(t, out, "42")
+	assert.Contains(t, out, "True")
+	assert.Contains(t, out, "None")
 }
 
 func TestGenerateFile_SnakeCaseWithAlias(t *testing.T) {

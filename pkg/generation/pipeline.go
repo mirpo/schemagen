@@ -58,27 +58,11 @@ func buildTypeGraph(cfg *Config) (*typegraph.Graph, error) {
 }
 
 func planOutput(graph *typegraph.Graph, cfg *Config) (*output.OutputPlan, error) {
-	var ext string
-
-	switch cfg.Language {
-	case LanguageTypeScript:
-		ext = "ts"
-	case LanguagePython:
-		ext = "py"
-	case LanguageGo:
-		ext = "go"
-	default:
-		return nil, &pkgerrors.ValidationError{
-			Field:   "language",
-			Message: "unsupported language",
-		}
-	}
-
 	return output.PlanOutput(
 		graph,
 		cfg.Schemas,
 		cfg.OutputStrategy,
-		ext,
+		string(cfg.Language),
 		"types",
 	)
 }
