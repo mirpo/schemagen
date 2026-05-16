@@ -24,7 +24,6 @@ Input can be a single file, directory, or glob pattern.`,
 	}
 
 	AddGenerationFlags(cmd)
-	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 
 	return cmd
 }

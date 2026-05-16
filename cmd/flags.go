@@ -42,6 +42,8 @@ func AddGenerationFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("go-pointers", true, "Use pointers for optional Go fields")
 	cmd.Flags().Bool("go-omit-empty", true, "Add omitempty to optional Go JSON tags")
 	cmd.Flags().String("go-module-path", "", "Go module path for absolute imports (e.g., github.com/org/project)")
+
+	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 }
 
 // GetGenerationFlags extracts generation flags from a cobra command.

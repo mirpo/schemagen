@@ -9,8 +9,8 @@ import (
 	"github.com/mirpo/schemagen/pkg/constants"
 )
 
-func GenerateBarrelContent(barrel BarrelFile, language string) string {
-	barrelName := constants.GetBarrelFileName(language)
+func GenerateBarrelContent(barrel BarrelFile, language constants.Language) string {
+	barrelName := constants.GetBarrelFileName(string(language))
 	switch barrelName {
 	case "index.ts":
 		return generateTypeScriptBarrel(barrel)
@@ -21,8 +21,8 @@ func GenerateBarrelContent(barrel BarrelFile, language string) string {
 	}
 }
 
-func GenerateNestedBarrels(files []OutputFile, language string) []BarrelFile {
-	if constants.GetBarrelFileName(language) == "" {
+func GenerateNestedBarrels(files []OutputFile, language constants.Language) []BarrelFile {
+	if constants.GetBarrelFileName(string(language)) == "" {
 		return nil
 	}
 
@@ -50,7 +50,7 @@ func GenerateNestedBarrels(files []OutputFile, language string) []BarrelFile {
 
 		sort.Strings(exports)
 
-		barrelName := constants.GetBarrelFileName(language)
+		barrelName := constants.GetBarrelFileName(string(language))
 		if barrelName == "" {
 			continue
 		}

@@ -86,6 +86,7 @@ func (e *ExitCodeError) Unwrap() error {
 
 const (
 	exitGeneral = 1
+	ExitDrift   = 2
 )
 
 // Wrap wraps an error with context and returns an ExitCodeError.

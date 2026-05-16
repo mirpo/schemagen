@@ -7,6 +7,7 @@ import (
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/naming"
+	"github.com/mirpo/schemagen/pkg/schema"
 )
 
 type refResolver struct {
@@ -26,7 +27,7 @@ func (r *refResolver) setCurrentSchema(schema *jsonschema.Schema) {
 
 func (r *refResolver) extractTypeName(ref string) string {
 	// Handle root self-reference "#"
-	if ref == constants.SchemaSelfRef {
+	if ref == schema.SelfRef {
 		if r.currentSchema != nil {
 			if r.currentSchema.Title != nil && *r.currentSchema.Title != "" {
 				return *r.currentSchema.Title
@@ -36,8 +37,8 @@ func (r *refResolver) extractTypeName(ref string) string {
 	}
 
 	// Handle internal $defs references
-	if strings.HasPrefix(ref, constants.SchemaDefsPrefix) {
-		defName := strings.TrimPrefix(ref, constants.SchemaDefsPrefix)
+	if strings.HasPrefix(ref, schema.DefsPrefix) {
+		defName := strings.TrimPrefix(ref, schema.DefsPrefix)
 		return naming.ToPascalCase(defName)
 	}
 

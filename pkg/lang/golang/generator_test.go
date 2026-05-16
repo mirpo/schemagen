@@ -256,11 +256,32 @@ func TestGenerateFile_NilTypeRef(t *testing.T) {
 	})
 }
 
+func TestTypeRefToGoType_UsesAnyNotInterface(t *testing.T) {
+	g := gen(nil)
+
+	tests := []struct {
+		name string
+		ref  *typegraph.TypeRef
+	}{
+		{"nil ref", nil},
+		{"interface kind", &typegraph.TypeRef{Kind: typegraph.KindInterface}},
+		{"unknown primitive", &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUnknown}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := g.typeRefToGoType(tt.ref)
+			assert.Equal(t, "any", result)
+			assert.NotContains(t, result, "interface{}")
+		})
+	}
+}
+
 func TestTypeRefToGoType_Nil(t *testing.T) {
 	g := gen(nil)
 	assert.NotPanics(t, func() {
 		result := g.typeRefToGoType(nil)
-		assert.Equal(t, "interface{}", result)
+		assert.Equal(t, "any", result)
 	})
 }
 

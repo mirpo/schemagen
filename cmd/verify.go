@@ -30,7 +30,6 @@ Exit codes:
 	}
 
 	AddGenerationFlags(cmd)
-	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 	cmd.Flags().Bool("quiet", false, "Suppress output (only exit codes)")
 
 	return cmd
@@ -73,7 +72,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		}
 		return &errors.ExitCodeError{
 			Message: "drift detected",
-			Code:    2,
+			Code:    errors.ExitDrift,
 		}
 	}
 

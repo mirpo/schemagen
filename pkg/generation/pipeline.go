@@ -109,19 +109,17 @@ func generateFiles(
 }
 
 func generateBarrelFiles(plan *output.OutputPlan, cfg *Config, writer FileWriter) error {
-	lang := string(cfg.Language)
-
-	barrels := output.GenerateNestedBarrels(plan.Files, lang)
+	barrels := output.GenerateNestedBarrels(plan.Files, cfg.Language)
 
 	for _, barrel := range barrels {
-		content := output.GenerateBarrelContent(barrel, lang)
+		content := output.GenerateBarrelContent(barrel, cfg.Language)
 
 		if err := writer.WriteFile(barrel.Path, []byte(content)); err != nil {
 			return err
 		}
 
 		log.Debug().
-			Str("language", lang).
+			Str("language", string(cfg.Language)).
 			Str("file", barrel.Path).
 			Msg("Generated barrel file")
 	}

@@ -28,12 +28,6 @@ const (
 	defaultBarrelPython = "__init__.py"
 )
 
-// JSON Schema reference constants
-const (
-	SchemaSelfRef    = "#"
-	SchemaDefsPrefix = "#/$defs/"
-)
-
 // normalizeLanguage converts short-form language names to their full form.
 // If the input is already a full form, it returns it unchanged.
 func normalizeLanguage(lang string) string {

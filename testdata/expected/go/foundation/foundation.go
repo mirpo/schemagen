@@ -207,7 +207,7 @@ type SpecialChars struct {
 // EdgeCases Edge cases: reserved keywords and special characters
 type EdgeCases struct {
 	// Empty object with no properties
-	EmptyConfig *map[string]interface{} `json:"emptyConfig,omitempty"`
+	EmptyConfig *map[string]any `json:"emptyConfig,omitempty"`
 	// Reserved keywords in TypeScript and Python
 	ReservedKeywords *ReservedKeywords `json:"reservedKeywords,omitempty"`
 	// Special characters in property names

@@ -16,7 +16,7 @@ func (g *Generator) fieldGoType(field *typegraph.Field) string {
 
 func (g *Generator) typeRefToGoType(ref *typegraph.TypeRef) string {
 	if ref == nil {
-		return "interface{}"
+		return "any"
 	}
 
 	if ref.TypeName != "" {
@@ -33,9 +33,9 @@ func (g *Generator) typeRefToGoType(ref *typegraph.TypeRef) string {
 	case typegraph.KindMap:
 		return "map[string]" + g.typeRefToGoType(ref.ValueType)
 	case typegraph.KindInterface:
-		return "interface{}"
+		return "any"
 	default:
-		return "interface{}"
+		return "any"
 	}
 }
 
@@ -61,7 +61,7 @@ func primitiveToGo(p typegraph.PrimitiveKind) string {
 	case typegraph.PrimUUID:
 		return "uuid.UUID"
 	default:
-		return "interface{}"
+		return "any"
 	}
 }
 

@@ -32,7 +32,6 @@ Exit codes:
 	}
 
 	AddGenerationFlags(cmd)
-	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 	cmd.Flags().Bool("no-color", false, "Disable colored output")
 
 	return cmd
@@ -87,7 +86,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	color.Red("✗ Differences found")
 	return &errors.ExitCodeError{
 		Message: "differences found",
-		Code:    2,
+		Code:    errors.ExitDrift,
 	}
 }
 

@@ -8,5 +8,5 @@ import (
 
 type Container struct {
 	Name string `json:"name" validate:"required"`
-	Data interface{} `json:"data" validate:"required"`
+	Data any `json:"data" validate:"required"`
 }

@@ -13,6 +13,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	SelfRef    = "#"
+	DefsPrefix = "#/$defs/"
+)
+
 // Schema represents a loaded JSON Schema.
 type Schema struct {
 	Path          string
