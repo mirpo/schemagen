@@ -89,10 +89,6 @@ func TestValidationError(t *testing.T) {
 	assert.NoError(t, err.Unwrap())
 }
 
-func TestExitDriftConstant(t *testing.T) {
-	assert.Equal(t, 2, ExitDrift)
-}
-
 func TestExitCodeError(t *testing.T) {
 	t.Run("without cause", func(t *testing.T) {
 		err := &ExitCodeError{

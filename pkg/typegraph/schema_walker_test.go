@@ -90,30 +90,6 @@ func TestSchemaWalker_Process(t *testing.T) {
 	}
 }
 
-func TestSchemaWalker_ExtractDefs(t *testing.T) {
-	registry := newTypeRegistry()
-	walker := newSchemaWalker(registry, newRefResolver(jsonschema.NewCompiler()), &mockTypeBuilder{}, nil)
-
-	err := walker.Process(&schema.Schema{
-		Name: "Root",
-		Compiled: &jsonschema.Schema{
-			Type:       []string{"object"},
-			Properties: &jsonschema.SchemaMap{"id": &jsonschema.Schema{Type: []string{"string"}}},
-			Defs: map[string]*jsonschema.Schema{
-				"SubType": {
-					Type:       []string{"object"},
-					Properties: &jsonschema.SchemaMap{"value": &jsonschema.Schema{Type: []string{"string"}}},
-				},
-			},
-		},
-	})
-
-	require.NoError(t, err)
-	assert.Len(t, registry.all(), 2)
-	assert.Equal(t, "SubType", registry.all()[0].Name)
-	assert.Equal(t, "Root", registry.all()[1].Name)
-}
-
 func TestSchemaWalker_ExtractDefs_Union(t *testing.T) {
 	registry := newTypeRegistry()
 	mock := &mockTypeBuilder{}

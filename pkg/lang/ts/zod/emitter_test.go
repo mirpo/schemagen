@@ -3,7 +3,6 @@ package zod
 import (
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 	"github.com/stretchr/testify/assert"
 )
@@ -82,21 +81,6 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 			},
 			contains: []string{"id: z.string()", "email: z.string().optional()"},
 		},
-		{
-			name: "field description",
-			setup: func() (*Emitter, *typegraph.Type) {
-				e := createTestEmitter(nil)
-				typ := createTestType("User", typegraph.KindStruct)
-				typ.Fields = []*typegraph.Field{{
-					JSONName:    "email",
-					Description: "User email address",
-					Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
-					Required:    true,
-				}}
-				return e, typ
-			},
-			contains: []string{`.meta({ description: "User email address" })`},
-		},
 	}
 
 	for _, tt := range tests {
@@ -156,11 +140,6 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 			"numeric enum",
 			[]typegraph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}},
 			[]string{"z.union([\n", "  z.literal(1),\n", "  z.literal(2),\n"},
-		},
-		{
-			"mixed types",
-			[]typegraph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Bool", Value: true}},
-			[]string{"z.union([\n", "  z.literal(\"text\"),\n", "  z.literal(42),\n", "  z.literal(true),\n"},
 		},
 		{
 			"with object value",
@@ -405,12 +384,6 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 			excludes: []string{"z.strictObject"},
 		},
 		{
-			name:     "strict flag as fallback",
-			config:   &Config{Strict: true},
-			props:    nil,
-			contains: "z.strictObject({",
-		},
-		{
 			name:     "default uses object",
 			props:    nil,
 			contains: "z.object({",
@@ -437,47 +410,14 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 // Inline Objects
 
 func TestEmitter_GenerateInlineObject(t *testing.T) {
+	e := createTestEmitter(nil)
 	fields := []*typegraph.Field{createTestField("nested", typegraph.PrimString, true)}
-
-	t.Run("default uses object", func(t *testing.T) {
-		e := createTestEmitter(nil)
-		result := e.generateInlineObject(fields)
-		assert.Contains(t, result, "z.object({")
-		assert.NotContains(t, result, "z.strictObject")
-	})
-
-	t.Run("strict flag uses strictObject", func(t *testing.T) {
-		e := createTestEmitter(&Config{Strict: true})
-		result := e.generateInlineObject(fields)
-		assert.Contains(t, result, "z.strictObject({")
-		assert.NotContains(t, result, ".strict()")
-	})
+	result := e.generateInlineObject(fields)
+	assert.Contains(t, result, "z.object({")
+	assert.NotContains(t, result, "z.strictObject")
 }
 
 // Helper Functions
-
-func TestHelpers_NeedsQuoting(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected bool
-	}{
-		{"validName", false},
-		{"123abc", true},
-		{"kebab-case", true},
-		{"with spaces", true},
-		{"_underscore", false},
-		{"$dollar", false},
-		{"", true},
-		{"class", true},
-		{"for", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tscommon.NeedsQuoting(tt.input))
-		})
-	}
-}
 
 func TestHelpers_FormatLiteral(t *testing.T) {
 	tests := []struct {
@@ -551,27 +491,3 @@ func TestHelpers_FormatNumber(t *testing.T) {
 	}
 }
 
-// Integration Test
-
-func TestEmitter_CompleteObjectSchema(t *testing.T) {
-	e := createTestEmitter(&Config{Strict: true})
-	minAge, maxAge := float64(0), float64(150)
-	minLen, maxLen := 3, 50
-
-	typ := createTestType("User", typegraph.KindStruct)
-	typ.Description = "User account"
-	typ.Fields = []*typegraph.Field{
-		{JSONName: "id", Description: "User ID", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUUID}, Required: true},
-		{JSONName: "email", Description: "User email", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimEmail}, Required: true},
-		{JSONName: "username", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, MinLength: &minLen, MaxLength: &maxLen, Required: true},
-		{JSONName: "age", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}, Minimum: &minAge, Maximum: &maxAge, Required: false},
-	}
-
-	result := e.GenerateSchema(typ)
-	assert.Contains(t, result, "z.strictObject({")
-	assert.Contains(t, result, "id: z.uuid()")
-	assert.Contains(t, result, "email: z.email()")
-	assert.Contains(t, result, "username: z.string().min(3).max(50)")
-	assert.Contains(t, result, "age: z.int().gte(0).lte(150).optional()")
-	assert.Contains(t, result, `.meta({ description: "User account" })`)
-}

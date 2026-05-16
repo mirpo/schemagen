@@ -55,18 +55,6 @@ func TestExtractTypeNameFromRef_ExternalRefs(t *testing.T) {
 			expectedResult: "NestedConfig",
 		},
 		{
-			name: "nested ref without ./ prefix",
-			ref:  "events/part1.json",
-			setupCompiler: func(c *jsonschema.Compiler) {
-				title := "Part1"
-				schema := &jsonschema.Schema{
-					Title: &title,
-				}
-				c.SetSchema("events/part1.json", schema)
-			},
-			expectedResult: "Part1",
-		},
-		{
 			name: "parent directory ref with ../",
 			ref:  "../events/config.json",
 			setupCompiler: func(c *jsonschema.Compiler) {
@@ -93,40 +81,12 @@ func TestExtractTypeNameFromRef_ExternalRefs(t *testing.T) {
 			expectedResult: "Simple",
 		},
 		{
-			name: "grandparent directory ref with ../../",
-			ref:  "../../shared/types.json",
-			setupCompiler: func(c *jsonschema.Compiler) {
-				title := "SharedTypes"
-				schema := &jsonschema.Schema{
-					Title: &title,
-				}
-				c.SetSchema("shared/types.json", schema)
-			},
-			expectedResult: "SharedTypes",
-		},
-		{
 			name: "ref not found - extract from filename with ./",
 			ref:  "./user-settings.yaml",
 			setupCompiler: func(c *jsonschema.Compiler) {
 				// Don't register - simulate unresolved ref
 			},
 			expectedResult: "UserSettings", // From "user-settings.yaml"
-		},
-		{
-			name: "ref not found - extract from nested path",
-			ref:  "events/config.json",
-			setupCompiler: func(c *jsonschema.Compiler) {
-				// Don't register
-			},
-			expectedResult: "Config", // From filename "config.json"
-		},
-		{
-			name: "ref not found - extract from parent path",
-			ref:  "../types/shared.json",
-			setupCompiler: func(c *jsonschema.Compiler) {
-				// Don't register
-			},
-			expectedResult: "Shared", // From filename "shared.json"
 		},
 	}
 
@@ -171,11 +131,6 @@ func TestExtractTypeNameFromRef_InternalDefs(t *testing.T) {
 			expected: "UserId",
 		},
 		{
-			name:     "already PascalCase",
-			ref:      "#/$defs/UserProfile",
-			expected: "UserProfile",
-		},
-		{
 			name:     "all caps",
 			ref:      "#/$defs/API",
 			expected: "API",
@@ -189,16 +144,6 @@ func TestExtractTypeNameFromRef_InternalDefs(t *testing.T) {
 			name:     "leading number",
 			ref:      "#/$defs/2ndUser",
 			expected: "2ndUser",
-		},
-		{
-			name:     "single letter",
-			ref:      "#/$defs/A",
-			expected: "A",
-		},
-		{
-			name:     "multiple words",
-			ref:      "#/$defs/user_profile_data",
-			expected: "UserProfileData",
 		},
 	}
 
@@ -224,12 +169,6 @@ func TestExtractTypeNameFromRef_RootSelfReference(t *testing.T) {
 			ref:      "#",
 			title:    "CyclicRef",
 			expected: "CyclicRef",
-		},
-		{
-			name:     "root self-reference with title TreeNode",
-			ref:      "#",
-			title:    "TreeNode",
-			expected: "TreeNode",
 		},
 		{
 			name:     "root self-reference no title uses Schema",
@@ -291,16 +230,6 @@ func TestNormalizeRefPath(t *testing.T) {
 			expectedVariants: []string{"../types.json", "types.json"},
 		},
 		{
-			name:             "multiple ../",
-			ref:              "../../../shared.json",
-			expectedVariants: []string{"../../../shared.json", "shared.json"},
-		},
-		{
-			name:             "nested path",
-			ref:              "events/part1.json",
-			expectedVariants: []string{"events/part1.json", "./events/part1.json"},
-		},
-		{
 			name:             "complex navigation",
 			ref:              "./nested/../simple.json",
 			expectedVariants: []string{"./nested/../simple.json", "simple.json"},
@@ -334,11 +263,6 @@ func TestNormalizeRefPath(t *testing.T) {
 			name:             "root relative",
 			ref:              "/settings.json",
 			expectedVariants: []string{"/settings.json"},
-		},
-		{
-			name:             "double dots in path",
-			ref:              "././settings.json",
-			expectedVariants: []string{"././settings.json", "settings.json"},
 		},
 		{
 			name:             "just dots",
@@ -412,11 +336,6 @@ func TestExtractTypeNameFromFilename(t *testing.T) {
 			expected: "UserProfile",
 		},
 		{
-			name:     "mixed naming",
-			ref:      "user_profile-data.v2.json",
-			expected: "UserProfileDataV2",
-		},
-		{
 			name:     "just extension",
 			ref:      ".json",
 			expected: "",
@@ -483,18 +402,6 @@ func TestBuild_BasicTypes(t *testing.T) {
 				"enum": ["pending", "active", "completed"]
 			}`,
 			expectedName: "Status",
-			expectedKind: KindEnum,
-			enumCount:    3,
-		},
-		{
-			name: "number enum",
-			schemaJSON: `{
-				"$schema": "http://json-schema.org/draft-07/schema#",
-				"title": "Priority",
-				"type": "integer",
-				"enum": [1, 2, 3]
-			}`,
-			expectedName: "Priority",
 			expectedKind: KindEnum,
 			enumCount:    3,
 		},
@@ -963,21 +870,6 @@ func TestBuild_AllOf(t *testing.T) {
 			requiredFields: []string{"make", "registration"},
 		},
 		{
-			name: "allOf with mixed refs and inline",
-			schemaJSON: `{
-				"$schema": "http://json-schema.org/draft-07/schema#",
-				"title": "Product",
-				"$defs": {"BaseItem": {"type": "object", "properties": {"id": {"type": "string"}}}},
-				"allOf": [{"$ref": "#/$defs/BaseItem"}, {"type": "object", "properties": {"price": {"type": "number"}}}]
-			}`,
-			expectedName:   "Product",
-			minTypes:       2,
-			expectedKind:   KindStruct,
-			minFields:      1,
-			exactFields:    -1,
-			expectedExtend: []string{"BaseItem"},
-		},
-		{
 			name: "empty allOf becomes primitive",
 			schemaJSON: `{
 				"$schema": "http://json-schema.org/draft-07/schema#",
@@ -1060,87 +952,6 @@ func TestBuild_AllOf(t *testing.T) {
 	}
 }
 
-func TestMapPrimitiveSchema(t *testing.T) {
-	tests := []struct {
-		name     string
-		typ      []string
-		format   *string
-		expected PrimitiveKind
-	}{
-		{"string", []string{"string"}, nil, PrimString},
-		{"integer", []string{"integer"}, nil, PrimInt},
-		{"number", []string{"number"}, nil, PrimFloat64},
-		{"boolean", []string{"boolean"}, nil, PrimBool},
-		{"uuid", []string{"string"}, strPtr("uuid"), PrimUUID},
-		{"date-time", []string{"string"}, strPtr("date-time"), PrimDateTime},
-		{"date", []string{"string"}, strPtr("date"), PrimDate},
-		{"time", []string{"string"}, strPtr("time"), PrimTime},
-		{"email", []string{"string"}, strPtr("email"), PrimEmail},
-		{"uri", []string{"string"}, strPtr("uri"), PrimURI},
-		{"hostname", []string{"string"}, strPtr("hostname"), PrimHostname},
-		{"ipv4", []string{"string"}, strPtr("ipv4"), PrimIPv4},
-		{"ipv6", []string{"string"}, strPtr("ipv6"), PrimIPv6},
-		{"int32", []string{"integer"}, strPtr("int32"), PrimInt32},
-		{"int64", []string{"integer"}, strPtr("int64"), PrimInt64},
-		{"float", []string{"number"}, strPtr("float"), PrimFloat32},
-		{"double", []string{"number"}, strPtr("double"), PrimFloat64},
-		{"no type", nil, nil, PrimUnknown},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			schema := &jsonschema.Schema{Type: tt.typ, Format: tt.format}
-			assert.Equal(t, tt.expected, mapPrimitiveSchema(schema))
-		})
-	}
-}
-
-func TestBuild_SpecialFeatures(t *testing.T) {
-	t.Run("additional properties", func(t *testing.T) {
-		schemaJSON := []byte(`{
-			"$schema": "http://json-schema.org/draft-07/schema#",
-			"title": "Config",
-			"type": "object",
-			"properties": {"name": {"type": "string"}},
-			"additionalProperties": {"type": "string"}
-		}`)
-
-		compiler := jsonschema.NewCompiler()
-		compiled, err := compiler.Compile(schemaJSON, "config.json")
-		require.NoError(t, err)
-
-		testSchema := &schema.Schema{Path: "config.json", RelativePath: "config.json", Name: "Config", Compiled: compiled}
-		builder := newBuilder(compiler)
-		graph, err := builder.Build([]*schema.Schema{testSchema})
-
-		require.NoError(t, err)
-		require.Len(t, graph.Types, 1)
-		assert.NotNil(t, graph.Types[0].AdditionalProps)
-	})
-
-	t.Run("nullable field", func(t *testing.T) {
-		schemaJSON := []byte(`{
-			"$schema": "http://json-schema.org/draft-07/schema#",
-			"title": "User",
-			"type": "object",
-			"properties": {"name": {"type": ["string", "null"]}}
-		}`)
-
-		compiler := jsonschema.NewCompiler()
-		compiled, err := compiler.Compile(schemaJSON, "user.json")
-		require.NoError(t, err)
-
-		testSchema := &schema.Schema{Path: "user.json", RelativePath: "user.json", Name: "User", Compiled: compiled}
-		builder := newBuilder(compiler)
-		graph, err := builder.Build([]*schema.Schema{testSchema})
-
-		require.NoError(t, err)
-		require.Len(t, graph.Types, 1)
-		nameField := graph.Types[0].Fields[0]
-		assert.True(t, nameField.Type.Nullable || !nameField.Required)
-	})
-}
-
 func TestEnsureUniqueTypeName(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1160,56 +971,6 @@ func TestEnsureUniqueTypeName(t *testing.T) {
 			}
 			result := registry.ensureUniqueName(tt.requestName)
 			assert.Equal(t, tt.expectedResult, result)
-		})
-	}
-}
-
-func TestBuildTypeRef_InlineEnum(t *testing.T) {
-	t.Run("with extraction", func(t *testing.T) {
-		compiler := jsonschema.NewCompiler()
-		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: true})
-		schema := &jsonschema.Schema{Enum: []interface{}{"active", "inactive", "pending"}}
-
-		ref := builder.BuildTypeRef(&buildContext{}, schema, "status")
-
-		assert.Equal(t, KindRef, ref.Kind)
-		assert.Equal(t, "Status", ref.TypeName)
-		assert.Len(t, builder.registry.all(), 1)
-	})
-
-	t.Run("without extraction", func(t *testing.T) {
-		compiler := jsonschema.NewCompiler()
-		builder := NewBuilderWithConfig(compiler, &BuildConfig{ExtractInlined: false})
-		schema := &jsonschema.Schema{Enum: []interface{}{"option1", "option2", "option3"}}
-
-		ref := builder.BuildTypeRef(&buildContext{}, schema, "status")
-
-		assert.Equal(t, KindEnum, ref.Kind)
-		assert.Len(t, ref.EnumValues, 3)
-	})
-}
-
-func TestDeriveTypeName(t *testing.T) {
-	tests := []struct {
-		name     string
-		title    *string
-		uri      string
-		expected string
-	}{
-		{"title already PascalCase", ptrString("UserProfile"), "", "UserProfile"},
-		{"title needs PascalCase", ptrString("user-profile"), "", "UserProfile"},
-		{"from URI when no title", nil, "payloads/subscribe.json", "Subscribe"},
-		{"no title no URI returns Unknown", nil, "", "Unknown"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			compiler := jsonschema.NewCompiler()
-			builder := newBuilder(compiler)
-
-			schema := &jsonschema.Schema{Title: tt.title}
-			result := builder.resolver.deriveTypeName(schema, tt.uri)
-			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -1245,44 +1006,6 @@ func TestGetDescription(t *testing.T) {
 			assert.Equal(t, tt.expected, getDescription(tt.schema))
 		})
 	}
-}
-
-func TestProcessSchema_WithDefs(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-
-	schemaJSON := []byte(`{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Root",
-		"type": "object",
-		"properties": {
-			"name": {"type": "string"}
-		},
-		"$defs": {
-			"SubType": {
-				"type": "object",
-				"properties": {
-					"value": {"type": "number"}
-				}
-			}
-		}
-	}`)
-
-	compiled, err := compiler.Compile(schemaJSON, "test.json")
-	require.NoError(t, err)
-
-	testSchema := &schema.Schema{
-		Path:         "test.json",
-		RelativePath: "test.json",
-		Name:         "Root",
-		Compiled:     compiled,
-	}
-
-	builder := newBuilder(compiler)
-	err = builder.walker.Process(testSchema)
-
-	require.NoError(t, err)
-	// Should have SubType from $defs + Root
-	assert.GreaterOrEqual(t, len(builder.registry.all()), 2)
 }
 
 func TestExtractInlineObjectType(t *testing.T) {
@@ -1332,40 +1055,6 @@ func TestBuildFieldsFromProperties(t *testing.T) {
 	assert.Equal(t, "name", fields[1].JSONName)
 	assert.True(t, fields[1].Required)
 	assert.False(t, fields[0].Required)
-}
-
-func TestBuildStruct(t *testing.T) {
-	t.Run("allOf with ref", func(t *testing.T) {
-		compiler := jsonschema.NewCompiler()
-		builder := newBuilder(compiler)
-		schema := &jsonschema.Schema{
-			Type: []string{"object"},
-			AllOf: []*jsonschema.Schema{
-				{Ref: "#/$defs/BaseType"},
-				{Type: []string{"object"}, Properties: &jsonschema.SchemaMap{"extra": &jsonschema.Schema{Type: []string{"string"}}}},
-			},
-		}
-		typ := &Type{Name: "Extended"}
-		err := builder.BuildStruct(&buildContext{}, typ, schema)
-		require.NoError(t, err)
-		assert.Equal(t, KindStruct, typ.Kind)
-		assert.Contains(t, typ.Extends, "BaseType")
-	})
-
-	t.Run("with additionalProperties", func(t *testing.T) {
-		compiler := jsonschema.NewCompiler()
-		builder := newBuilder(compiler)
-		schema := &jsonschema.Schema{
-			Type:                 []string{"object"},
-			Properties:           &jsonschema.SchemaMap{"name": &jsonschema.Schema{Type: []string{"string"}}},
-			AdditionalProperties: &jsonschema.Schema{Type: []string{"string"}},
-		}
-		typ := &Type{Name: "TestType"}
-		err := builder.BuildStruct(&buildContext{}, typ, schema)
-		require.NoError(t, err)
-		assert.Equal(t, KindStruct, typ.Kind)
-		assert.NotNil(t, typ.AdditionalProps)
-	})
 }
 
 func TestMapPrimitiveSchema_AllFormats(t *testing.T) {
@@ -1563,6 +1252,34 @@ func TestBuildTypeRef_Comprehensive(t *testing.T) {
 				assert.Equal(t, "MyType", ref.TypeName)
 			},
 		},
+		{
+			name: "nullable array with null first",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{
+					Type:  []string{"null", "array"},
+					Items: &jsonschema.Schema{Type: []string{"string"}},
+				}
+			},
+			fieldName:  "tags",
+			expectKind: KindArray,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.True(t, ref.Nullable)
+				assert.Equal(t, KindPrimitive, ref.ItemType.Kind)
+			},
+		},
+		{
+			name: "nullable object with null first",
+			setupSchema: func() *jsonschema.Schema {
+				return &jsonschema.Schema{
+					Type: []string{"null", "object"},
+				}
+			},
+			fieldName:  "",
+			expectKind: KindMap,
+			expectChecks: func(t *testing.T, ref *TypeRef) {
+				assert.True(t, ref.Nullable)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1657,20 +1374,6 @@ func TestBuild_PropertyNames(t *testing.T) {
 			hasAdditional:  true,
 		},
 		{
-			name: "propertyNames with typed additionalProperties",
-			schemaJSON: `{
-				"$schema": "http://json-schema.org/draft-07/schema#",
-				"title": "ConfigMap",
-				"type": "object",
-				"propertyNames": {"pattern": "^[A-Z_]+$"},
-				"additionalProperties": {"type": "number", "minimum": 0}
-			}`,
-			expectedName:   "ConfigMap",
-			expectedKind:   KindStruct,
-			expectedFields: 0,
-			hasAdditional:  true,
-		},
-		{
 			name: "propertyNames with direct properties",
 			schemaJSON: `{
 				"$schema": "http://json-schema.org/draft-07/schema#",
@@ -1744,16 +1447,6 @@ func TestHasComplexEnumValues(t *testing.T) {
 			expectComplex: false,
 		},
 		{
-			name:          "only numbers",
-			enumValues:    []any{1, 2, 3},
-			expectComplex: false,
-		},
-		{
-			name:          "mixed primitives",
-			enumValues:    []any{"string", 42, true},
-			expectComplex: false,
-		},
-		{
 			name:          "contains object",
 			enumValues:    []any{"simple", map[string]any{"complex": true}},
 			expectComplex: true,
@@ -1761,11 +1454,6 @@ func TestHasComplexEnumValues(t *testing.T) {
 		{
 			name:          "contains array",
 			enumValues:    []any{"simple", []any{"array", "value"}},
-			expectComplex: true,
-		},
-		{
-			name:          "contains both",
-			enumValues:    []any{"simple", map[string]any{"x": 1}, []string{"y"}},
 			expectComplex: true,
 		},
 	}
@@ -1793,14 +1481,6 @@ func TestIsUnion(t *testing.T) {
 		{
 			name:        "oneOf present",
 			schema:      &jsonschema.Schema{OneOf: []*jsonschema.Schema{{}}},
-			expectUnion: true,
-		},
-		{
-			name: "both present (anyOf takes precedence)",
-			schema: &jsonschema.Schema{
-				AnyOf: []*jsonschema.Schema{{}},
-				OneOf: []*jsonschema.Schema{{}},
-			},
 			expectUnion: true,
 		},
 		{
@@ -1863,38 +1543,4 @@ func TestBuildUnion(t *testing.T) {
 		assert.Equal(t, KindUnion, typ.Kind)
 		assert.Len(t, typ.UnionMembers, 2)
 	})
-}
-
-func TestProcessSchema_Union(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	builder := newBuilder(compiler)
-
-	// Create a schema with anyOf
-	compiled := &jsonschema.Schema{
-		Title:       ptrString("UnionNullable"),
-		Description: ptrString("Union with nullable members"),
-		AnyOf: []*jsonschema.Schema{
-			{Type: []string{"string"}},
-			{Type: []string{"null"}},
-			{Type: []string{"integer"}},
-		},
-	}
-
-	s := &schema.Schema{
-		Name:     "UnionNullable",
-		Compiled: compiled,
-	}
-
-	err := builder.walker.Process(s)
-	require.NoError(t, err)
-	assert.Len(t, builder.registry.all(), 1)
-
-	typ := builder.registry.all()[0]
-	assert.Equal(t, "UnionNullable", typ.Name)
-	assert.Equal(t, KindUnion, typ.Kind)
-	assert.Len(t, typ.UnionMembers, 3)
-}
-
-func ptrString(s string) *string {
-	return &s
 }

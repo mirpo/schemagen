@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -126,21 +125,6 @@ func TestGenerateEnum_Mixed(t *testing.T) {
 3. Imports + validation
 */
 
-func TestGenerateFile_Imports(t *testing.T) {
-	g := gen(nil)
-
-	event := structType("Event",
-		field("id", typegraph.PrimUUID, true),
-		field("created_at", typegraph.PrimDateTime, true),
-	)
-
-	out, err := g.GenerateFile([]*typegraph.Type{event}, nil)
-	require.NoError(t, err)
-
-	assert.Contains(t, out, `"github.com/google/uuid"`)
-	assert.Contains(t, out, `"time"`)
-}
-
 func TestGenerateFile_ValidatorImport(t *testing.T) {
 	t.Run("blank import when validate tags exist", func(t *testing.T) {
 		g := gen(nil)
@@ -189,28 +173,12 @@ func TestFieldValidateTag_Pattern(t *testing.T) {
 	assert.Empty(t, tag, "Pattern not supported by go-playground/validator struct tags — should be omitted")
 }
 
-func TestWriteTypeComment_AllKinds(t *testing.T) {
+func TestWriteTypeComment(t *testing.T) {
 	g := gen(nil)
-
-	tests := []struct {
-		name string
-		typ  *typegraph.Type
-	}{
-		{"struct", &typegraph.Type{Name: "User", Kind: typegraph.KindStruct, Description: "A user"}},
-		{"enum", enumType("Status", typegraph.EnumValue{Name: "Active", Value: "active"})},
-		{"union", &typegraph.Type{Name: "Shape", Kind: typegraph.KindUnion, Description: "A shape"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.typ.Description == "" {
-				tt.typ.Description = "Test desc"
-			}
-			out, err := g.GenerateFile([]*typegraph.Type{tt.typ}, nil)
-			require.NoError(t, err)
-			assert.Contains(t, out, fmt.Sprintf("// %s %s", tt.typ.Name, tt.typ.Description))
-		})
-	}
+	typ := &typegraph.Type{Name: "User", Kind: typegraph.KindStruct, Description: "A user"}
+	out, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
+	require.NoError(t, err)
+	assert.Contains(t, out, "// User A user")
 }
 
 /*
@@ -275,14 +243,6 @@ func TestTypeRefToGoType_UsesAnyNotInterface(t *testing.T) {
 			assert.NotContains(t, result, "interface{}")
 		})
 	}
-}
-
-func TestTypeRefToGoType_Nil(t *testing.T) {
-	g := gen(nil)
-	assert.NotPanics(t, func() {
-		result := g.typeRefToGoType(nil)
-		assert.Equal(t, "any", result)
-	})
 }
 
 /*

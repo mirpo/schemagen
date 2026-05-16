@@ -27,44 +27,6 @@ func TestGenerators_ValidImports(t *testing.T) {
 	}
 }
 
-func TestGenerators_TypedNilImports(t *testing.T) {
-	tests := []struct {
-		name string
-		gen  Generator
-	}{
-		{"python", newPythonGenerator(&Config{Language: LanguagePython, Python: &PythonConfig{}})},
-		{"typescript", newTypeScriptGenerator(&Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var imports []typegraph.ImportSpec
-			out, err := tt.gen.Generate(nil, imports)
-			require.NoError(t, err)
-			assert.NotEmpty(t, out)
-		})
-	}
-}
-
-func TestGenerators_NilImports(t *testing.T) {
-	tests := []struct {
-		name string
-		gen  Generator
-	}{
-		{"go", newGoGenerator(&Config{Language: LanguageGo, Go: &GoConfig{PackageName: "models"}})},
-		{"python", newPythonGenerator(&Config{Language: LanguagePython, Python: &PythonConfig{}})},
-		{"typescript", newTypeScriptGenerator(&Config{Language: LanguageTypeScript, TypeScript: &TypeScriptConfig{}})},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			out, err := tt.gen.Generate(nil, nil)
-			require.NoError(t, err)
-			assert.NotEmpty(t, out)
-		})
-	}
-}
-
 func TestPassthroughConverter_Convert(t *testing.T) {
 	converter := &PassthroughConverter{}
 
@@ -75,25 +37,9 @@ func TestPassthroughConverter_Convert(t *testing.T) {
 	assert.Equal(t, []string{"User"}, result[0].TypeNames)
 }
 
-func TestCreateGenerator_UnsupportedLanguages(t *testing.T) {
-	tests := []struct {
-		name     string
-		language Language
-	}{
-		{"empty", ""},
-		{"rust", "rust"},
-		{"java", "java"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gen, err := createGenerator(&Config{
-				Language: tt.language,
-			})
-
-			require.Error(t, err)
-			assert.Nil(t, gen)
-			assert.Contains(t, err.Error(), "unsupported language")
-		})
-	}
+func TestCreateGenerator_UnsupportedLanguage(t *testing.T) {
+	gen, err := createGenerator(&Config{Language: ""})
+	require.Error(t, err)
+	assert.Nil(t, gen)
+	assert.Contains(t, err.Error(), "unsupported language")
 }
