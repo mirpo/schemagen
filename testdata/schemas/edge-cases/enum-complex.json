@@ -6,6 +6,7 @@
     "simple",
     {"complex": true},
     42,
-    ["array", "value"]
+    ["array", "value"],
+    {"zebra": 1, "alpha": 2, "mango": 3, "beta": 4}
   ]
 }

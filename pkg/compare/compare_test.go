@@ -3,6 +3,7 @@ package compare
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/mirpo/schemagen/pkg/generation"
@@ -164,7 +165,7 @@ func TestRun(t *testing.T) {
 
 		result, err := Run(&Config{
 			Input: schemaPath, Schemas: schemas, Loader: loader,
-			Flags: &generation.GenerationFlags{OutTS: outputDir, DisableTimestamp: true}, ExistingDir: tmpDir,
+			Flags: &generation.GenerationFlags{OutTS: outputDir, DisableTimestamp: true},
 		})
 		require.NoError(t, err)
 		assert.False(t, result.HasDrift)
@@ -185,7 +186,7 @@ func TestRun(t *testing.T) {
 		schemas, _ := loader.Load(schemaPath)
 		result, err := Run(&Config{
 			Input: schemaPath, Schemas: schemas, Loader: loader,
-			Flags: &generation.GenerationFlags{OutTS: outputDir}, ExistingDir: tmpDir,
+			Flags: &generation.GenerationFlags{OutTS: outputDir},
 		})
 		require.NoError(t, err)
 		assert.True(t, result.HasDrift)
@@ -200,7 +201,7 @@ func TestRun(t *testing.T) {
 		_ = os.WriteFile(schemaPath, []byte(`{"type":"object","title":"User","properties":{"name":{"type":"string"}}}`), 0o644)
 
 		result, err := Run(&Config{
-			Input: schemaPath, Flags: &generation.GenerationFlags{OutTS: filepath.Join(tmpDir, "output")}, ExistingDir: tmpDir,
+			Input: schemaPath, Flags: &generation.GenerationFlags{OutTS: filepath.Join(tmpDir, "output")},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -208,7 +209,7 @@ func TestRun(t *testing.T) {
 
 	t.Run("invalid schema path", func(t *testing.T) {
 		_, err := Run(&Config{
-			Input: "/nonexistent/schema.json", Flags: &generation.GenerationFlags{OutTS: "/tmp/output"}, ExistingDir: "/tmp/existing",
+			Input: "/nonexistent/schema.json", Flags: &generation.GenerationFlags{OutTS: "/tmp/output"},
 		})
 		require.Error(t, err)
 	})
@@ -236,4 +237,27 @@ func TestFileStatus_Constants(t *testing.T) {
 	assert.Equal(t, StatusModified, FileStatus("modified"))
 	assert.Equal(t, StatusNew, FileStatus("new"))
 	assert.Equal(t, StatusDeleted, FileStatus("deleted"))
+}
+
+func TestWalkExistingFiles_StatErrorPropagated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0o000 does not restrict access on Windows")
+	}
+
+	_, generatedDir, existingDir := setupDirs(t)
+	createTestOutput(t, existingDir, "file.ts", "content")
+
+	unreadableDir := filepath.Join(generatedDir, "noperm")
+	require.NoError(t, os.MkdirAll(unreadableDir, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(unreadableDir, 0o755) })
+
+	readFile := func(p string) (string, error) {
+		b, err := os.ReadFile(p)
+		return string(b), err
+	}
+
+	createTestOutput(t, existingDir, "noperm/inner.ts", "content")
+
+	_, err := walkExistingFiles(generatedDir, existingDir, readFile)
+	assert.Error(t, err, "non-IsNotExist stat errors should propagate")
 }

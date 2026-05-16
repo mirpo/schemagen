@@ -3,6 +3,7 @@ package naming
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // ToPascalCase converts a string to PascalCase.
@@ -23,23 +24,6 @@ func ToPascalCase(s string) string {
 	return b.String()
 }
 
-// ToCamelCase converts a string to camelCase.
-// Examples: "user_name" -> "userName", "ApiKey" -> "apiKey"
-func ToCamelCase(s string) string {
-	if s == "" {
-		return s
-	}
-
-	pascal := ToPascalCase(s)
-	if pascal == "" {
-		return pascal
-	}
-
-	r := []rune(pascal)
-	r[0] = unicode.ToLower(r[0])
-	return string(r)
-}
-
 // ToSnakeCase converts a camelCase or PascalCase string to snake_case.
 // Handles acronyms properly: "APIKey" -> "api_key", "HTTPResponse" -> "http_response"
 func ToSnakeCase(s string) string {
@@ -49,6 +33,7 @@ func ToSnakeCase(s string) string {
 
 	runes := []rune(s)
 	var b strings.Builder
+	var prevWritten rune
 
 	for i := range runes {
 		r := runes[i]
@@ -63,21 +48,26 @@ func ToSnakeCase(s string) string {
 				// - aB   => a_b
 				// - ABc  => a_bc (acronym break before last cap if next is lower)
 				if prevIsLower || (unicode.IsUpper(prev) && nextIsLower) {
-					if last, ok := lastRune(&b); ok && last != '_' {
+					if prevWritten != 0 && prevWritten != '_' {
 						b.WriteRune('_')
 					}
 				}
 			}
-			b.WriteRune(unicode.ToLower(r))
+			lower := unicode.ToLower(r)
+			b.WriteRune(lower)
+			prevWritten = lower
 			continue
 		}
 
 		// Keep underscores as-is; lower everything else if it has case
 		if r == '_' {
 			b.WriteRune('_')
+			prevWritten = '_'
 			continue
 		}
-		b.WriteRune(unicode.ToLower(r))
+		lower := unicode.ToLower(r)
+		b.WriteRune(lower)
+		prevWritten = lower
 	}
 
 	return b.String()
@@ -90,22 +80,29 @@ func ToConstantCase(s string) string {
 		return s
 	}
 
-	// Normalize common delimiters to underscores first.
-	normalized := strings.NewReplacer("-", "_", " ", "_", ".", "_").Replace(s)
-
-	// Now handle camel/pascal boundaries + acronyms using snake conversion,
-	// then uppercase result.
+	normalized := strings.Join(splitOnDelimiters(s), "_")
 	snake := ToSnakeCase(normalized)
 	return strings.ToUpper(snake)
 }
 
-// IsPascalCase checks if a string is in PascalCase format.
 func IsPascalCase(s string) bool {
 	if s == "" {
 		return false
 	}
-	r := rune(s[0])
-	return r >= 'A' && r <= 'Z'
+	first, size := utf8.DecodeRuneInString(s)
+	if !unicode.IsUpper(first) {
+		return false
+	}
+	for _, r := range s[size:] {
+		if isDelimiter(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDelimiter(r rune) bool {
+	return r == '_' || r == '-' || r == ' ' || r == '.'
 }
 
 // splitOnDelimiters splits a string on underscores, hyphens, spaces, and dots.
@@ -122,10 +119,9 @@ func splitOnDelimiters(s string) []string {
 	}
 
 	for _, r := range s {
-		switch r {
-		case '_', '-', ' ', '.':
+		if isDelimiter(r) {
 			flush()
-		default:
+		} else {
 			cur.WriteRune(r)
 		}
 	}
@@ -216,15 +212,4 @@ func isValidGoIdentifier(s string) bool {
 		}
 	}
 	return true
-}
-
-// lastRune peeks the last rune written to a strings.Builder (best-effort).
-// We use it only to avoid "__" when inserting underscores.
-func lastRune(b *strings.Builder) (rune, bool) {
-	s := b.String()
-	if s == "" {
-		return 0, false
-	}
-	rs := []rune(s)
-	return rs[len(rs)-1], true
 }

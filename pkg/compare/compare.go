@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
 // Config contains configuration for compare operations.
 type Config struct {
-	Input       string
-	Schemas     []*schema.Schema
-	Loader      *schema.Loader
-	Flags       *generation.GenerationFlags
-	ExistingDir string
+	Input   string
+	Schemas []*schema.Schema
+	Loader  *schema.Loader
+	Flags   *generation.GenerationFlags
 }
 
 // FileStatus represents the status of a file comparison.
@@ -89,70 +89,31 @@ func generateAll(
 	loader *schema.Loader,
 	flags *generation.GenerationFlags,
 ) error {
-	if flags.OutTS != "" {
-		if err := generation.Run(&generation.Config{
-			Schemas:          schemas,
-			Compiler:         loader.Compiler(),
-			OutDir:           filepath.Join(tmpDir, "ts"),
-			Language:         generation.LanguageTypeScript,
-			ExtractInline:    flags.ExtractInline,
-			DisableHeaders:   flags.DisableHeaders,
-			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   flags.OutputStrategy,
-			TypeScript: &generation.TypeScriptConfig{
-				UnknownAny:           flags.TSUnknownAny,
-				AdditionalProperties: flags.TSAdditionalProperties,
-				Zod:                  flags.TSZod,
-				ZodOnly:              flags.TSZodOnly,
-				ZodCoerceDates:       flags.TSZodCoerceDates,
-				ZodStrict:            flags.TSZodStrict,
-			},
-		}); err != nil {
-			return fmt.Errorf("typescript generation failed: %w", err)
+	targets := generation.BuildTargets(flags)
+
+	// Remap output dirs to temp subdirectories for comparison
+	remapped := make([]generation.GenerationTarget, len(targets))
+	for i, t := range targets {
+		remapped[i] = generation.GenerationTarget{
+			Dir:  filepath.Join(tmpDir, shortLangName(t.Lang)),
+			Lang: t.Lang,
 		}
 	}
 
-	if flags.OutPY != "" {
-		if err := generation.Run(&generation.Config{
-			Schemas:          schemas,
-			Compiler:         loader.Compiler(),
-			OutDir:           filepath.Join(tmpDir, "py"),
-			Language:         generation.LanguagePython,
-			ExtractInline:    flags.ExtractInline,
-			DisableHeaders:   flags.DisableHeaders,
-			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   flags.OutputStrategy,
-			Python: &generation.PythonConfig{
-				SnakeCaseField:       flags.PySnakeCaseField,
-				AdditionalProperties: flags.PyAdditionalProperties,
-			},
-		}); err != nil {
-			return fmt.Errorf("python generation failed: %w", err)
-		}
-	}
+	return generation.RunTargets(remapped, flags, schemas, loader.Compiler())
+}
 
-	if flags.OutGo != "" {
-		if err := generation.Run(&generation.Config{
-			Schemas:          schemas,
-			Compiler:         loader.Compiler(),
-			OutDir:           filepath.Join(tmpDir, "go"),
-			Language:         generation.LanguageGo,
-			ExtractInline:    flags.ExtractInline,
-			DisableHeaders:   flags.DisableHeaders,
-			DisableTimestamp: flags.DisableTimestamp,
-			OutputStrategy:   flags.OutputStrategy,
-			Go: &generation.GoConfig{
-				PackageName: flags.GoPackageName,
-				UsePointers: flags.GoUsePointers,
-				OmitEmpty:   flags.GoOmitEmpty,
-				ModulePath:  flags.GoModulePath,
-			},
-		}); err != nil {
-			return fmt.Errorf("go generation failed: %w", err)
-		}
+func shortLangName(lang generation.Language) string {
+	switch lang {
+	case generation.LanguageTypeScript:
+		return constants.LanguageTypeScriptShort
+	case generation.LanguagePython:
+		return constants.LanguagePythonShort
+	case generation.LanguageGo:
+		return constants.LanguageGoShort
+	default:
+		return string(lang)
 	}
-
-	return nil
 }
 
 // compareDirectories compares generated and existing directories.
@@ -197,8 +158,11 @@ func compareLangDir(generated, existing string) ([]FileDiff, error) {
 		return normalizeLineEndings(string(b)), nil
 	}
 
-	if _, err := os.Stat(existing); os.IsNotExist(err) {
-		return walkGeneratedFiles(generated, "", readFile)
+	if _, err := os.Stat(existing); err != nil {
+		if os.IsNotExist(err) {
+			return walkGeneratedFiles(generated, "", readFile)
+		}
+		return nil, err
 	}
 
 	var diffs []FileDiff
@@ -287,7 +251,10 @@ func walkExistingFiles(generated, existing string, readFile func(string) (string
 			return err
 		}
 
-		if _, err := os.Stat(filepath.Join(generated, rel)); os.IsNotExist(err) {
+		if _, statErr := os.Stat(filepath.Join(generated, rel)); statErr != nil {
+			if !os.IsNotExist(statErr) {
+				return statErr
+			}
 			content, err := readFile(existPath)
 			if err != nil {
 				return err

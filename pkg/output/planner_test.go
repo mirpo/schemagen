@@ -23,8 +23,6 @@ func TestOutputStrategy_Set(t *testing.T) {
 		{"multi-file", "multi-file", StrategyMultiFile, false},
 		{"bundledeps", "bundledeps", StrategyBundleDeps, false},
 		{"bundle-deps", "bundle-deps", StrategyBundleDeps, false},
-		{"bundle-per-dir", "bundle-per-dir", StrategyBundlePerDir, false},
-
 		// Invalid inputs should error
 		{"invalid", "invalid", "", true},
 		{"empty", "", "", true},
@@ -45,29 +43,6 @@ func TestOutputStrategy_Set(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestOutputStrategy_String(t *testing.T) {
-	tests := []struct {
-		strategy OutputStrategy
-		expected string
-	}{
-		{StrategyBundle, "bundle"},
-		{StrategyMultiFile, "multi-file"},
-		{StrategyBundleDeps, "bundle-deps"},
-		{StrategyBundlePerDir, "bundle-per-dir"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.expected, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.strategy.String())
-		})
-	}
-}
-
-func TestOutputStrategy_Type(t *testing.T) {
-	var s OutputStrategy
-	assert.Equal(t, "strategy", s.Type())
 }
 
 func TestPlanOutput_Bundle(t *testing.T) {
@@ -96,7 +71,6 @@ func TestPlanOutput_Bundle(t *testing.T) {
 	assert.Equal(t, "models.ts", file.RelativePath)
 	assert.Len(t, file.Types, 2)
 	assert.Empty(t, file.Imports)
-	assert.Empty(t, plan.BarrelFiles)
 }
 
 func TestPlanOutput_MultiFile_Basic(t *testing.T) {
@@ -233,4 +207,80 @@ func TestPlanOutput_BundleDeps(t *testing.T) {
 	assert.True(t, typeNames["Child"])
 	assert.True(t, typeNames["Base"])
 	assert.False(t, typeNames["Unused"])
+}
+
+func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
+	circle := &typegraph.Type{Name: "Circle", Kind: typegraph.KindStruct}
+	square := &typegraph.Type{Name: "Square", Kind: typegraph.KindStruct}
+	shape := &typegraph.Type{
+		Name: "Shape",
+		Kind: typegraph.KindUnion,
+		UnionMembers: []*typegraph.TypeRef{
+			{Kind: typegraph.KindRef, TypeName: "Circle"},
+			{Kind: typegraph.KindRef, TypeName: "Square"},
+		},
+	}
+
+	graph := &typegraph.Graph{
+		Types: []*typegraph.Type{circle, square, shape},
+	}
+	graph.AddType(circle)
+	graph.AddType(square)
+	graph.AddType(shape)
+
+	shapeSchema := &schema.Schema{
+		Name:         "Shape",
+		RelativePath: "shape.json",
+	}
+
+	plan, err := PlanOutput(
+		graph,
+		[]*schema.Schema{shapeSchema},
+		StrategyBundleDeps,
+		"ts",
+		"bundle",
+	)
+
+	require.NoError(t, err)
+	require.Len(t, plan.Files, 1)
+
+	typeNames := map[string]bool{}
+	for _, typ := range plan.Files[0].Types {
+		typeNames[typ.Name] = true
+	}
+
+	assert.True(t, typeNames["Shape"], "Shape should be included")
+	assert.True(t, typeNames["Circle"], "Circle should be included as union member")
+	assert.True(t, typeNames["Square"], "Square should be included as union member")
+}
+
+func TestPlanOutput_MultiFile_DeterministicOrder(t *testing.T) {
+	schemas := make([]*schema.Schema, 10)
+	types := make([]*typegraph.Type, 10)
+	for i := range 10 {
+		name := string(rune('A' + i))
+		schemas[i] = &schema.Schema{Name: name, RelativePath: name + ".json"}
+		types[i] = &typegraph.Type{Name: name}
+	}
+
+	graph := &typegraph.Graph{Types: types}
+
+	var firstOrder []string
+	for run := range 50 {
+		plan, err := PlanOutput(graph, schemas, StrategyMultiFile, "ts", "")
+		require.NoError(t, err)
+		require.Len(t, plan.Files, 10)
+
+		var order []string
+		for _, f := range plan.Files {
+			order = append(order, f.RelativePath)
+		}
+
+		if run == 0 {
+			firstOrder = order
+		} else {
+			assert.Equal(t, firstOrder, order,
+				"file order must be deterministic across runs (failed on run %d)", run)
+		}
+	}
 }

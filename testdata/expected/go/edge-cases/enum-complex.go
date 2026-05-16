@@ -10,4 +10,5 @@ var EnumComplexValues = []EnumComplex{
 	map[string]any{"complex": true},
 	42,
 	[]any{"array", "value"},
+	map[string]any{"alpha": 2, "beta": 4, "mango": 3, "zebra": 1},
 }

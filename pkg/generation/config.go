@@ -57,9 +57,8 @@ type PythonConfig struct {
 
 // GoConfig holds Go-specific generation options
 type GoConfig struct {
-	PackageName   string
-	UsePointers   bool
-	OmitEmpty     bool
-	PackagePrefix string
-	ModulePath    string // Module path for absolute imports (e.g., "github.com/org/project")
+	PackageName string
+	UsePointers bool
+	OmitEmpty   bool
+	ModulePath  string // Module path for absolute imports (e.g., "github.com/org/project")
 }

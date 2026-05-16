@@ -31,7 +31,7 @@ export interface Node {
   next?: Node;
 }
 
-export type Status = "active" | "paused";
+export type Status = "active" | "paused" | any;
 
 export interface Payload {
   data: string;

@@ -4,11 +4,9 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
-// fieldGoType determines the Go type for a field.
 func (g *Generator) fieldGoType(field *typegraph.Field) string {
 	typeStr := g.typeRefToGoType(field.Type)
 
-	// Use pointer for optional fields if configured
 	if !field.Required && g.config.UsePointers {
 		return "*" + typeStr
 	}
@@ -16,89 +14,108 @@ func (g *Generator) fieldGoType(field *typegraph.Field) string {
 	return typeStr
 }
 
-// typeRefToGoType converts a TypeRef to a Go type string.
 func (g *Generator) typeRefToGoType(ref *typegraph.TypeRef) string {
-	if ref.GoType != "" {
-		return g.primitiveToGo(ref.GoType)
+	if ref == nil {
+		return "any"
 	}
 
 	if ref.TypeName != "" {
-		// Reference to named type
 		return ref.TypeName
 	}
 
 	switch ref.Kind {
+	case typegraph.KindPrimitive, typegraph.KindEnum:
+		return primitiveToGo(ref.Primitive)
 	case typegraph.KindUnion:
-		// If this is a named union type, use the type name
-		// Otherwise fall back to any
-		if ref.TypeName != "" {
-			return ref.TypeName
-		}
 		return "any"
 	case typegraph.KindArray:
-		itemType := g.typeRefToGoType(ref.ItemType)
-		return "[]" + itemType
+		return "[]" + g.typeRefToGoType(ref.ItemType)
 	case typegraph.KindMap:
-		valueType := g.typeRefToGoType(ref.ValueType)
-		return "map[string]" + valueType
+		return "map[string]" + g.typeRefToGoType(ref.ValueType)
 	case typegraph.KindInterface:
-		// Go always extracts inline types, so this should never be reached
-		// If it is, fall back to interface{} as a safety measure
-		return "interface{}"
+		return "any"
 	default:
-		return "interface{}"
+		return "any"
 	}
 }
 
-// primitiveToGo validates and returns Go primitive types using centralized mapping.
-// This ensures consistency across all generators.
-func (g *Generator) primitiveToGo(goType string) string {
-	// Try centralized mapping for validation
-	if mappedType := typegraph.MapGoType(goType, "go"); mappedType != "" {
-		return mappedType
+func primitiveToGo(p typegraph.PrimitiveKind) string {
+	switch p {
+	case typegraph.PrimString, typegraph.PrimEmail, typegraph.PrimURI,
+		typegraph.PrimHostname, typegraph.PrimIPv4, typegraph.PrimIPv6, typegraph.PrimTime:
+		return "string"
+	case typegraph.PrimInt:
+		return "int"
+	case typegraph.PrimInt32:
+		return "int32"
+	case typegraph.PrimInt64:
+		return "int64"
+	case typegraph.PrimFloat32:
+		return "float32"
+	case typegraph.PrimFloat64:
+		return "float64"
+	case typegraph.PrimBool:
+		return "bool"
+	case typegraph.PrimDateTime, typegraph.PrimDate:
+		return "time.Time"
+	case typegraph.PrimUUID:
+		return "uuid.UUID"
+	default:
+		return "any"
 	}
-
-	// If not in mapping, return as-is (could be a complex type)
-	return goType
 }
 
-// scanTypeForImports scans a type to determine needed imports.
+func importsForPrimitive(p typegraph.PrimitiveKind) string {
+	switch p {
+	case typegraph.PrimDateTime, typegraph.PrimDate:
+		return "time"
+	case typegraph.PrimUUID:
+		return "github.com/google/uuid"
+	default:
+		return ""
+	}
+}
+
+func fieldHasValidation(field *typegraph.Field) bool {
+	if field.Required || field.HasConstraints() {
+		return true
+	}
+	if field.Type != nil {
+		switch field.Type.Format {
+		case "email", "uri", "url", "uuid":
+			return true
+		}
+		if len(field.Type.EnumValues) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *Generator) scanTypeForImports(typ *typegraph.Type) {
 	switch typ.Kind {
 	case typegraph.KindStruct:
 		for _, field := range typ.Fields {
 			g.scanTypeRefForImports(field.Type)
-			// Check if validation tags are needed
-			if field.Required || field.MinLength != nil || field.MaxLength != nil ||
-				field.Pattern != nil || field.Minimum != nil || field.Maximum != nil ||
-				field.MinItems != nil || field.MaxItems != nil ||
-				(field.Type != nil && field.Type.Format != "") {
-				g.imports["github.com/go-playground/validator/v10"] = true
+			if fieldHasValidation(field) {
+				g.imports[validatorImport] = "_"
 			}
 		}
 	case typegraph.KindPrimitive:
-		g.checkGoTypeForImport(typ.GoType)
+		if imp := importsForPrimitive(typ.Primitive); imp != "" {
+			g.imports[imp] = ""
+		}
 	}
 }
 
-// scanTypeRefForImports scans a TypeRef recursively using Walk.
 func (g *Generator) scanTypeRefForImports(ref *typegraph.TypeRef) {
 	ref.Walk(func(r *typegraph.TypeRef) {
-		g.checkGoTypeForImport(r.GoType)
+		if imp := importsForPrimitive(r.Primitive); imp != "" {
+			g.imports[imp] = ""
+		}
 	})
 }
 
-// checkGoTypeForImport adds imports based on Go type.
-func (g *Generator) checkGoTypeForImport(goType string) {
-	switch goType {
-	case "uuid.UUID":
-		g.imports["github.com/google/uuid"] = true
-	case "time.Time":
-		g.imports["time"] = true
-	}
-}
-
-// resetImports clears the imports map.
 func (g *Generator) resetImports() {
-	g.imports = make(map[string]bool)
+	g.imports = make(map[string]string)
 }

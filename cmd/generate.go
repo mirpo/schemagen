@@ -18,13 +18,12 @@ Supports TypeScript interfaces, Python Pydantic v2 models, and Go structs.
 Input can be a single file, directory, or glob pattern.`,
 		Example: `  schemagen generate ./schemas --out-ts ./types
   schemagen generate ./api/*.json --out-py ./models --out-go ./pkg/models`,
-		Args:         cobra.MinimumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		RunE:         runGenerate,
 		SilenceUsage: true,
 	}
 
 	AddGenerationFlags(cmd)
-	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 
 	return cmd
 }
@@ -33,7 +32,6 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	input := args[0]
 	flags := GetGenerationFlags(cmd)
 
-	// Load schemas
 	log.Info().Str("input", input).Msg("Loading schemas")
 	loader := schema.NewLoader()
 	schemas, err := loader.Load(input)
@@ -43,34 +41,14 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 	log.Info().Int("count", len(schemas)).Msg("Loaded schemas")
 
-	// Generate TypeScript if requested
-	if flags.OutTS != "" {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutTS, generation.LanguageTypeScript)
+	targets := generation.BuildTargets(flags)
+	for _, t := range targets {
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), t.Dir, t.Lang)
 		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Msg("TypeScript generation failed")
-			return errors.Wrap(err, "generating TypeScript")
+			log.Error().Err(err).Str("lang", string(t.Lang)).Msg("Generation failed")
+			return errors.Wrap(err, "generating "+string(t.Lang))
 		}
-		log.Info().Str("dir", flags.OutTS).Msg("TypeScript generation complete")
-	}
-
-	// Generate Python if requested
-	if flags.OutPY != "" {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutPY, generation.LanguagePython)
-		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Msg("Python generation failed")
-			return errors.Wrap(err, "generating Python")
-		}
-		log.Info().Str("dir", flags.OutPY).Msg("Python generation complete")
-	}
-
-	// Generate Go if requested
-	if flags.OutGo != "" {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), flags.OutGo, generation.LanguageGo)
-		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Msg("Go generation failed")
-			return errors.Wrap(err, "generating Go")
-		}
-		log.Info().Str("dir", flags.OutGo).Msg("Go generation complete")
+		log.Info().Str("dir", t.Dir).Str("lang", string(t.Lang)).Msg("Generation complete")
 	}
 
 	return nil

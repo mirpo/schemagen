@@ -2,7 +2,9 @@ package output
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/constants"
@@ -14,15 +16,10 @@ import (
 type OutputStrategy string
 
 const (
-	StrategyBundle       OutputStrategy = "bundle"
-	StrategyBundleDeps   OutputStrategy = "bundle-deps"
-	StrategyMultiFile    OutputStrategy = "multi-file"
-	StrategyBundlePerDir OutputStrategy = "bundle-per-dir"
+	StrategyBundle     OutputStrategy = "bundle"
+	StrategyBundleDeps OutputStrategy = "bundle-deps"
+	StrategyMultiFile  OutputStrategy = "multi-file"
 )
-
-func (s *OutputStrategy) String() string {
-	return string(*s)
-}
 
 func (s *OutputStrategy) Set(v string) error {
 	switch v {
@@ -32,16 +29,10 @@ func (s *OutputStrategy) Set(v string) error {
 		*s = StrategyMultiFile
 	case "bundledeps", "bundle-deps":
 		*s = StrategyBundleDeps
-	case "bundle-per-dir":
-		*s = StrategyBundlePerDir
 	default:
-		return fmt.Errorf("invalid output strategy %q (must be bundle, multifile, bundledeps, or bundle-per-dir)", v)
+		return fmt.Errorf("invalid output strategy %q (must be bundle, multifile, or bundledeps)", v)
 	}
 	return nil
-}
-
-func (s *OutputStrategy) Type() string {
-	return "strategy"
 }
 
 func ParseStrategy(v string) OutputStrategy {
@@ -53,13 +44,11 @@ func ParseStrategy(v string) OutputStrategy {
 }
 
 type OutputPlan struct {
-	Strategy    OutputStrategy
-	Files       []OutputFile
-	BarrelFiles []BarrelFile
+	Strategy OutputStrategy
+	Files    []OutputFile
 }
 
 type OutputFile struct {
-	Language     string
 	RelativePath string
 	Types        []*typegraph.Type
 	Imports      []typegraph.ImportSpec
@@ -68,12 +57,6 @@ type OutputFile struct {
 type BarrelFile struct {
 	Path    string
 	Exports []string
-}
-
-type TypeSource struct {
-	TypeName   string
-	SchemaPath string
-	SchemaName string
 }
 
 func PlanOutput(graph *typegraph.Graph, schemas []*schema.Schema, strategy OutputStrategy, language string, bundleName string) (*OutputPlan, error) {
@@ -132,13 +115,11 @@ func planBundle(graph *typegraph.Graph, language string, bundleName string) *Out
 		Strategy: StrategyBundle,
 		Files: []OutputFile{
 			{
-				Language:     language,
 				RelativePath: filename,
 				Types:        graph.Types,
 				Imports:      []typegraph.ImportSpec{},
 			},
 		},
-		BarrelFiles: []BarrelFile{},
 	}
 }
 
@@ -171,7 +152,6 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 
 		if len(fileTypes) > 0 {
 			schemaFiles[outputPath] = &OutputFile{
-				Language:     language,
 				RelativePath: outputPath,
 				Types:        fileTypes,
 				Imports:      []typegraph.ImportSpec{},
@@ -180,64 +160,23 @@ func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceM
 	}
 
 	plan := &OutputPlan{
-		Strategy:    StrategyMultiFile,
-		Files:       make([]OutputFile, 0, len(schemaFiles)),
-		BarrelFiles: []BarrelFile{},
+		Strategy: StrategyMultiFile,
+		Files:    make([]OutputFile, 0, len(schemaFiles)),
 	}
 
-	for _, file := range schemaFiles {
-		plan.Files = append(plan.Files, *file)
+	for _, p := range slices.Sorted(maps.Keys(schemaFiles)) {
+		plan.Files = append(plan.Files, *schemaFiles[p])
 	}
 
 	return plan
 }
 
-// markOrphanedTypes recursively marks orphaned types (types without a source schema)
-// that are referenced by the given type.
 func markOrphanedTypes(typ *typegraph.Type, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
-	for _, field := range typ.Fields {
-		markOrphanedFieldReferences(field.Type, graph, typeSourceMap, belongsToFile)
-	}
-
-	for _, baseName := range typ.Extends {
-		// Only mark if orphaned (no source schema)
-		if !belongsToFile[baseName] && typeSourceMap[baseName] == nil {
-			if baseType := graph.GetType(baseName); baseType != nil {
-				belongsToFile[baseName] = true
-				markOrphanedTypes(baseType, graph, typeSourceMap, belongsToFile)
-			}
-		}
-	}
-}
-
-// markOrphanedFieldReferences recursively marks orphaned types from a TypeRef.
-func markOrphanedFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
-	if ref == nil {
-		return
-	}
-
-	// Mark direct type reference only if orphaned
-	if ref.TypeName != "" && !belongsToFile[ref.TypeName] && typeSourceMap[ref.TypeName] == nil {
-		if refType := graph.GetType(ref.TypeName); refType != nil {
-			belongsToFile[ref.TypeName] = true
-			markOrphanedTypes(refType, graph, typeSourceMap, belongsToFile)
-		}
-	}
-
-	// Mark union members
-	for _, member := range ref.UnionMembers {
-		markOrphanedFieldReferences(member, graph, typeSourceMap, belongsToFile)
-	}
-
-	// Mark array item types
-	if ref.ItemType != nil {
-		markOrphanedFieldReferences(ref.ItemType, graph, typeSourceMap, belongsToFile)
-	}
-
-	// Mark map value types
-	if ref.ValueType != nil {
-		markOrphanedFieldReferences(ref.ValueType, graph, typeSourceMap, belongsToFile)
-	}
+	walkReachableTypes(typ, graph, func(name string) bool {
+		return !belongsToFile[name] && typeSourceMap[name] == nil
+	}, func(name string) {
+		belongsToFile[name] = true
+	})
 }
 
 func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string, bundleName string) *OutputPlan {
@@ -251,13 +190,11 @@ func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSource
 		Strategy: StrategyBundleDeps,
 		Files: []OutputFile{
 			{
-				Language:     language,
 				RelativePath: filename,
 				Types:        includedTypes,
 				Imports:      []typegraph.ImportSpec{},
 			},
 		},
-		BarrelFiles: []BarrelFile{},
 	}
 }
 
@@ -277,49 +214,42 @@ func collectDependentTypes(graph *typegraph.Graph, rootSchema *schema.Schema, ty
 }
 
 func collectReferencedTypes(typ *typegraph.Type, graph *typegraph.Graph, included map[string]bool, result *[]*typegraph.Type) {
-	for _, field := range typ.Fields {
-		collectFieldReferences(field.Type, graph, included, result)
-	}
+	walkReachableTypes(typ, graph, func(name string) bool {
+		return !included[name]
+	}, func(name string) {
+		included[name] = true
+		*result = append(*result, graph.GetType(name))
+	})
+}
 
-	for _, baseName := range typ.Extends {
-		if !included[baseName] {
-			if baseType := graph.GetType(baseName); baseType != nil {
-				included[baseName] = true
-				*result = append(*result, baseType)
-				collectReferencedTypes(baseType, graph, included, result)
+func walkReachableTypes(typ *typegraph.Type, graph *typegraph.Graph, shouldVisit func(string) bool, onVisit func(string)) {
+	visit := func(name string) {
+		if shouldVisit(name) {
+			if t := graph.GetType(name); t != nil {
+				onVisit(name)
+				walkReachableTypes(t, graph, shouldVisit, onVisit)
 			}
 		}
 	}
-}
 
-// collectFieldReferences recursively collects all types referenced by a TypeRef
-func collectFieldReferences(ref *typegraph.TypeRef, graph *typegraph.Graph, included map[string]bool, result *[]*typegraph.Type) {
-	if ref == nil {
-		return
+	for _, field := range typ.Fields {
+		field.Type.Walk(func(r *typegraph.TypeRef) {
+			if r.TypeName != "" {
+				visit(r.TypeName)
+			}
+		})
 	}
 
-	// Collect direct type reference
-	if ref.TypeName != "" && !included[ref.TypeName] {
-		if refType := graph.GetType(ref.TypeName); refType != nil {
-			included[ref.TypeName] = true
-			*result = append(*result, refType)
-			collectReferencedTypes(refType, graph, included, result)
-		}
+	for _, baseName := range typ.Extends {
+		visit(baseName)
 	}
 
-	// Collect union members
-	for _, member := range ref.UnionMembers {
-		collectFieldReferences(member, graph, included, result)
-	}
-
-	// Collect array item types
-	if ref.ItemType != nil {
-		collectFieldReferences(ref.ItemType, graph, included, result)
-	}
-
-	// Collect map value types
-	if ref.ValueType != nil {
-		collectFieldReferences(ref.ValueType, graph, included, result)
+	for _, m := range typ.UnionMembers {
+		m.Walk(func(r *typegraph.TypeRef) {
+			if r.TypeName != "" {
+				visit(r.TypeName)
+			}
+		})
 	}
 }
 

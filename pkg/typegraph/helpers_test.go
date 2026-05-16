@@ -10,9 +10,9 @@ import (
 
 func TestGetOrderedPropertyNames(t *testing.T) {
 	t.Run("with order preserves schema order", func(t *testing.T) {
-		order, _ := schema.ExtractPropertyOrder([]byte(`{"properties": {"z": {}, "a": {}, "m": {}}}`), "test.json")
+		order := schema.NewPropertyOrderWith(map[string][]string{"test.json": {"z", "a", "m"}})
 
-		names := GetOrderedPropertyNames(&jsonschema.SchemaMap{
+		names := getOrderedPropertyNames(&jsonschema.SchemaMap{
 			"z": &jsonschema.Schema{}, "a": &jsonschema.Schema{}, "m": &jsonschema.Schema{},
 		}, "test.json", order)
 
@@ -25,12 +25,12 @@ func TestGetOrderedPropertyNames(t *testing.T) {
 			"apple": &jsonschema.Schema{},
 			"mango": &jsonschema.Schema{},
 		}
-		result := GetOrderedPropertyNames(&properties, "test.json", nil)
+		result := getOrderedPropertyNames(&properties, "test.json", nil)
 		assert.Equal(t, []string{"apple", "mango", "zebra"}, result)
 	})
 
 	t.Run("nil properties returns nil", func(t *testing.T) {
-		result := GetOrderedPropertyNames(nil, "test.json", nil)
+		result := getOrderedPropertyNames(nil, "test.json", nil)
 		assert.Nil(t, result)
 	})
 }
@@ -39,7 +39,7 @@ func TestExtractConstraints(t *testing.T) {
 	t.Run("string constraints", func(t *testing.T) {
 		minLen, maxLen, pattern := float64(5), float64(100), "^[a-z]+$"
 		field := &Field{}
-		ExtractConstraints(field, &jsonschema.Schema{MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern})
+		extractConstraints(field, &jsonschema.Schema{MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern})
 
 		assert.Equal(t, 5, *field.MinLength)
 		assert.Equal(t, 100, *field.MaxLength)
@@ -48,7 +48,7 @@ func TestExtractConstraints(t *testing.T) {
 
 	t.Run("number constraints", func(t *testing.T) {
 		field := &Field{}
-		ExtractConstraints(field, &jsonschema.Schema{
+		extractConstraints(field, &jsonschema.Schema{
 			Minimum: jsonschema.NewRat(0),
 			Maximum: jsonschema.NewRat(100),
 		})
@@ -60,13 +60,13 @@ func TestExtractConstraints(t *testing.T) {
 
 func TestExtractAdditionalProperties(t *testing.T) {
 	t.Run("nil schema returns nil", func(t *testing.T) {
-		config := ExtractAdditionalProperties(&jsonschema.Schema{}, nil)
+		config := extractAdditionalProperties(&jsonschema.Schema{}, nil)
 		assert.Nil(t, config)
 	})
 
 	t.Run("boolean true", func(t *testing.T) {
 		boolTrue := true
-		config := ExtractAdditionalProperties(&jsonschema.Schema{
+		config := extractAdditionalProperties(&jsonschema.Schema{
 			AdditionalProperties: &jsonschema.Schema{Boolean: &boolTrue},
 		}, func(s *jsonschema.Schema, name string) *TypeRef { return nil })
 
@@ -76,10 +76,10 @@ func TestExtractAdditionalProperties(t *testing.T) {
 
 	t.Run("typed additional properties", func(t *testing.T) {
 		buildTypeRef := func(s *jsonschema.Schema, name string) *TypeRef {
-			return &TypeRef{Kind: KindPrimitive, GoType: "string"}
+			return &TypeRef{Kind: KindPrimitive, Primitive: PrimString}
 		}
 
-		config := ExtractAdditionalProperties(&jsonschema.Schema{
+		config := extractAdditionalProperties(&jsonschema.Schema{
 			AdditionalProperties: &jsonschema.Schema{Type: []string{"string"}},
 		}, buildTypeRef)
 

@@ -79,3 +79,37 @@ func ConfigFromFlags(f *GenerationFlags, schemas []*schema.Schema, compiler *jso
 
 	return cfg
 }
+
+// GenerationTarget pairs an output directory with its language.
+type GenerationTarget struct {
+	Dir  string
+	Lang Language
+}
+
+// BuildTargets returns non-empty generation targets from flags.
+func BuildTargets(flags *GenerationFlags) []GenerationTarget {
+	all := []GenerationTarget{
+		{flags.OutTS, LanguageTypeScript},
+		{flags.OutPY, LanguagePython},
+		{flags.OutGo, LanguageGo},
+	}
+
+	targets := make([]GenerationTarget, 0, len(all))
+	for _, t := range all {
+		if t.Dir != "" {
+			targets = append(targets, t)
+		}
+	}
+	return targets
+}
+
+// RunTargets runs generation for each target.
+func RunTargets(targets []GenerationTarget, flags *GenerationFlags, schemas []*schema.Schema, compiler *jsonschema.Compiler) error {
+	for _, t := range targets {
+		cfg := ConfigFromFlags(flags, schemas, compiler, t.Dir, t.Lang)
+		if err := Run(cfg); err != nil {
+			return err
+		}
+	}
+	return nil
+}

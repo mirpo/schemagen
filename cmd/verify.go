@@ -24,13 +24,12 @@ Exit codes:
   2 - Files don't match (drift detected)`,
 		Example: `  schemagen verify ./schemas --out-ts ./types
   schemagen verify ./schemas --out-ts ./ts --out-py ./py --quiet`,
-		Args:         cobra.MinimumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		RunE:         runVerify,
 		SilenceUsage: true,
 	}
 
 	AddGenerationFlags(cmd)
-	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 	cmd.Flags().Bool("quiet", false, "Suppress output (only exit codes)")
 
 	return cmd
@@ -73,7 +72,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		}
 		return &errors.ExitCodeError{
 			Message: "drift detected",
-			Code:    2,
+			Code:    errors.ExitDrift,
 		}
 	}
 

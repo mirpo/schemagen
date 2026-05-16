@@ -132,7 +132,12 @@ export const ConstraintsSchema = z.object({
  */
 export type MixedEnum = "string" | 42 | true | null;
 
-export const MixedEnumSchema = z.union([z.literal("string"), z.literal(42), z.literal(true), z.literal(null)]).meta({ description: "Mixed type enumeration" });
+export const MixedEnumSchema = z.union([
+  z.literal("string"),
+  z.literal(42),
+  z.literal(true),
+  z.literal(null),
+]).meta({ description: "Mixed type enumeration" });
 
 /**
  * Number enumeration
@@ -143,7 +148,11 @@ export enum NumberEnum {
   N_3 = 3
 }
 
-export const NumberEnumSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]).meta({ description: "Number enumeration" });
+export const NumberEnumSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+]).meta({ description: "Number enumeration" });
 
 /**
  * String enumeration

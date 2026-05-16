@@ -139,6 +139,51 @@ func TestDeriveName(t *testing.T) {
 	}
 }
 
+func TestLoader_SchemaWithoutID_GetsIDFromPath(t *testing.T) {
+	tmp := t.TempDir()
+
+	writeFile(t, tmp, "user.json", `{
+		"type": "object",
+		"properties": {
+			"name": {"type": "string"}
+		}
+	}`)
+
+	loader := NewLoader()
+	schemas, err := loader.Load(filepath.Join(tmp, "user.json"))
+
+	require.NoError(t, err)
+	require.Len(t, schemas, 1)
+
+	// The compiler should assign the relPath as the ID
+	compiled := schemas[0].Compiled
+	assert.Equal(t, "user.json", compiled.ID)
+
+	// Schema should be retrievable from compiler by relPath
+	retrieved, err := loader.Compiler().Schema("user.json")
+	require.NoError(t, err)
+	assert.NotNil(t, retrieved)
+}
+
+func TestLoader_SchemaWithExplicitID_PreservesIt(t *testing.T) {
+	tmp := t.TempDir()
+
+	writeFile(t, tmp, "user.json", `{
+		"$id": "https://example.com/user",
+		"type": "object",
+		"properties": {
+			"name": {"type": "string"}
+		}
+	}`)
+
+	loader := NewLoader()
+	schemas, err := loader.Load(filepath.Join(tmp, "user.json"))
+
+	require.NoError(t, err)
+	require.Len(t, schemas, 1)
+	assert.Equal(t, "https://example.com/user", schemas[0].Compiled.ID)
+}
+
 /* ---------------- helpers ---------------- */
 
 func writeFile(t *testing.T, dir, name, content string) {

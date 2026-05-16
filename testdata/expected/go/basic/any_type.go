@@ -3,10 +3,10 @@
 package models
 
 import (
-	"github.com/go-playground/validator/v10"
+	_ "github.com/go-playground/validator/v10"
 )
 
 type Container struct {
 	Name string `json:"name" validate:"required"`
-	Data interface{} `json:"data" validate:"required"`
+	Data any `json:"data" validate:"required"`
 }

@@ -3,7 +3,7 @@
 package models
 
 import (
-	"github.com/go-playground/validator/v10"
+	_ "github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"time"
 )
@@ -25,7 +25,7 @@ type Message struct {
 	// Message topic or queue name
 	Topic string `json:"topic" validate:"required"`
 	// Message payload (any structure)
-	Payload map[string]interface{} `json:"payload" validate:"required"`
+	Payload map[string]any `json:"payload" validate:"required"`
 	// When the message was created
 	Timestamp time.Time `json:"timestamp" validate:"required"`
 	// Time to live in seconds
@@ -67,7 +67,7 @@ type Error struct {
 	// Field that caused the error
 	Field *string `json:"field,omitempty"`
 	// Additional error context
-	Details *map[string]interface{} `json:"details,omitempty"`
+	Details *map[string]any `json:"details,omitempty"`
 }
 
 // Pagination Pagination information

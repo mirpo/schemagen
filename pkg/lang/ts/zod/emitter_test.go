@@ -11,17 +11,17 @@ import (
 // Helper functions
 
 func createTestEmitter(cfg *Config) *Emitter {
-	return NewEmitter(&typegraph.Graph{Types: []*typegraph.Type{}}, cfg)
+	return NewEmitter(cfg)
 }
 
 func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {
 	return &typegraph.Type{Name: name, Kind: kind, Fields: []*typegraph.Field{}}
 }
 
-func createTestField(jsonName, goType string, required bool) *typegraph.Field {
+func createTestField(jsonName string, prim typegraph.PrimitiveKind, required bool) *typegraph.Field {
 	return &typegraph.Field{
 		JSONName: jsonName,
-		Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: goType},
+		Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: prim},
 		Required: required,
 	}
 }
@@ -41,8 +41,8 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 				e := createTestEmitter(nil)
 				typ := createTestType("User", typegraph.KindStruct)
 				typ.Fields = []*typegraph.Field{
-					createTestField("id", "string", true),
-					createTestField("name", "string", true),
+					createTestField("id", typegraph.PrimString, true),
+					createTestField("name", typegraph.PrimString, true),
 				}
 				return e, typ
 			},
@@ -54,7 +54,7 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 				e := createTestEmitter(nil)
 				typ := createTestType("User", typegraph.KindStruct)
 				typ.Description = "Represents a user"
-				typ.Fields = []*typegraph.Field{createTestField("id", "string", true)}
+				typ.Fields = []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}
 				return e, typ
 			},
 			contains: []string{`.meta({ description: "Represents a user" })`},
@@ -64,7 +64,7 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 			setup: func() (*Emitter, *typegraph.Type) {
 				e := createTestEmitter(&Config{Strict: true})
 				typ := createTestType("User", typegraph.KindStruct)
-				typ.Fields = []*typegraph.Field{createTestField("id", "string", true)}
+				typ.Fields = []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}
 				return e, typ
 			},
 			contains: []string{"export const UserSchema = z.strictObject({"},
@@ -75,8 +75,8 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 				e := createTestEmitter(nil)
 				typ := createTestType("User", typegraph.KindStruct)
 				typ.Fields = []*typegraph.Field{
-					createTestField("id", "string", true),
-					createTestField("email", "string", false),
+					createTestField("id", typegraph.PrimString, true),
+					createTestField("email", typegraph.PrimString, false),
 				}
 				return e, typ
 			},
@@ -90,7 +90,7 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 				typ.Fields = []*typegraph.Field{{
 					JSONName:    "email",
 					Description: "User email address",
-					Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+					Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 					Required:    true,
 				}}
 				return e, typ
@@ -122,8 +122,8 @@ func TestEmitter_GenerateObjectSchema_Extends(t *testing.T) {
 		fields   []*typegraph.Field
 		contains string
 	}{
-		{"single", []string{"Person"}, []*typegraph.Field{createTestField("employeeId", "string", true)}, "PersonSchema.extend({"},
-		{"multiple", []string{"Person", "Timestamped"}, []*typegraph.Field{createTestField("id", "string", true)}, "PersonSchema.merge(TimestampedSchema).extend({"},
+		{"single", []string{"Person"}, []*typegraph.Field{createTestField("employeeId", typegraph.PrimString, true)}, "PersonSchema.extend({"},
+		{"multiple", []string{"Person", "Timestamped"}, []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}, "PersonSchema.merge(TimestampedSchema).extend({"},
 		{"no fields", []string{"Person"}, []*typegraph.Field{}, "export const EmployeeSchema = PersonSchema;"},
 	}
 
@@ -155,22 +155,22 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 		{
 			"numeric enum",
 			[]typegraph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}},
-			[]string{"z.union([z.literal(1), z.literal(2)])"},
+			[]string{"z.union([\n", "  z.literal(1),\n", "  z.literal(2),\n"},
 		},
 		{
 			"mixed types",
 			[]typegraph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Bool", Value: true}},
-			[]string{"z.union([", `z.literal("text")`, "z.literal(42)", "z.literal(true)"},
+			[]string{"z.union([\n", "  z.literal(\"text\"),\n", "  z.literal(42),\n", "  z.literal(true),\n"},
 		},
 		{
 			"with object value",
 			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Complex", Value: map[string]interface{}{"complex": true}}},
-			[]string{"z.union([", `z.literal("simple")`, "z.object({ complex: z.literal(true) }).strict()"},
+			[]string{"z.union([\n", "  z.literal(\"simple\"),\n", "  z.object({ complex: z.literal(true) }).strict(),\n"},
 		},
 		{
 			"with array value",
 			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Array", Value: []interface{}{"a", "b"}}},
-			[]string{"z.union([", `z.literal("simple")`, `z.tuple([z.literal("a"), z.literal("b")])`},
+			[]string{"z.union([\n", "  z.literal(\"simple\"),\n", `  z.tuple([z.literal("a"), z.literal("b")]),` + "\n"},
 		},
 	}
 
@@ -191,40 +191,40 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 
 func TestEmitter_PrimitiveToZod(t *testing.T) {
 	tests := []struct {
-		name, goType, format, expected string
+		name     string
+		prim     typegraph.PrimitiveKind
+		expected string
 	}{
-		// Formats
-		{"email", "string", "email", "z.email()"},
-		{"uri", "string", "uri", "z.url()"},
-		{"url", "string", "url", "z.url()"},
-		{"uuid", "string", "uuid", "z.uuid()"},
-		{"ipv4", "string", "ipv4", "z.ipv4()"},
-		{"ipv6", "string", "ipv6", "z.ipv6()"},
-		{"datetime", "string", "date-time", "z.iso.datetime()"},
-		{"date", "string", "date", "z.iso.date()"},
-		{"time", "string", "time", "z.iso.time()"},
-		// Base types
-		{"string", "string", "", "z.string()"},
-		{"int", "int", "", "z.int()"},
-		{"int32", "int32", "", "z.int()"},
-		{"int64", "int64", "", "z.int()"},
-		{"float64", "float64", "", "z.number()"},
-		{"float32", "float32", "", "z.number()"},
-		{"bool", "bool", "", "z.boolean()"},
-		{"interface", "interface{}", "", "z.unknown()"},
+		{"string", typegraph.PrimString, "z.string()"},
+		{"int", typegraph.PrimInt, "z.int()"},
+		{"int32", typegraph.PrimInt32, "z.int()"},
+		{"int64", typegraph.PrimInt64, "z.int()"},
+		{"float64", typegraph.PrimFloat64, "z.number()"},
+		{"float32", typegraph.PrimFloat32, "z.number()"},
+		{"bool", typegraph.PrimBool, "z.boolean()"},
+		{"unknown", typegraph.PrimUnknown, "z.unknown()"},
+		{"email", typegraph.PrimEmail, "z.email()"},
+		{"uri", typegraph.PrimURI, "z.url()"},
+		{"uuid", typegraph.PrimUUID, "z.uuid()"},
+		{"ipv4", typegraph.PrimIPv4, "z.ipv4()"},
+		{"ipv6", typegraph.PrimIPv6, "z.ipv6()"},
+		{"datetime", typegraph.PrimDateTime, "z.iso.datetime()"},
+		{"date", typegraph.PrimDate, "z.iso.date()"},
+		{"time", typegraph.PrimTime, "z.iso.time()"},
+		{"hostname", typegraph.PrimHostname, "z.string()"},
 	}
 
 	e := createTestEmitter(nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, e.primitiveToZod(tt.goType, tt.format, nil))
+			assert.Equal(t, tt.expected, e.primitiveToZod(tt.prim, nil))
 		})
 	}
 }
 
 func TestEmitter_PrimitiveToZod_CoerceDates(t *testing.T) {
 	e := createTestEmitter(&Config{CoerceDates: true})
-	assert.Equal(t, "z.coerce.date()", e.primitiveToZod("string", "date-time", nil))
+	assert.Equal(t, "z.coerce.date()", e.primitiveToZod(typegraph.PrimDateTime, nil))
 }
 
 // Constraints
@@ -236,7 +236,7 @@ func TestEmitter_Constraints(t *testing.T) {
 		minLen, maxLen, pattern := 3, 20, "^[a-z]+$"
 		field := &typegraph.Field{
 			JSONName: "username", Required: true,
-			Type:      &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+			Type:      &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 			MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern,
 		}
 		assert.Contains(t, e.generateField(field), "z.string().min(3).max(20).regex(/^[a-z]+$/)")
@@ -246,7 +246,7 @@ func TestEmitter_Constraints(t *testing.T) {
 		min, max := float64(0), float64(100)
 		field := &typegraph.Field{
 			JSONName: "age", Required: true,
-			Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"},
+			Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt},
 			Minimum: &min, Maximum: &max,
 		}
 		assert.Contains(t, e.generateField(field), "z.int().gte(0).lte(100)")
@@ -256,7 +256,7 @@ func TestEmitter_Constraints(t *testing.T) {
 		exMin, exMax := float64(0), float64(100)
 		field := &typegraph.Field{
 			JSONName: "value", Required: true,
-			Type:             &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "float64"},
+			Type:             &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimFloat64},
 			ExclusiveMinimum: &exMin, ExclusiveMaximum: &exMax,
 		}
 		assert.Contains(t, e.generateField(field), "z.number().gt(0).lt(100)")
@@ -266,7 +266,7 @@ func TestEmitter_Constraints(t *testing.T) {
 		minItems, maxItems := 1, 10
 		field := &typegraph.Field{
 			JSONName: "items", Required: true,
-			Type:     &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}},
+			Type:     &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}},
 			MinItems: &minItems, MaxItems: &maxItems,
 		}
 		assert.Contains(t, e.generateField(field), "z.array(z.string()).min(1).max(10)")
@@ -276,7 +276,7 @@ func TestEmitter_Constraints(t *testing.T) {
 		pattern := "^[a-z]+/test$"
 		field := &typegraph.Field{
 			JSONName: "path", Required: true,
-			Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"},
+			Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
 			Pattern: &pattern,
 		}
 		assert.Contains(t, e.generateField(field), `regex(/^[a-z]+\/test$/)`)
@@ -292,9 +292,9 @@ func TestEmitter_TypeRefToZod(t *testing.T) {
 		expected string
 	}{
 		{"named ref", &typegraph.TypeRef{Kind: typegraph.KindRef, TypeName: "User"}, "UserSchema"},
-		{"array", &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}}, "z.array(z.string())"},
-		{"map", &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"}}, "z.record(z.string(), z.int())"},
-		{"nullable", &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string", Nullable: true}, "z.string().nullable()"},
+		{"array", &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}, "z.array(z.string())"},
+		{"map", &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}, "z.record(z.string(), z.int())"},
+		{"nullable", &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString, Nullable: true}, "z.string().nullable()"},
 		{"inline enum", &typegraph.TypeRef{Kind: typegraph.KindEnum, EnumValues: []interface{}{"a", "b", "c"}}, `z.enum(["a", "b", "c"])`},
 	}
 
@@ -310,8 +310,8 @@ func TestEmitter_TypeRefToZod(t *testing.T) {
 		ref := &typegraph.TypeRef{
 			Kind: typegraph.KindUnion,
 			UnionMembers: []*typegraph.TypeRef{
-				{Kind: typegraph.KindPrimitive, GoType: "string"},
-				{Kind: typegraph.KindPrimitive, GoType: "int"},
+				{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
+				{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt},
 			},
 		}
 		assert.Contains(t, e.typeRefToZod(ref, nil), "z.union([z.string(), z.int()])")
@@ -324,44 +324,34 @@ func TestEmitter_GenerateField_PropertyNames(t *testing.T) {
 	e := createTestEmitter(nil)
 
 	t.Run("needs quoting", func(t *testing.T) {
-		field := &typegraph.Field{JSONName: "kebab-case", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}, Required: true}
+		field := &typegraph.Field{JSONName: "kebab-case", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}
 		assert.Contains(t, e.generateField(field), `"kebab-case": z.string()`)
 	})
 
 	t.Run("valid identifier", func(t *testing.T) {
-		field := &typegraph.Field{JSONName: "validName", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}, Required: true}
+		field := &typegraph.Field{JSONName: "validName", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}
 		result := e.generateField(field)
 		assert.Contains(t, result, "validName: z.string()")
 		assert.NotContains(t, result, `"validName"`)
 	})
 }
 
-// Union, Alias, Primitive Schema Generation
+// Union and Primitive Schema Generation
 
 func TestEmitter_GenerateUnionSchema(t *testing.T) {
 	e := createTestEmitter(nil)
 	typ := createTestType("Response", typegraph.KindUnion)
-	typ.TargetType = &typegraph.TypeRef{
-		Kind: typegraph.KindUnion,
-		UnionMembers: []*typegraph.TypeRef{
-			{Kind: typegraph.KindRef, TypeName: "Success"},
-			{Kind: typegraph.KindRef, TypeName: "Error"},
-		},
+	typ.UnionMembers = []*typegraph.TypeRef{
+		{Kind: typegraph.KindRef, TypeName: "Success"},
+		{Kind: typegraph.KindRef, TypeName: "Error"},
 	}
 	assert.Contains(t, e.GenerateSchema(typ), "z.union([SuccessSchema, ErrorSchema])")
-}
-
-func TestEmitter_GenerateAliasSchema(t *testing.T) {
-	e := createTestEmitter(nil)
-	typ := createTestType("UserID", typegraph.KindAlias)
-	typ.TargetType = &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string", Format: "uuid"}
-	assert.Contains(t, e.GenerateSchema(typ), "z.uuid()")
 }
 
 func TestEmitter_GeneratePrimitiveSchema(t *testing.T) {
 	e := createTestEmitter(nil)
 	typ := createTestType("Counter", typegraph.KindPrimitive)
-	typ.GoType = "int"
+	typ.Primitive = typegraph.PrimInt
 	typ.Description = "A counter value"
 	result := e.GenerateSchema(typ)
 	assert.Contains(t, result, "z.int()")
@@ -374,7 +364,7 @@ func TestEmitter_GenerateSchemaWithInfer(t *testing.T) {
 	e := createTestEmitter(nil)
 	typ := createTestType("User", typegraph.KindStruct)
 	typ.Description = "User account"
-	typ.Fields = []*typegraph.Field{createTestField("id", "string", true)}
+	typ.Fields = []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}
 
 	result := e.GenerateSchemaWithInfer(typ)
 	assert.Contains(t, result, "/**")
@@ -404,7 +394,7 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 		},
 		{
 			name:     "typed uses catchall",
-			props:    &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"}},
+			props:    &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}},
 			contains: "}).catchall(z.int())",
 		},
 		{
@@ -432,7 +422,7 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := createTestEmitter(tt.config)
 			typ := createTestType("TestObject", typegraph.KindStruct)
-			typ.Fields = []*typegraph.Field{createTestField("name", "string", true)}
+			typ.Fields = []*typegraph.Field{createTestField("name", typegraph.PrimString, true)}
 			typ.AdditionalProps = tt.props
 
 			result := e.GenerateSchema(typ)
@@ -447,7 +437,7 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 // Inline Objects
 
 func TestEmitter_GenerateInlineObject(t *testing.T) {
-	fields := []*typegraph.Field{createTestField("nested", "string", true)}
+	fields := []*typegraph.Field{createTestField("nested", typegraph.PrimString, true)}
 
 	t.Run("default uses object", func(t *testing.T) {
 		e := createTestEmitter(nil)
@@ -571,10 +561,10 @@ func TestEmitter_CompleteObjectSchema(t *testing.T) {
 	typ := createTestType("User", typegraph.KindStruct)
 	typ.Description = "User account"
 	typ.Fields = []*typegraph.Field{
-		{JSONName: "id", Description: "User ID", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string", Format: "uuid"}, Required: true},
-		{JSONName: "email", Description: "User email", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string", Format: "email"}, Required: true},
-		{JSONName: "username", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "string"}, MinLength: &minLen, MaxLength: &maxLen, Required: true},
-		{JSONName: "age", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, GoType: "int"}, Minimum: &minAge, Maximum: &maxAge, Required: false},
+		{JSONName: "id", Description: "User ID", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUUID}, Required: true},
+		{JSONName: "email", Description: "User email", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimEmail}, Required: true},
+		{JSONName: "username", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, MinLength: &minLen, MaxLength: &maxLen, Required: true},
+		{JSONName: "age", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}, Minimum: &minAge, Maximum: &maxAge, Required: false},
 	}
 
 	result := e.GenerateSchema(typ)

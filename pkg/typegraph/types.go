@@ -1,5 +1,30 @@
 package typegraph
 
+import "github.com/mirpo/schemagen/pkg/schema"
+
+// PrimitiveKind identifies a language-neutral primitive type.
+type PrimitiveKind int
+
+const (
+	PrimUnknown PrimitiveKind = iota
+	PrimString
+	PrimInt
+	PrimInt32
+	PrimInt64
+	PrimFloat32
+	PrimFloat64
+	PrimBool
+	PrimDateTime
+	PrimDate
+	PrimTime
+	PrimUUID
+	PrimEmail
+	PrimURI
+	PrimHostname
+	PrimIPv4
+	PrimIPv6
+)
+
 // TypeKind represents the kind of type.
 type TypeKind string
 
@@ -9,7 +34,6 @@ const (
 	KindPrimitive TypeKind = "primitive"
 	KindArray     TypeKind = "array"
 	KindMap       TypeKind = "map"
-	KindAlias     TypeKind = "alias"
 	KindRef       TypeKind = "ref"       // Reference to another type
 	KindUnion     TypeKind = "union"     // Union type (oneOf/anyOf)
 	KindInterface TypeKind = "interface" // For empty objects or any
@@ -17,7 +41,6 @@ const (
 
 // Type represents a type in the type graph.
 type Type struct {
-	ID          string   // Unique identifier
 	Name        string   // Type name (PascalCase)
 	Kind        TypeKind // Type kind
 	Description string   // From schema description
@@ -28,21 +51,11 @@ type Type struct {
 	AdditionalProps *AdditionalPropsConfig // Additional properties configuration
 
 	// For enums
-	EnumType         string // "string" or "int"
-	EnumValues       []EnumValue
-	HasComplexValues bool // true if enum contains non-primitive values (objects/arrays)
+	EnumType   string // "string" or "int"
+	EnumValues []EnumValue
 
 	// For primitives
-	GoType string // e.g., "string", "int", "float64"
-
-	// For arrays
-	ItemType *TypeRef
-
-	// For maps
-	ValueType *TypeRef
-
-	// For aliases
-	TargetType *TypeRef
+	Primitive PrimitiveKind
 
 	// For unions
 	UnionMembers []*TypeRef // Union members (anyOf/oneOf)
@@ -56,12 +69,10 @@ type AdditionalPropsConfig struct {
 
 // Field represents a struct field.
 type Field struct {
-	Name        string   // Field name (PascalCase)
 	JSONName    string   // JSON tag name
 	Type        *TypeRef // Field type
 	Description string   // From schema
 	Required    bool     // Is this field required?
-	OmitEmpty   bool     // Should we add omitempty?
 
 	// Validation constraints
 	MinLength        *int     // minLength for strings
@@ -75,13 +86,21 @@ type Field struct {
 	MaxItems         *int     // maxItems for arrays
 }
 
+func (f *Field) HasConstraints() bool {
+	return f.MinLength != nil || f.MaxLength != nil ||
+		f.Pattern != nil ||
+		f.Minimum != nil || f.Maximum != nil ||
+		f.ExclusiveMinimum != nil || f.ExclusiveMaximum != nil ||
+		f.MinItems != nil || f.MaxItems != nil
+}
+
 // TypeRef is a reference to another type.
 type TypeRef struct {
-	Kind     TypeKind // Kind of referenced type
-	TypeName string   // Name of type (if named)
-	GoType   string   // Direct Go type (if primitive)
-	Nullable bool     // Is this nullable?
-	Format   string   // JSON Schema format (email, uri, uuid, date-time, etc.)
+	Kind      TypeKind      // Kind of referenced type
+	TypeName  string        // Name of type (if named)
+	Primitive PrimitiveKind // Language-neutral primitive kind
+	Nullable  bool          // Is this nullable?
+	Format    string        // JSON Schema format (email, uri, uuid, date-time, etc.)
 
 	// For composite types
 	ItemType     *TypeRef   // For arrays
@@ -129,8 +148,7 @@ type Graph struct {
 	typeIndex map[string]*Type // O(1) type lookup by name
 }
 
-// NewGraph creates a new Graph with initialized index.
-func NewGraph() *Graph {
+func newGraph() *Graph {
 	return &Graph{
 		Types:     make([]*Type, 0),
 		typeIndex: make(map[string]*Type),
@@ -163,4 +181,9 @@ func (g *Graph) GetType(name string) *Type {
 // BuildConfig controls type graph building behavior.
 type BuildConfig struct {
 	ExtractInlined bool // Extract inline enums/objects to named types
+}
+
+type buildContext struct {
+	Order *schema.PropertyOrder
+	Path  string
 }

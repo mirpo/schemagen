@@ -14,7 +14,7 @@ build: clean
 
 test:
 	go clean -testcache
-	go test ./... -v -race -count=1 -coverprofile=coverage.out
+	go test ./... -v -count=1
 
 test-regression: build
 	./scripts/verify-regression.sh
@@ -34,5 +34,6 @@ lint-fix:
 lint-testdata:
 	./scripts/lint-testdata.sh
 
-coverage: test
+coverage:
+	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out

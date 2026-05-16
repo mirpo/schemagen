@@ -11,6 +11,7 @@ func Run(cfg *Config) error {
 	if err := validateConfig(cfg); err != nil {
 		return err
 	}
+	applyDefaults(cfg)
 
 	graph, err := buildTypeGraph(cfg)
 	if err != nil {
@@ -44,41 +45,19 @@ func Run(cfg *Config) error {
 }
 
 func buildTypeGraph(cfg *Config) (*typegraph.Graph, error) {
-	extractInline := cfg.ExtractInline
-
-	if cfg.Language == LanguagePython || cfg.Language == LanguageGo {
-		extractInline = true
-	}
-
 	builder := typegraph.NewBuilderWithConfig(cfg.Compiler, &typegraph.BuildConfig{
-		ExtractInlined: extractInline,
+		ExtractInlined: cfg.ExtractInline,
 	})
 
 	return builder.Build(cfg.Schemas)
 }
 
 func planOutput(graph *typegraph.Graph, cfg *Config) (*output.OutputPlan, error) {
-	var ext string
-
-	switch cfg.Language {
-	case LanguageTypeScript:
-		ext = "ts"
-	case LanguagePython:
-		ext = "py"
-	case LanguageGo:
-		ext = "go"
-	default:
-		return nil, &pkgerrors.ValidationError{
-			Field:   "language",
-			Message: "unsupported language",
-		}
-	}
-
 	return output.PlanOutput(
 		graph,
 		cfg.Schemas,
 		cfg.OutputStrategy,
-		ext,
+		string(cfg.Language),
 		"types",
 	)
 }
@@ -89,7 +68,7 @@ func generateFiles(
 	cfg *Config,
 	writer FileWriter,
 ) error {
-	generator, err := createGenerator(graph, cfg)
+	generator, err := createGenerator(cfg)
 	if err != nil {
 		return err
 	}
@@ -125,24 +104,49 @@ func generateFiles(
 }
 
 func generateBarrelFiles(plan *output.OutputPlan, cfg *Config, writer FileWriter) error {
-	lang := string(cfg.Language)
-
-	barrels := output.GenerateNestedBarrels(plan.Files, lang)
+	barrels := output.GenerateNestedBarrels(plan.Files, cfg.Language)
 
 	for _, barrel := range barrels {
-		content := output.GenerateBarrelContent(barrel, lang)
+		content := output.GenerateBarrelContent(barrel, cfg.Language)
 
 		if err := writer.WriteFile(barrel.Path, []byte(content)); err != nil {
 			return err
 		}
 
 		log.Debug().
-			Str("language", lang).
+			Str("language", string(cfg.Language)).
 			Str("file", barrel.Path).
 			Msg("Generated barrel file")
 	}
 
 	return nil
+}
+
+func applyDefaults(cfg *Config) {
+	if cfg.OutputStrategy == "" {
+		cfg.OutputStrategy = output.StrategyBundle
+	}
+
+	switch cfg.Language {
+	case LanguageTypeScript:
+		if cfg.TypeScript == nil {
+			cfg.TypeScript = &TypeScriptConfig{}
+		}
+	case LanguagePython:
+		if cfg.Python == nil {
+			cfg.Python = &PythonConfig{}
+		}
+		cfg.ExtractInline = true
+	case LanguageGo:
+		cfg.ExtractInline = true
+		if cfg.Go == nil {
+			cfg.Go = &GoConfig{
+				PackageName: "models",
+				UsePointers: true,
+				OmitEmpty:   true,
+			}
+		}
+	}
 }
 
 func validateConfig(cfg *Config) error {
@@ -162,27 +166,8 @@ func validateConfig(cfg *Config) error {
 		return &pkgerrors.ValidationError{Field: "language", Message: "language not specified"}
 	}
 
-	if cfg.OutputStrategy == "" {
-		cfg.OutputStrategy = output.StrategyBundle
-	}
-
 	switch cfg.Language {
-	case LanguageTypeScript:
-		if cfg.TypeScript == nil {
-			cfg.TypeScript = &TypeScriptConfig{}
-		}
-	case LanguagePython:
-		if cfg.Python == nil {
-			cfg.Python = &PythonConfig{}
-		}
-	case LanguageGo:
-		if cfg.Go == nil {
-			cfg.Go = &GoConfig{
-				PackageName: "models",
-				UsePointers: true,
-				OmitEmpty:   true,
-			}
-		}
+	case LanguageTypeScript, LanguagePython, LanguageGo:
 	default:
 		return &pkgerrors.ValidationError{
 			Field:   "language",

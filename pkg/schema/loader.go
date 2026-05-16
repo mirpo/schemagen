@@ -13,6 +13,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	SelfRef    = "#"
+	DefsPrefix = "#/$defs/"
+)
+
 // Schema represents a loaded JSON Schema.
 type Schema struct {
 	Path          string
@@ -102,14 +107,9 @@ func (l *Loader) loadFile(path string) (*Schema, error) {
 	}
 	relPath = filepath.ToSlash(relPath)
 
-	order, err := ExtractPropertyOrder(data, relPath)
+	order, err := extractPropertyOrder(data, relPath)
 	if err != nil {
 		return nil, schemaErr(relPath, "extract property order", err)
-	}
-
-	data, err = ensureSchemaID(data, relPath)
-	if err != nil {
-		return nil, schemaErr(relPath, "inject $id", err)
 	}
 
 	compiled, err := l.compiler.Compile(data, relPath)
@@ -142,19 +142,6 @@ func readAndNormalizeSchema(path string) ([]byte, error) {
 	}
 
 	return raw, nil
-}
-
-func ensureSchemaID(data []byte, id string) ([]byte, error) {
-	var obj map[string]interface{}
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return nil, err
-	}
-
-	if _, ok := obj["$id"]; !ok {
-		obj["$id"] = id
-	}
-
-	return json.Marshal(obj)
 }
 
 func schemaErr(path, msg string, err error) error {

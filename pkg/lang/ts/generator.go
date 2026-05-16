@@ -39,22 +39,20 @@ type Config struct {
 
 // Generator generates TypeScript code from a type graph.
 type Generator struct {
-	graph  *typegraph.Graph
 	config *Config
 }
 
 // NewGenerator creates a new TypeScript generator.
-func NewGenerator(graph *typegraph.Graph) *Generator {
-	return NewGeneratorWithConfig(graph, &Config{})
+func NewGenerator() *Generator {
+	return NewGeneratorWithConfig(&Config{})
 }
 
 // NewGeneratorWithConfig creates a TypeScript generator with custom config.
-func NewGeneratorWithConfig(graph *typegraph.Graph, cfg *Config) *Generator {
+func NewGeneratorWithConfig(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{}
 	}
 	return &Generator{
-		graph:  graph,
 		config: cfg,
 	}
 }
@@ -121,7 +119,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 	// Create Zod emitter if needed
 	var zodEmitter *zod.Emitter
 	if g.config.ZodMode != ZodModeOff {
-		zodEmitter = zod.NewEmitter(g.graph, &zod.Config{
+		zodEmitter = zod.NewEmitter(&zod.Config{
 			CoerceDates: g.config.ZodCoerceDates,
 			Strict:      g.config.ZodStrict,
 		})
@@ -175,8 +173,6 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 		return g.generatePrimitiveAlias(typ)
 	case typegraph.KindUnion:
 		return g.generateUnionAlias(typ)
-	case typegraph.KindAlias:
-		return g.generateTypeAlias(typ)
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
@@ -200,70 +196,51 @@ func (g *Generator) generateInterface(typ *typegraph.Type) (string, error) {
 			sb.WriteString(" & ")
 		}
 
-		// Add inline object with fields
 		sb.WriteString("{\n")
-		for _, field := range typ.Fields {
-			// Field comment
-			tscommon.WriteJSDocSingleLine(&sb, "  ", field.Description)
-
-			tsType := g.typeRefToTS(field.Type)
-			optional := ""
-			if !field.Required {
-				optional = "?"
-			}
-
-			// Quote property name if it's not a valid identifier
-			propName := field.JSONName
-			if tscommon.NeedsQuoting(propName) {
-				propName = fmt.Sprintf("%q", propName)
-			}
-
-			fmt.Fprintf(&sb, "  %s%s: %s;\n", propName, optional, tsType)
-		}
-
-		// Add index signature if AdditionalProperties is configured and flag is enabled
-		if indexSig := g.generateIndexSignature(typ); indexSig != "" {
-			sb.WriteString(indexSig)
-		}
-
+		g.writeFields(&sb, typ, false)
 		sb.WriteString("};")
 	} else {
-		// Regular interface
 		fmt.Fprintf(&sb, "export interface %s {\n", typ.Name)
-
-		// Fields
-		for _, field := range typ.Fields {
-			// Field comment with format annotation if present
-			format := ""
-			if field.Type != nil {
-				format = field.Type.Format
-			}
-			tscommon.WriteJSDocWithFormat(&sb, "  ", field.Description, format)
-
-			tsType := g.typeRefToTS(field.Type)
-			optional := ""
-			if !field.Required {
-				optional = "?"
-			}
-
-			// Quote property name if it's not a valid identifier
-			propName := field.JSONName
-			if tscommon.NeedsQuoting(propName) {
-				propName = fmt.Sprintf("%q", propName)
-			}
-
-			fmt.Fprintf(&sb, "  %s%s: %s;\n", propName, optional, tsType)
-		}
-
-		// Add index signature if AdditionalProperties is configured and flag is enabled
-		if indexSig := g.generateIndexSignature(typ); indexSig != "" {
-			sb.WriteString(indexSig)
-		}
-
+		g.writeFields(&sb, typ, true)
 		sb.WriteString("}")
 	}
 
 	return sb.String(), nil
+}
+
+func (g *Generator) renderField(sb *strings.Builder, field *typegraph.Field, indent string, withFormat bool) {
+	if withFormat {
+		format := ""
+		if field.Type != nil {
+			format = field.Type.Format
+		}
+		tscommon.WriteJSDocWithFormat(sb, indent, field.Description, format)
+	} else {
+		tscommon.WriteJSDocSingleLine(sb, indent, field.Description)
+	}
+
+	tsType := g.typeRefToTS(field.Type)
+	optional := ""
+	if !field.Required {
+		optional = "?"
+	}
+
+	propName := field.JSONName
+	if tscommon.NeedsQuoting(propName) {
+		propName = fmt.Sprintf("%q", propName)
+	}
+
+	fmt.Fprintf(sb, "%s%s%s: %s;\n", indent, propName, optional, tsType)
+}
+
+func (g *Generator) writeFields(sb *strings.Builder, typ *typegraph.Type, withFormat bool) {
+	for _, field := range typ.Fields {
+		g.renderField(sb, field, "  ", withFormat)
+	}
+
+	if indexSig := g.generateIndexSignature(typ); indexSig != "" {
+		sb.WriteString(indexSig)
+	}
 }
 
 // generateIndexSignature generates an index signature for additionalProperties if applicable.
@@ -312,17 +289,17 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		fmt.Fprintf(&sb, "export type %s = ", typ.Name)
 
 		values := make([]string, 0, len(typ.EnumValues))
+		hasComplexValues := false
 		for _, val := range typ.EnumValues {
-			switch v := val.Value.(type) {
-			case string:
-				values = append(values, fmt.Sprintf("%q", v))
-			case float64, int, int64:
-				values = append(values, fmt.Sprintf("%v", v))
-			case bool:
-				values = append(values, fmt.Sprintf("%t", v))
-			case nil:
-				values = append(values, "null")
+			switch val.Value.(type) {
+			case string, float64, int, int64, int32, bool, nil:
+				values = append(values, common.TSLiterals.FormatValue(val.Value))
+			default:
+				hasComplexValues = true
 			}
+		}
+		if hasComplexValues {
+			values = append(values, g.anyType())
 		}
 		sb.WriteString(strings.Join(values, " | "))
 		sb.WriteString(";")
@@ -354,46 +331,26 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
 	// Generate type alias
-	tsType := g.primitiveToTS(typ.GoType)
+	tsType := g.primitiveToTS(typ.Primitive)
 	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 
 	return sb.String(), nil
 }
 
-// generateUnionAlias generates a type alias for a union type.
 func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// JSDoc comment
 	tscommon.WriteJSDoc(&sb, "", typ.Description)
 
-	// Generate union type from TargetType if it's a union
-	// The type graph should have stored the union members in TargetType
-	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
-		tsType := g.typeRefToTS(typ.TargetType)
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
-	} else {
-		// Fallback to any/unknown if we don't have proper union information
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
+	tsType := g.anyType()
+	if len(typ.UnionMembers) > 0 {
+		members := make([]string, len(typ.UnionMembers))
+		for i, m := range typ.UnionMembers {
+			members[i] = g.typeRefToTS(m)
+		}
+		tsType = strings.Join(members, " | ")
 	}
-
-	return sb.String(), nil
-}
-
-// generateTypeAlias generates a type alias for an alias type.
-func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
-	var sb strings.Builder
-
-	// JSDoc comment
-	tscommon.WriteJSDoc(&sb, "", typ.Description)
-
-	// Generate type alias
-	if typ.TargetType != nil {
-		tsType := g.typeRefToTS(typ.TargetType)
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
-	} else {
-		fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, g.anyType())
-	}
+	fmt.Fprintf(&sb, "export type %s = %s;", typ.Name, tsType)
 
 	return sb.String(), nil
 }

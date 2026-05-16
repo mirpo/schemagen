@@ -7,19 +7,17 @@ import (
 	"github.com/mirpo/schemagen/pkg/schema"
 )
 
-// Builder builds a type graph from JSON schemas.
 type Builder struct {
-	registry       *TypeRegistry
-	resolver       *RefResolver
-	walker         *SchemaWalker
-	structBuilder  *StructBuilder
-	typeRefBuilder *TypeRefBuilder
-	compiler       *jsonschema.Compiler // For resolving $refs
-	config         *BuildConfig         // Build configuration
+	registry       *typeRegistry
+	resolver       *refResolver
+	walker         *schemaWalker
+	structBuilder  *structBuilder
+	typeRefBuilder *typeRefBuilder
+	compiler       *jsonschema.Compiler
+	config         *BuildConfig
 }
 
-// NewBuilder creates a new type graph builder with default configuration.
-func NewBuilder(compiler *jsonschema.Compiler) *Builder {
+func newBuilder(compiler *jsonschema.Compiler) *Builder {
 	return NewBuilderWithConfig(compiler, nil)
 }
 
@@ -28,8 +26,8 @@ func NewBuilderWithConfig(compiler *jsonschema.Compiler, cfg *BuildConfig) *Buil
 	if cfg == nil {
 		cfg = &BuildConfig{}
 	}
-	registry := NewTypeRegistry()
-	resolver := NewRefResolver(compiler)
+	registry := newTypeRegistry()
+	resolver := newRefResolver(compiler)
 
 	b := &Builder{
 		registry: registry,
@@ -38,15 +36,12 @@ func NewBuilderWithConfig(compiler *jsonschema.Compiler, cfg *BuildConfig) *Buil
 		config:   cfg,
 	}
 
-	// Create TypeRefBuilder
-	b.typeRefBuilder = NewTypeRefBuilder(registry, resolver, cfg)
+	b.typeRefBuilder = newTypeRefBuilder(registry, resolver, cfg)
 
-	// Create StructBuilder and wire TypeRefBuilder as FieldBuilder
-	b.structBuilder = NewStructBuilder(registry, resolver)
-	b.structBuilder.SetFieldBuilder(b.typeRefBuilder)
+	b.structBuilder = newStructBuilder(registry, resolver)
+	b.structBuilder.setFieldBuilder(b.typeRefBuilder)
 
-	// Create walker with builder as TypeBuilder (breaks circular dependency via interface)
-	b.walker = NewSchemaWalker(registry, resolver, b, cfg)
+	b.walker = newSchemaWalker(registry, resolver, b, cfg)
 
 	return b
 }
@@ -59,17 +54,11 @@ func (b *Builder) Build(schemas []*schema.Schema) (*Graph, error) {
 		}
 	}
 
-	graph := NewGraph()
-	for _, t := range b.registry.All() {
+	graph := newGraph()
+	for _, t := range b.registry.all() {
 		graph.AddType(t)
 	}
 	return graph, nil
-}
-
-// MapPrimitiveType maps a JSON schema type to a Go type (implements TypeBuilder).
-// Delegates to typeRefBuilder.
-func (b *Builder) MapPrimitiveType(schema *jsonschema.Schema) string {
-	return b.typeRefBuilder.MapPrimitiveType(schema)
 }
 
 // Helper functions
@@ -106,10 +95,6 @@ func isUnion(schema *jsonschema.Schema) bool {
 	return len(schema.AnyOf) > 0 || len(schema.OneOf) > 0
 }
 
-// BuildTypeRef builds a TypeRef from a schema property (implements FieldBuilder).
-// Delegates to typeRefBuilder.
-func (b *Builder) BuildTypeRef(schema *jsonschema.Schema, fieldName string) *TypeRef {
-	// Sync walker's currentOrder to typeRefBuilder
-	b.typeRefBuilder.SetCurrentOrder(b.walker.CurrentOrder())
-	return b.typeRefBuilder.BuildTypeRef(schema, fieldName)
+func (b *Builder) BuildTypeRef(ctx *buildContext, schema *jsonschema.Schema, fieldName string) *TypeRef {
+	return b.typeRefBuilder.BuildTypeRef(ctx, schema, fieldName)
 }

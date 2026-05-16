@@ -5,6 +5,6 @@ import { z } from 'zod';
 /**
  * Union with nullable members
  */
-export type UnionNullable = any;
+export type UnionNullable = string | any | null | number;
 
 export const UnionNullableSchema = z.union([z.string(), z.unknown().nullable(), z.int()]).meta({ description: "Union with nullable members" });

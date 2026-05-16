@@ -2,7 +2,8 @@ package golang
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/common"
@@ -11,26 +12,26 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
+const validatorImport = "github.com/go-playground/validator/v10"
+
 // Generator generates Go code from a type graph.
 type Generator struct {
-	graph   *typegraph.Graph
 	config  *Config
-	imports map[string]bool // import path → used
+	imports map[string]string // import path → alias ("" for normal, "_" for blank)
 }
 
 // Config contains generation configuration.
 type Config struct {
 	PackageName      string
-	UsePointers      bool   // Use pointers for optional fields
-	OmitEmpty        bool   // Add omitempty to optional fields
-	DisableComments  bool   // Don't generate comments
-	PackagePrefix    string // Package import prefix (e.g., "github.com/org/project")
-	DisableHeaders   bool   // Don't generate file headers
-	DisableTimestamp bool   // Don't generate timestamp in headers
+	UsePointers      bool // Use pointers for optional fields
+	OmitEmpty        bool // Add omitempty to optional fields
+	DisableComments  bool // Don't generate comments
+	DisableHeaders   bool // Don't generate file headers
+	DisableTimestamp bool // Don't generate timestamp in headers
 }
 
 // NewGenerator creates a new Go generator.
-func NewGenerator(graph *typegraph.Graph, cfg *Config) *Generator {
+func NewGenerator(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{
 			PackageName: "models",
@@ -39,9 +40,8 @@ func NewGenerator(graph *typegraph.Graph, cfg *Config) *Generator {
 		}
 	}
 	return &Generator{
-		graph:   graph,
 		config:  cfg,
-		imports: make(map[string]bool),
+		imports: make(map[string]string),
 	}
 }
 
@@ -69,21 +69,19 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	// Add imports from other packages (file imports)
 	for _, fileImport := range fileImports {
 		if fileImport.ImportPath != "" {
-			g.imports[fileImport.ImportPath] = true
+			g.imports[fileImport.ImportPath] = ""
 		}
 	}
 
 	// Write imports if any
 	if len(g.imports) > 0 {
-		importList := make([]string, 0, len(g.imports))
-		for imp := range g.imports {
-			importList = append(importList, imp)
-		}
-		sort.Strings(importList)
-
 		sb.WriteString("import (\n")
-		for _, imp := range importList {
-			fmt.Fprintf(&sb, "\t%q\n", imp)
+		for _, imp := range slices.Sorted(maps.Keys(g.imports)) {
+			if alias := g.imports[imp]; alias != "" {
+				fmt.Fprintf(&sb, "\t%s %q\n", alias, imp)
+			} else {
+				fmt.Fprintf(&sb, "\t%q\n", imp)
+			}
 		}
 		sb.WriteString(")\n\n")
 	}
@@ -114,20 +112,22 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 	case typegraph.KindUnion:
 		return g.generateUnion(typ)
 	case typegraph.KindPrimitive:
-		return g.generateTypeAlias(typ)
+		return "", nil
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
 }
 
-// generateStruct generates a struct type.
+func (g *Generator) writeTypeComment(sb *strings.Builder, typ *typegraph.Type) {
+	if !g.config.DisableComments && typ.Description != "" {
+		fmt.Fprintf(sb, "// %s %s\n", typ.Name, typ.Description)
+	}
+}
+
 func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Type comment
-	if !g.config.DisableComments && typ.Description != "" {
-		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
-	}
+	g.writeTypeComment(&sb, typ)
 
 	// Type declaration
 	fmt.Fprintf(&sb, "type %s struct {\n", typ.Name)
@@ -143,8 +143,7 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 			if field.Description != "" {
 				fmt.Fprintf(&sb, "\t// %s\n", field.Description)
 			}
-			// Add union type information if this is a union
-			if field.Type.Kind == typegraph.KindUnion && len(field.Type.UnionMembers) > 0 {
+			if field.Type != nil && field.Type.Kind == typegraph.KindUnion && len(field.Type.UnionMembers) > 0 {
 				memberTypes := make([]string, 0, len(field.Type.UnionMembers))
 				for _, member := range field.Type.UnionMembers {
 					memberTypes = append(memberTypes, g.typeRefToGoType(member))
@@ -177,10 +176,7 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Type comment
-	if !g.config.DisableComments && typ.Description != "" {
-		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
-	}
+	g.writeTypeComment(&sb, typ)
 
 	// Analyze enum value types to determine generation strategy
 	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
@@ -211,7 +207,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		// Use const for number-only enums with numeric literals
 		sb.WriteString("const (\n")
 		for _, val := range typ.EnumValues {
-			numVal := formatNumericValue(val.Value)
+			numVal := common.GoLiterals.FormatValue(val.Value)
 			fmt.Fprintf(&sb, "\t%s%s %s = %s\n", typ.Name, val.Name, typ.Name, numVal)
 		}
 		sb.WriteString(")")
@@ -227,34 +223,11 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	return sb.String(), nil
 }
 
-// formatNumericValue formats a numeric enum value as a Go literal
-func formatNumericValue(val any) string {
-	switch v := val.(type) {
-	case float64:
-		// Check if it's a whole number
-		if v == float64(int64(v)) {
-			return fmt.Sprintf("%d", int64(v))
-		}
-		return fmt.Sprintf("%g", v)
-	case int:
-		return fmt.Sprintf("%d", v)
-	case int64:
-		return fmt.Sprintf("%d", v)
-	case int32:
-		return fmt.Sprintf("%d", v)
-	default:
-		return fmt.Sprintf("%v", v)
-	}
-}
-
 // generateUnion generates a type alias for union types.
 func (g *Generator) generateUnion(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Type comment
-	if !g.config.DisableComments && typ.Description != "" {
-		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
-	}
+	g.writeTypeComment(&sb, typ)
 
 	// Type alias (use = for type alias, not type definition)
 	fmt.Fprintf(&sb, "type %s = any", typ.Name)
@@ -278,13 +251,11 @@ func formatEnumValue(val any) string {
 func formatMap(m map[string]any) string {
 	var sb strings.Builder
 	sb.WriteString("map[string]any{")
-	first := true
-	for k, v := range m {
-		if !first {
+	for i, k := range slices.Sorted(maps.Keys(m)) {
+		if i > 0 {
 			sb.WriteString(", ")
 		}
-		fmt.Fprintf(&sb, "%q: %s", k, formatEnumValue(v))
-		first = false
+		fmt.Fprintf(&sb, "%q: %s", k, formatEnumValue(m[k]))
 	}
 	sb.WriteString("}")
 	return sb.String()
@@ -302,11 +273,4 @@ func formatSlice(s []any) string {
 	}
 	sb.WriteString("}")
 	return sb.String()
-}
-
-// generateTypeAlias generates a type alias for primitives.
-func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
-	// For now, we don't generate aliases for primitives
-	// This would be used for custom type mappings
-	return "", nil
 }

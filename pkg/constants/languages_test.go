@@ -18,7 +18,7 @@ func TestNormalizeLanguage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			assert.Equal(t, tt.expected, NormalizeLanguage(tt.input))
+			assert.Equal(t, tt.expected, normalizeLanguage(tt.input))
 		})
 	}
 }
@@ -51,21 +51,6 @@ func TestIsPython(t *testing.T) {
 	assert.False(t, IsPython("typescript"))
 	assert.False(t, IsPython("go"))
 	assert.False(t, IsPython(""))
-}
-
-func TestIsTypeScript(t *testing.T) {
-	assert.True(t, IsTypeScript("typescript"))
-	assert.True(t, IsTypeScript("ts"))
-	assert.False(t, IsTypeScript("python"))
-	assert.False(t, IsTypeScript("go"))
-	assert.False(t, IsTypeScript(""))
-}
-
-func TestIsGo(t *testing.T) {
-	assert.True(t, IsGo("go"))
-	assert.False(t, IsGo("typescript"))
-	assert.False(t, IsGo("python"))
-	assert.False(t, IsGo(""))
 }
 
 func TestGetBarrelFileName(t *testing.T) {

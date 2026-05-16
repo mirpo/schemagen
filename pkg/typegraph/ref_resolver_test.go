@@ -9,7 +9,7 @@ import (
 
 func TestRefResolver_ExtractTypeName_InternalDefs(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	tests := []struct {
 		ref      string
@@ -22,7 +22,7 @@ func TestRefResolver_ExtractTypeName_InternalDefs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.ref, func(t *testing.T) {
-			result := resolver.ExtractTypeName(tt.ref)
+			result := resolver.extractTypeName(tt.ref)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -30,22 +30,22 @@ func TestRefResolver_ExtractTypeName_InternalDefs(t *testing.T) {
 
 func TestRefResolver_ExtractTypeName_RootSelfReference(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	// Without currentSchema set, should return "Schema"
-	result := resolver.ExtractTypeName("#")
+	result := resolver.extractTypeName("#")
 	assert.Equal(t, "Schema", result)
 
 	// With currentSchema set with a title
 	title := "MyRootType"
-	resolver.SetCurrentSchema(&jsonschema.Schema{Title: &title})
-	result = resolver.ExtractTypeName("#")
+	resolver.setCurrentSchema(&jsonschema.Schema{Title: &title})
+	result = resolver.extractTypeName("#")
 	assert.Equal(t, "MyRootType", result)
 }
 
 func TestRefResolver_ExtractTypeName_FilenameOnly(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	tests := []struct {
 		ref      string
@@ -59,7 +59,7 @@ func TestRefResolver_ExtractTypeName_FilenameOnly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.ref, func(t *testing.T) {
-			result := resolver.ExtractTypeName(tt.ref)
+			result := resolver.extractTypeName(tt.ref)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -72,50 +72,50 @@ func TestRefResolver_ExtractTypeName_ExternalWithCompiler(t *testing.T) {
 	title := "EventHeader"
 	compiler.SetSchema("header.json", &jsonschema.Schema{Title: &title})
 
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
-	result := resolver.ExtractTypeName("header.json")
+	result := resolver.extractTypeName("header.json")
 	assert.Equal(t, "EventHeader", result)
 }
 
 func TestRefResolver_DeriveTypeName_FromTitle(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	title := "UserProfile"
 	schema := &jsonschema.Schema{Title: &title}
 
-	result := resolver.DeriveTypeName(schema, "")
+	result := resolver.deriveTypeName(schema, "")
 	assert.Equal(t, "UserProfile", result)
 }
 
 func TestRefResolver_DeriveTypeName_TitleNeedsPascalCase(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	title := "user-profile"
 	schema := &jsonschema.Schema{Title: &title}
 
-	result := resolver.DeriveTypeName(schema, "")
+	result := resolver.deriveTypeName(schema, "")
 	assert.Equal(t, "UserProfile", result)
 }
 
 func TestRefResolver_DeriveTypeName_FromURI(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	schema := &jsonschema.Schema{}
 
-	result := resolver.DeriveTypeName(schema, "payloads/subscribe.json")
+	result := resolver.deriveTypeName(schema, "payloads/subscribe.json")
 	assert.Equal(t, "Subscribe", result)
 }
 
 func TestRefResolver_DeriveTypeName_NoTitleNoURI(t *testing.T) {
 	compiler := jsonschema.NewCompiler()
-	resolver := NewRefResolver(compiler)
+	resolver := newRefResolver(compiler)
 
 	schema := &jsonschema.Schema{}
 
-	result := resolver.DeriveTypeName(schema, "")
+	result := resolver.deriveTypeName(schema, "")
 	assert.Equal(t, "Unknown", result)
 }

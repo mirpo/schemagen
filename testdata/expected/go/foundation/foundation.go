@@ -3,7 +3,7 @@
 package models
 
 import (
-	"github.com/go-playground/validator/v10"
+	_ "github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"time"
 )
@@ -43,7 +43,7 @@ type Arrays struct {
 
 type Numbers struct {
 	// Number with exclusive bounds
-	ExclusiveRange *float64 `json:"exclusiveRange,omitempty"`
+	ExclusiveRange *float64 `json:"exclusiveRange,omitempty" validate:"gt=0,lt=100"`
 	// Integer with constraints
 	MinMaxInteger *int `json:"minMaxInteger,omitempty" validate:"gte=1,lte=999"`
 	// Number with inclusive bounds
@@ -207,7 +207,7 @@ type SpecialChars struct {
 // EdgeCases Edge cases: reserved keywords and special characters
 type EdgeCases struct {
 	// Empty object with no properties
-	EmptyConfig *map[string]interface{} `json:"emptyConfig,omitempty"`
+	EmptyConfig *map[string]any `json:"emptyConfig,omitempty"`
 	// Reserved keywords in TypeScript and Python
 	ReservedKeywords *ReservedKeywords `json:"reservedKeywords,omitempty"`
 	// Special characters in property names

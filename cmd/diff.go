@@ -26,13 +26,12 @@ Exit codes:
   2 - Differences found`,
 		Example: `  schemagen diff ./schemas --out-ts ./types
   schemagen diff ./schemas --out-py ./models --no-color`,
-		Args:         cobra.MinimumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		RunE:         runDiff,
 		SilenceUsage: true,
 	}
 
 	AddGenerationFlags(cmd)
-	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 	cmd.Flags().Bool("no-color", false, "Disable colored output")
 
 	return cmd
@@ -43,7 +42,9 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	input := args[0]
 
 	if noColor {
+		old := color.NoColor
 		color.NoColor = true
+		defer func() { color.NoColor = old }()
 	}
 
 	flags := GetGenerationFlags(cmd)
@@ -85,7 +86,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	color.Red("✗ Differences found")
 	return &errors.ExitCodeError{
 		Message: "differences found",
-		Code:    2,
+		Code:    errors.ExitDrift,
 	}
 }
 
@@ -105,14 +106,12 @@ func showUnifiedDiff(old, new string) {
 			continue
 		}
 
-		// Colorize based on prefix
 		switch {
 		case strings.HasPrefix(line, "-"):
-			color.Red(line)
+			fmt.Println(color.RedString("%s", line))
 		case strings.HasPrefix(line, "+"):
-			color.Green(line)
+			fmt.Println(color.GreenString("%s", line))
 		default:
-			// Context line (starts with space)
 			fmt.Println(line)
 		}
 	}

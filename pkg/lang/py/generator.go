@@ -21,24 +21,17 @@ type Config struct {
 
 // Generator generates Python (Pydantic) code from a type graph.
 type Generator struct {
-	graph    *typegraph.Graph
 	config   *Config
 	imports  map[string]bool
 	needsAny bool // Track if typing.Any is needed
 }
 
-// NewGenerator creates a new Python generator.
-func NewGenerator(graph *typegraph.Graph) *Generator {
-	return NewGeneratorWithConfig(graph, &Config{})
-}
-
 // NewGeneratorWithConfig creates a Python generator with custom config.
-func NewGeneratorWithConfig(graph *typegraph.Graph, cfg *Config) *Generator {
+func NewGeneratorWithConfig(cfg *Config) *Generator {
 	if cfg == nil {
 		cfg = &Config{}
 	}
 	return &Generator{
-		graph:    graph,
 		config:   cfg,
 		imports:  make(map[string]bool),
 		needsAny: false,
@@ -69,54 +62,21 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 			hasStructTypes = true
 			for _, field := range typ.Fields {
 				g.checkTypeRefForImports(field.Type)
-				// Check if Field() will be needed for this field
-				if field.Description != "" || field.MinLength != nil || field.MaxLength != nil ||
-					field.Pattern != nil || field.Minimum != nil || field.Maximum != nil ||
-					field.ExclusiveMinimum != nil || field.ExclusiveMaximum != nil ||
-					field.MinItems != nil || field.MaxItems != nil {
+				if needsField(field, g.fieldNeedsAlias(field)) {
 					g.imports["pydantic_field"] = true
 				}
 			}
 		case typegraph.KindUnion:
-			// Check if union will fall back to Any
-			if typ.TargetType == nil || typ.TargetType.Kind != typegraph.KindUnion {
-				g.needsAny = true
-			} else {
-				g.checkTypeRefForImports(typ.TargetType)
-			}
-		case typegraph.KindAlias:
-			// Check if alias will fall back to Any
-			if typ.TargetType == nil {
-				g.needsAny = true
-			} else {
-				g.checkTypeRefForImports(typ.TargetType)
-			}
+			g.needsAny = true
 		case typegraph.KindPrimitive:
-			// Check if primitive type will use Any
-			if typ.GoType == "interface{}" || typ.GoType == "" {
+			if typ.Primitive == typegraph.PrimUnknown {
 				g.needsAny = true
 			}
 		case typegraph.KindEnum:
-			// Categorize enum type for import determination
-			hasString := false
-			hasNumber := false
-			hasOther := false
-
-			for _, val := range typ.EnumValues {
-				switch val.Value.(type) {
-				case string:
-					hasString = true
-				case float64, int, int64:
-					hasNumber = true
-				default:
-					hasOther = true
-				}
-			}
-
-			// Determine which imports are needed
-			if (hasString && hasNumber) || (hasString && hasOther) || (hasNumber && hasOther) || hasOther {
+			category := enumutil.AnalyzeEnumValues(typ.EnumValues)
+			if category.HasMixed {
 				g.imports["typing_literal"] = true
-			} else if hasNumber && !hasString {
+			} else if category.AllNumbers {
 				g.imports["enum_int"] = true
 			} else {
 				g.imports["enum"] = true
@@ -177,8 +137,6 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	// No trailing newline - Black doesn't want it
 	return sb.String(), nil
 }
-
-// checkTypeRefForImports checks a TypeRef and adds necessary imports.
 
 // generateImports generates the import statements.
 func (g *Generator) generateImports() string {
@@ -254,11 +212,20 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 		return g.generatePrimitiveAlias(typ)
 	case typegraph.KindUnion:
 		return g.generateUnionAlias(typ)
-	case typegraph.KindAlias:
-		return g.generateTypeAlias(typ)
 	default:
 		return "", fmt.Errorf("unsupported type kind: %s", typ.Kind)
 	}
+}
+
+func (g *Generator) fieldNeedsAlias(field *typegraph.Field) bool {
+	name := field.JSONName
+	if sanitizePythonIdentifier(name) != name {
+		return true
+	}
+	if g.config.SnakeCaseField {
+		return naming.ToSnakeCase(name) != name
+	}
+	return false
 }
 
 // Python keywords that need to be escaped
@@ -456,19 +423,9 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 
 		literals := make([]string, 0, len(typ.EnumValues))
 		for _, val := range typ.EnumValues {
-			switch v := val.Value.(type) {
-			case string:
-				literals = append(literals, fmt.Sprintf("%q", v))
-			case float64, int, int64:
-				literals = append(literals, fmt.Sprintf("%v", v))
-			case bool:
-				if v {
-					literals = append(literals, "True")
-				} else {
-					literals = append(literals, "False")
-				}
-			case nil:
-				literals = append(literals, "None")
+			switch val.Value.(type) {
+			case string, float64, int, int64, int32, bool, nil:
+				literals = append(literals, common.PyLiterals.FormatValue(val.Value))
 			}
 		}
 		fmt.Fprintf(&sb, "%s = Literal[%s]\n", typ.Name, strings.Join(literals, ", "))
@@ -520,43 +477,18 @@ func (g *Generator) generatePrimitiveAlias(typ *typegraph.Type) (string, error) 
 	var sb strings.Builder
 
 	// Python type alias using TypeAlias (Python 3.10+) or simple assignment
-	pyType := g.primitiveToPython(typ.GoType, "")
+	pyType := g.primitiveToPython(typ.Primitive)
 	fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 
 	return sb.String(), nil
 }
 
-// generateUnionAlias generates a type alias for a union type.
 func (g *Generator) generateUnionAlias(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Generate union type from TargetType if it's a union
-	if typ.TargetType != nil && typ.TargetType.Kind == typegraph.KindUnion {
-		pyType := g.typeRefToPython(typ.TargetType, false)
-		fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
-	} else {
-		// Fallback to Any if we don't have proper union information
-		g.needsAny = true
-		fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
-	}
-	sb.WriteString(writeDescription(typ.Description, "", "\n"))
-
-	return sb.String(), nil
-}
-
-// generateTypeAlias generates a type alias for an alias type.
-func (g *Generator) generateTypeAlias(typ *typegraph.Type) (string, error) {
-	var sb strings.Builder
-
-	// Generate type alias
-	if typ.TargetType != nil {
-		pyType := g.typeRefToPython(typ.TargetType, false)
-		fmt.Fprintf(&sb, "%s = %s\n", typ.Name, pyType)
-	} else {
-		g.needsAny = true
-		fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
-	}
+	g.needsAny = true
+	fmt.Fprintf(&sb, "%s = Any\n", typ.Name)
 	sb.WriteString(writeDescription(typ.Description, "", "\n"))
 
 	return sb.String(), nil

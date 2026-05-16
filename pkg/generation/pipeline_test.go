@@ -153,6 +153,79 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+func TestApplyDefaults(t *testing.T) {
+	t.Run("sets output strategy", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript}
+		applyDefaults(cfg)
+		assert.Equal(t, output.StrategyBundle, cfg.OutputStrategy)
+	})
+
+	t.Run("does not override existing strategy", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript, OutputStrategy: output.StrategyMultiFile}
+		applyDefaults(cfg)
+		assert.Equal(t, output.StrategyMultiFile, cfg.OutputStrategy)
+	})
+
+	t.Run("initializes TypeScript config", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript}
+		applyDefaults(cfg)
+		assert.NotNil(t, cfg.TypeScript)
+	})
+
+	t.Run("initializes Go config with defaults", func(t *testing.T) {
+		cfg := &Config{Language: LanguageGo}
+		applyDefaults(cfg)
+		require.NotNil(t, cfg.Go)
+		assert.Equal(t, "models", cfg.Go.PackageName)
+		assert.True(t, cfg.Go.UsePointers)
+		assert.True(t, cfg.Go.OmitEmpty)
+	})
+
+	t.Run("forces ExtractInline for Go", func(t *testing.T) {
+		cfg := &Config{Language: LanguageGo, ExtractInline: false}
+		applyDefaults(cfg)
+		assert.True(t, cfg.ExtractInline)
+	})
+
+	t.Run("forces ExtractInline for Python", func(t *testing.T) {
+		cfg := &Config{Language: LanguagePython, ExtractInline: false}
+		applyDefaults(cfg)
+		assert.True(t, cfg.ExtractInline)
+	})
+
+	t.Run("preserves ExtractInline for TypeScript", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript, ExtractInline: false}
+		applyDefaults(cfg)
+		assert.False(t, cfg.ExtractInline)
+	})
+
+	t.Run("does not override existing Go config", func(t *testing.T) {
+		cfg := &Config{Language: LanguageGo, Go: &GoConfig{PackageName: "custom"}}
+		applyDefaults(cfg)
+		assert.Equal(t, "custom", cfg.Go.PackageName)
+	})
+}
+
+func TestBuildTargets(t *testing.T) {
+	flags := &GenerationFlags{
+		OutTS: "/tmp/ts",
+		OutGo: "/tmp/go",
+	}
+
+	targets := BuildTargets(flags)
+	assert.Len(t, targets, 2)
+	assert.Equal(t, "/tmp/ts", targets[0].Dir)
+	assert.Equal(t, LanguageTypeScript, targets[0].Lang)
+	assert.Equal(t, "/tmp/go", targets[1].Dir)
+	assert.Equal(t, LanguageGo, targets[1].Lang)
+}
+
+func TestBuildTargets_Empty(t *testing.T) {
+	flags := &GenerationFlags{}
+	targets := BuildTargets(flags)
+	assert.Empty(t, targets)
+}
+
 /*
  Run – happy paths
 */

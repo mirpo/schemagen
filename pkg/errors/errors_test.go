@@ -89,15 +89,19 @@ func TestValidationError(t *testing.T) {
 	assert.NoError(t, err.Unwrap())
 }
 
+func TestExitDriftConstant(t *testing.T) {
+	assert.Equal(t, 2, ExitDrift)
+}
+
 func TestExitCodeError(t *testing.T) {
 	t.Run("without cause", func(t *testing.T) {
 		err := &ExitCodeError{
 			Message: "command failed",
-			Code:    ExitGeneral,
+			Code:    exitGeneral,
 		}
 
 		assert.Equal(t, "command failed", err.Error())
-		assert.Equal(t, ExitGeneral, err.Code)
+		assert.Equal(t, exitGeneral, err.Code)
 		assert.NoError(t, err.Unwrap())
 	})
 
@@ -105,7 +109,7 @@ func TestExitCodeError(t *testing.T) {
 		cause := fmt.Errorf("underlying error")
 		err := &ExitCodeError{
 			Message: "command failed",
-			Code:    ExitGeneral,
+			Code:    exitGeneral,
 			Cause:   cause,
 		}
 
@@ -114,20 +118,13 @@ func TestExitCodeError(t *testing.T) {
 	})
 }
 
-func TestNewUsageError(t *testing.T) {
-	err := NewUsageError("invalid argument")
-
-	assert.Equal(t, "invalid argument", err.Message)
-	assert.Equal(t, ExitUsage, err.Code)
-}
-
 func TestWrap(t *testing.T) {
 	t.Run("wraps error", func(t *testing.T) {
 		cause := fmt.Errorf("original error")
 		err := Wrap(cause, "operation failed")
 
 		assert.Equal(t, "operation failed: original error", err.Error())
-		assert.Equal(t, ExitGeneral, err.Code)
+		assert.Equal(t, exitGeneral, err.Code)
 		assert.ErrorIs(t, err, cause)
 	})
 

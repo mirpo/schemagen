@@ -23,7 +23,7 @@ Exit codes:
   1 - Validation errors found`,
 		Example: `  schemagen validate ./schemas
   schemagen validate ./api/*.json --format json`,
-		Args:         cobra.MinimumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		RunE:         runValidate,
 		SilenceUsage: true,
 	}

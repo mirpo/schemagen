@@ -4,52 +4,31 @@ import (
 	"fmt"
 
 	"github.com/kaptinlin/jsonschema"
-	"github.com/mirpo/schemagen/pkg/naming"
-	"github.com/mirpo/schemagen/pkg/schema"
 )
 
-// FieldBuilder interface for building fields/type refs.
-// Breaks circular dependency between StructBuilder and TypeRefBuilder.
-type FieldBuilder interface {
-	BuildTypeRef(schema *jsonschema.Schema, fieldName string) *TypeRef
-	BuildFieldsFromProperties(schema *jsonschema.Schema, orderPath string) []*Field
-	MapPrimitiveType(schema *jsonschema.Schema) string
+type fieldBuilder interface {
+	BuildTypeRef(ctx *buildContext, schema *jsonschema.Schema, fieldName string) *TypeRef
+	buildFieldsFromProperties(ctx *buildContext, schema *jsonschema.Schema, orderPath string) []*Field
 }
 
-// StructBuilder builds struct types from JSON schemas.
-type StructBuilder struct {
-	registry     *TypeRegistry
-	resolver     *RefResolver
-	fieldBuilder FieldBuilder
-	currentOrder *schema.PropertyOrder
-	currentPath  string
+type structBuilder struct {
+	registry     *typeRegistry
+	resolver     *refResolver
+	fieldBuilder fieldBuilder
 }
 
-// NewStructBuilder creates a new StructBuilder.
-func NewStructBuilder(registry *TypeRegistry, resolver *RefResolver) *StructBuilder {
-	return &StructBuilder{
+func newStructBuilder(registry *typeRegistry, resolver *refResolver) *structBuilder {
+	return &structBuilder{
 		registry: registry,
 		resolver: resolver,
 	}
 }
 
-// SetFieldBuilder sets the FieldBuilder (setter injection to break cycle).
-func (b *StructBuilder) SetFieldBuilder(fb FieldBuilder) {
+func (b *structBuilder) setFieldBuilder(fb fieldBuilder) {
 	b.fieldBuilder = fb
 }
 
-// SetCurrentOrder sets the current property order for field ordering.
-func (b *StructBuilder) SetCurrentOrder(order *schema.PropertyOrder) {
-	b.currentOrder = order
-}
-
-// SetCurrentPath sets the current schema path for order lookups.
-func (b *StructBuilder) SetCurrentPath(path string) {
-	b.currentPath = path
-}
-
-// Build builds a struct type from a schema.
-func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
+func (b *structBuilder) Build(ctx *buildContext, typ *Type, schema *jsonschema.Schema) error {
 	typ.Kind = KindStruct
 
 	// Pre-allocate based on expected sizes
@@ -61,10 +40,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 	typ.Extends = make([]string, 0, len(schema.AllOf))
 
 	// Track required fields with pre-allocated map
-	requiredMap := make(map[string]bool, len(schema.Required))
-	for _, req := range schema.Required {
-		requiredMap[req] = true
-	}
+	requiredMap := buildRequiredMap(schema.Required)
 
 	// Handle allOf composition
 	if len(schema.AllOf) > 0 {
@@ -72,7 +48,7 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 			// Check if this is a $ref to another type
 			if allOfSchema.Ref != "" {
 				// Extract type name from $ref
-				typeName := b.resolver.ExtractTypeName(allOfSchema.Ref)
+				typeName := b.resolver.extractTypeName(allOfSchema.Ref)
 
 				if typeName != "" {
 					typ.Extends = append(typ.Extends, typeName)
@@ -91,55 +67,41 @@ func (b *StructBuilder) Build(typ *Type, schema *jsonschema.Schema) error {
 			// For inline allOf schemas, merge their properties
 			if allOfSchema.Properties != nil {
 				// Construct path for this allOf branch
-				allOfPath := fmt.Sprintf("%s#/allOf/%d", b.currentPath, allOfIndex)
-				for _, propName := range GetOrderedPropertyNames(allOfSchema.Properties, allOfPath, b.currentOrder) {
+				allOfPath := fmt.Sprintf("%s#/allOf/%d", ctx.Path, allOfIndex)
+				for _, propName := range getOrderedPropertyNames(allOfSchema.Properties, allOfPath, ctx.Order) {
 					propSchema := (*allOfSchema.Properties)[propName]
 					field := &Field{
-						Name:        naming.ToPascalCase(propName),
 						JSONName:    propName,
 						Description: getDescription(propSchema),
 						Required:    requiredMap[propName],
-						OmitEmpty:   !requiredMap[propName],
-						Type:        b.fieldBuilder.BuildTypeRef(propSchema, propName),
+						Type:        b.fieldBuilder.BuildTypeRef(ctx, propSchema, propName),
 					}
-					// Extract validation constraints
-					ExtractConstraints(field, propSchema)
+					extractConstraints(field, propSchema)
 					typ.Fields = append(typ.Fields, field)
 				}
 			}
 		}
 	}
 
-	// Extract properties from the main schema
 	if schema.Properties != nil {
-		// Iterate over properties in schema file order
-		for _, propName := range GetOrderedPropertyNames(schema.Properties, b.currentPath, b.currentOrder) {
-			propSchema := (*schema.Properties)[propName]
-			field := &Field{
-				Name:        naming.ToPascalCase(propName),
-				JSONName:    propName,
-				Description: getDescription(propSchema),
-				Required:    requiredMap[propName],
-				OmitEmpty:   !requiredMap[propName],
-				Type:        b.fieldBuilder.BuildTypeRef(propSchema, propName),
-			}
-			// Extract validation constraints
-			ExtractConstraints(field, propSchema)
-			typ.Fields = append(typ.Fields, field)
-		}
+		fields := buildFieldsFromSchema(ctx, schema, ctx.Path, func(c *buildContext, s *jsonschema.Schema, name string) *TypeRef {
+			return b.fieldBuilder.BuildTypeRef(c, s, name)
+		})
+		typ.Fields = append(typ.Fields, fields...)
 	}
 
 	// Deduplicate fields (in case allOf branches define the same field)
-	typ.Fields = b.DeduplicateFields(typ.Fields)
+	typ.Fields = b.deduplicateFields(typ.Fields)
 
 	// Capture additionalProperties configuration
-	typ.AdditionalProps = ExtractAdditionalProperties(schema, b.fieldBuilder.BuildTypeRef)
+	typ.AdditionalProps = extractAdditionalProperties(schema, func(s *jsonschema.Schema, fieldName string) *TypeRef {
+		return b.fieldBuilder.BuildTypeRef(ctx, s, fieldName)
+	})
 
 	return nil
 }
 
-// DeduplicateFields removes duplicate fields, keeping the most specific one.
-func (b *StructBuilder) DeduplicateFields(fields []*Field) []*Field {
+func (b *structBuilder) deduplicateFields(fields []*Field) []*Field {
 	seen := make(map[string]*Field)
 	result := make([]*Field, 0, len(fields))
 

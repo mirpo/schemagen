@@ -2,20 +2,18 @@ package generation
 
 import (
 	"github.com/mirpo/schemagen/pkg/lang/golang"
-	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
-func newGoGenerator(graph *typegraph.Graph, cfg *Config) Generator {
+func newGoGenerator(cfg *Config) Generator {
 	return newCombinedGenerator(
-		golang.NewGenerator(graph, &golang.Config{
+		golang.NewGenerator(&golang.Config{
 			PackageName:      cfg.Go.PackageName,
 			UsePointers:      cfg.Go.UsePointers,
 			OmitEmpty:        cfg.Go.OmitEmpty,
 			DisableComments:  false,
-			PackagePrefix:    cfg.Go.PackagePrefix,
 			DisableHeaders:   cfg.DisableHeaders,
 			DisableTimestamp: cfg.DisableTimestamp,
 		}),
-		&GoImportConverter{ModulePath: cfg.Go.ModulePath},
+		&golang.ImportConverter{ModulePath: cfg.Go.ModulePath},
 	)
 }

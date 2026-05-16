@@ -7,30 +7,27 @@ import (
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/naming"
+	"github.com/mirpo/schemagen/pkg/schema"
 )
 
-// RefResolver handles $ref resolution and type name derivation.
-type RefResolver struct {
+type refResolver struct {
 	compiler      *jsonschema.Compiler
 	currentSchema *jsonschema.Schema
 }
 
-// NewRefResolver creates a new ref resolver.
-func NewRefResolver(compiler *jsonschema.Compiler) *RefResolver {
-	return &RefResolver{
+func newRefResolver(compiler *jsonschema.Compiler) *refResolver {
+	return &refResolver{
 		compiler: compiler,
 	}
 }
 
-// SetCurrentSchema sets the current root schema for self-reference resolution.
-func (r *RefResolver) SetCurrentSchema(schema *jsonschema.Schema) {
+func (r *refResolver) setCurrentSchema(schema *jsonschema.Schema) {
 	r.currentSchema = schema
 }
 
-// ExtractTypeName extracts a type name from a $ref string.
-func (r *RefResolver) ExtractTypeName(ref string) string {
+func (r *refResolver) extractTypeName(ref string) string {
 	// Handle root self-reference "#"
-	if ref == constants.SchemaSelfRef {
+	if ref == schema.SelfRef {
 		if r.currentSchema != nil {
 			if r.currentSchema.Title != nil && *r.currentSchema.Title != "" {
 				return *r.currentSchema.Title
@@ -40,15 +37,15 @@ func (r *RefResolver) ExtractTypeName(ref string) string {
 	}
 
 	// Handle internal $defs references
-	if strings.HasPrefix(ref, constants.SchemaDefsPrefix) {
-		defName := strings.TrimPrefix(ref, constants.SchemaDefsPrefix)
+	if strings.HasPrefix(ref, schema.DefsPrefix) {
+		defName := strings.TrimPrefix(ref, schema.DefsPrefix)
 		return naming.ToPascalCase(defName)
 	}
 
 	// Handle external file references - try multiple normalized variants
 	for _, variant := range normalizeRefPath(ref) {
 		if refSchema, err := r.compiler.Schema(variant); err == nil && refSchema != nil {
-			return r.DeriveTypeName(refSchema, ref)
+			return r.deriveTypeName(refSchema, ref)
 		}
 	}
 
@@ -56,8 +53,7 @@ func (r *RefResolver) ExtractTypeName(ref string) string {
 	return extractTypeNameFromFilename(ref)
 }
 
-// DeriveTypeName derives a type name from a referenced schema.
-func (r *RefResolver) DeriveTypeName(refSchema *jsonschema.Schema, refURI string) string {
+func (r *refResolver) deriveTypeName(refSchema *jsonschema.Schema, refURI string) string {
 	// Try to get the title from the schema - use as-is if already PascalCase
 	if refSchema.Title != nil && *refSchema.Title != "" {
 		title := *refSchema.Title

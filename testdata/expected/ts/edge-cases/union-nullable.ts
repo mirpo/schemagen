@@ -3,4 +3,4 @@
 /**
  * Union with nullable members
  */
-export type UnionNullable = any;
+export type UnionNullable = string | any | null | number;

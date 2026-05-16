@@ -19,12 +19,21 @@ type PropertyOrder struct {
 	defsOrders map[string][]string
 }
 
-// NewPropertyOrder creates an empty PropertyOrder.
-func NewPropertyOrder() *PropertyOrder {
+// newPropertyOrder creates an empty PropertyOrder.
+func newPropertyOrder() *PropertyOrder {
 	return &PropertyOrder{
 		orders:     make(map[string][]string),
 		defsOrders: make(map[string][]string),
 	}
+}
+
+// NewPropertyOrderWith creates a PropertyOrder pre-populated with the given property orders.
+func NewPropertyOrderWith(orders map[string][]string) *PropertyOrder {
+	po := newPropertyOrder()
+	for k, v := range orders {
+		po.orders[k] = v
+	}
+	return po
 }
 
 // GetOrder returns ordered property names for a schema path.
@@ -37,14 +46,14 @@ func (po *PropertyOrder) GetDefsOrder(path string) []string {
 	return po.defsOrders[path]
 }
 
-// OrderedField represents one JSON object field with preserved order.
-type OrderedField struct {
+// orderedField represents one JSON object field with preserved order.
+type orderedField struct {
 	Key   string
 	Value json.RawMessage
 }
 
-// DecodeOrderedObject decodes a JSON object while preserving field order.
-func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
+// decodeOrderedObject decodes a JSON object while preserving field order.
+func decodeOrderedObject(data []byte) ([]orderedField, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 
 	tok, err := dec.Token()
@@ -55,7 +64,7 @@ func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
 		return nil, fmt.Errorf("expected JSON object")
 	}
 
-	var fields []OrderedField
+	var fields []orderedField
 
 	for dec.More() {
 		keyTok, err := dec.Token()
@@ -73,7 +82,7 @@ func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
 			return nil, err
 		}
 
-		fields = append(fields, OrderedField{
+		fields = append(fields, orderedField{
 			Key:   key,
 			Value: raw,
 		})
@@ -83,20 +92,20 @@ func DecodeOrderedObject(data []byte) ([]OrderedField, error) {
 	return fields, err
 }
 
-// ExtractPropertyOrder extracts property order from raw JSON schema.
-func ExtractPropertyOrder(data []byte, basePath string) (*PropertyOrder, error) {
-	fields, err := DecodeOrderedObject(data)
+// extractPropertyOrder extracts property order from raw JSON schema.
+func extractPropertyOrder(data []byte, basePath string) (*PropertyOrder, error) {
+	fields, err := decodeOrderedObject(data)
 	if err != nil {
 		return nil, fmt.Errorf("decode schema: %w", err)
 	}
 
-	po := NewPropertyOrder()
+	po := newPropertyOrder()
 	extractFromFields(fields, basePath, po)
 
 	return po, nil
 }
 
-func extractFromFields(fields []OrderedField, path string, po *PropertyOrder) {
+func extractFromFields(fields []orderedField, path string, po *PropertyOrder) {
 	for _, f := range fields {
 		switch f.Key {
 		case "properties":
@@ -112,7 +121,7 @@ func extractFromFields(fields []OrderedField, path string, po *PropertyOrder) {
 }
 
 func extractProperties(data json.RawMessage, path string, po *PropertyOrder) {
-	fields, err := DecodeOrderedObject(data)
+	fields, err := decodeOrderedObject(data)
 	if err != nil {
 		log.Debug().Err(err).Str("path", path).Msg("failed to decode properties")
 		return
@@ -136,7 +145,7 @@ func extractFromArray(data json.RawMessage, basePath string, po *PropertyOrder) 
 	for i, elem := range arr {
 		elemPath := fmt.Sprintf("%s/%d", basePath, i)
 
-		fields, err := DecodeOrderedObject(elem)
+		fields, err := decodeOrderedObject(elem)
 		if err != nil {
 			log.Debug().Err(err).Str("path", elemPath).Msg("failed to decode array element")
 			continue
@@ -147,7 +156,7 @@ func extractFromArray(data json.RawMessage, basePath string, po *PropertyOrder) 
 }
 
 func extractFromDefinitions(data json.RawMessage, basePath string, po *PropertyOrder) {
-	fields, err := DecodeOrderedObject(data)
+	fields, err := decodeOrderedObject(data)
 	if err != nil {
 		log.Debug().Err(err).Str("path", basePath).Msg("failed to decode definitions")
 		return
@@ -163,7 +172,7 @@ func extractFromDefinitions(data json.RawMessage, basePath string, po *PropertyO
 	for _, def := range fields {
 		defPath := fmt.Sprintf("%s/%s", basePath, def.Key)
 
-		defFields, err := DecodeOrderedObject(def.Value)
+		defFields, err := decodeOrderedObject(def.Value)
 		if err != nil {
 			log.Debug().Err(err).Str("path", defPath).Msg("failed to decode definition")
 			continue
