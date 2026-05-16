@@ -12,10 +12,12 @@ import (
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
+const validatorImport = "github.com/go-playground/validator/v10"
+
 // Generator generates Go code from a type graph.
 type Generator struct {
 	config  *Config
-	imports map[string]bool // import path → used
+	imports map[string]string // import path → alias ("" for normal, "_" for blank)
 }
 
 // Config contains generation configuration.
@@ -39,7 +41,7 @@ func NewGenerator(cfg *Config) *Generator {
 	}
 	return &Generator{
 		config:  cfg,
-		imports: make(map[string]bool),
+		imports: make(map[string]string),
 	}
 }
 
@@ -67,7 +69,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	// Add imports from other packages (file imports)
 	for _, fileImport := range fileImports {
 		if fileImport.ImportPath != "" {
-			g.imports[fileImport.ImportPath] = true
+			g.imports[fileImport.ImportPath] = ""
 		}
 	}
 
@@ -75,7 +77,11 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	if len(g.imports) > 0 {
 		sb.WriteString("import (\n")
 		for _, imp := range slices.Sorted(maps.Keys(g.imports)) {
-			fmt.Fprintf(&sb, "\t%q\n", imp)
+			if alias := g.imports[imp]; alias != "" {
+				fmt.Fprintf(&sb, "\t%s %q\n", alias, imp)
+			} else {
+				fmt.Fprintf(&sb, "\t%q\n", imp)
+			}
 		}
 		sb.WriteString(")\n\n")
 	}
@@ -112,14 +118,16 @@ func (g *Generator) generateType(typ *typegraph.Type) (string, error) {
 	}
 }
 
-// generateStruct generates a struct type.
+func (g *Generator) writeTypeComment(sb *strings.Builder, typ *typegraph.Type) {
+	if !g.config.DisableComments && typ.Description != "" {
+		fmt.Fprintf(sb, "// %s %s\n", typ.Name, typ.Description)
+	}
+}
+
 func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Type comment
-	if !g.config.DisableComments && typ.Description != "" {
-		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
-	}
+	g.writeTypeComment(&sb, typ)
 
 	// Type declaration
 	fmt.Fprintf(&sb, "type %s struct {\n", typ.Name)
@@ -168,10 +176,7 @@ func (g *Generator) generateStruct(typ *typegraph.Type) (string, error) {
 func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Type comment
-	if !g.config.DisableComments && typ.Description != "" {
-		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
-	}
+	g.writeTypeComment(&sb, typ)
 
 	// Analyze enum value types to determine generation strategy
 	category := enumutil.AnalyzeEnumValues(typ.EnumValues)
@@ -222,10 +227,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 func (g *Generator) generateUnion(typ *typegraph.Type) (string, error) {
 	var sb strings.Builder
 
-	// Type comment
-	if !g.config.DisableComments && typ.Description != "" {
-		fmt.Fprintf(&sb, "// %s %s\n", typ.Name, typ.Description)
-	}
+	g.writeTypeComment(&sb, typ)
 
 	// Type alias (use = for type alias, not type definition)
 	fmt.Fprintf(&sb, "type %s = any", typ.Name)

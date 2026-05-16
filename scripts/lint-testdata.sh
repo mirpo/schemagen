@@ -44,20 +44,30 @@ cd - >/dev/null
 
 echo ""
 echo "=== Validating TypeScript (ts-zod-extracted) ==="
-if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution node --baseUrl "$ZOD_TEMP_DIR/node_modules" $(find testdata/expected/ts-zod-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
+if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution bundler --rootDir "$ZOD_TEMP_DIR" --paths '{"zod": ["'"$ZOD_TEMP_DIR"'/node_modules/zod"]}' $(find testdata/expected/ts-zod-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
     echo "✅ TypeScript (ts-zod-extracted) validation PASSED"
 else
-    echo "❌ TypeScript (ts-zod-extracted) validation FAILED"
-    exit 1
+    # Fallback: try with ignoreDeprecations for older TS versions
+    if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution node --baseUrl "$ZOD_TEMP_DIR/node_modules" --ignoreDeprecations 6.0 $(find testdata/expected/ts-zod-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
+        echo "✅ TypeScript (ts-zod-extracted) validation PASSED"
+    else
+        echo "❌ TypeScript (ts-zod-extracted) validation FAILED"
+        exit 1
+    fi
 fi
 
 echo ""
 echo "=== Validating TypeScript (ts-zod-only-extracted) ==="
-if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution node --baseUrl "$ZOD_TEMP_DIR/node_modules" $(find testdata/expected/ts-zod-only-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
+if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution bundler --rootDir "$ZOD_TEMP_DIR" --paths '{"zod": ["'"$ZOD_TEMP_DIR"'/node_modules/zod"]}' $(find testdata/expected/ts-zod-only-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
     echo "✅ TypeScript (ts-zod-only-extracted) validation PASSED"
 else
-    echo "❌ TypeScript (ts-zod-only-extracted) validation FAILED"
-    exit 1
+    # Fallback: try with ignoreDeprecations for older TS versions
+    if "$ZOD_TEMP_DIR/node_modules/.bin/tsc" --noEmit --skipLibCheck --moduleResolution node --baseUrl "$ZOD_TEMP_DIR/node_modules" --ignoreDeprecations 6.0 $(find testdata/expected/ts-zod-only-extracted -name "*.ts" 2>/dev/null) 2>/dev/null; then
+        echo "✅ TypeScript (ts-zod-only-extracted) validation PASSED"
+    else
+        echo "❌ TypeScript (ts-zod-only-extracted) validation FAILED"
+        exit 1
+    fi
 fi
 
 # ============================================================================
@@ -79,7 +89,7 @@ echo "✅ Python syntax validation PASSED"
 # Black formatting check (simple - returns exit code)
 # Using --line-length 200 to avoid wrapping long Field() lines in generated code
 echo "Checking Python formatting with black..."
-if command -v black >/dev/null 2>&1; then
+if black --version >/dev/null 2>&1; then
     if black --check --line-length 200 testdata/expected/py; then
         echo "✅ Python formatting PASSED"
     else
@@ -87,7 +97,7 @@ if command -v black >/dev/null 2>&1; then
         exit 1
     fi
 else
-    echo "⚠️  black not installed, skipping formatting check"
+    echo "⚠️  black not available, skipping formatting check"
 fi
 
 echo "✅ Python validation PASSED"
@@ -98,18 +108,25 @@ echo "✅ Python validation PASSED"
 echo ""
 echo "=== Validating Go (default) ==="
 
-# Use gofmt to check syntax (doesn't require imports to be resolvable)
-# Errors go to stderr, reformatted content to stdout (which we discard)
 echo "Checking Go syntax with gofmt..."
 go_errors=$(find testdata/expected/go -name "*.go" -exec gofmt -e {} \; 2>&1 >/dev/null || true)
 if [ -n "$go_errors" ]; then
     echo "$go_errors"
-    echo "❌ Go (default) syntax check FAILED"
+    echo "❌ Go syntax check FAILED"
     exit 1
 fi
-echo "✅ Go (default) syntax check PASSED"
+echo "✅ Go syntax check PASSED"
 
-# Note: Go always extracts inline types (no go-extracted needed, see pkg/generation/pipeline.go)
+echo "Checking Go AST parsing..."
+GO_PARSER=$(mktemp)
+go build -o "$GO_PARSER" scripts/parse_go.go
+if ! "$GO_PARSER" $(find testdata/expected/go -name "*.go"); then
+    echo "❌ Go AST check FAILED"
+    rm -f "$GO_PARSER"
+    exit 1
+fi
+rm -f "$GO_PARSER"
+echo "✅ Go AST check PASSED"
 
 # ============================================================================
 # SUCCESS

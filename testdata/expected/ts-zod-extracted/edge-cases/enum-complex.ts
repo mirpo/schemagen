@@ -5,7 +5,7 @@ import { z } from 'zod';
 /**
  * Enum with complex values (objects/arrays) - all preserved in output
  */
-export type EnumComplex = "simple" | 42;
+export type EnumComplex = "simple" | 42 | any;
 
 export const EnumComplexSchema = z.union([
   z.literal("simple"),

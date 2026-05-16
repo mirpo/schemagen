@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -140,18 +141,21 @@ func TestGenerateFile_Imports(t *testing.T) {
 	assert.Contains(t, out, `"time"`)
 }
 
-func TestGenerateFile_NoValidatorImport(t *testing.T) {
-	g := gen(nil)
+func TestGenerateFile_ValidatorImport(t *testing.T) {
+	t.Run("blank import when validate tags exist", func(t *testing.T) {
+		g := gen(nil)
+		user := structType("User", field("name", typegraph.PrimString, true))
+		out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
+		require.NoError(t, err)
+		assert.Contains(t, out, `_ "github.com/go-playground/validator/v10"`)
+	})
 
-	user := structType("User",
-		field("name", typegraph.PrimString, true),
-	)
-
-	out, err := g.GenerateFile([]*typegraph.Type{user}, nil)
-	require.NoError(t, err)
-
-	assert.NotContains(t, out, "validator",
-		"validator package should not be imported — struct tags work without it")
+	t.Run("absent when no validate tags", func(t *testing.T) {
+		user := structType("User", field("name", typegraph.PrimString, false))
+		out, err := gen(&Config{OmitEmpty: false}).GenerateFile([]*typegraph.Type{user}, nil)
+		require.NoError(t, err)
+		assert.NotContains(t, out, "validator")
+	})
 }
 
 func TestFieldValidateTag_ExclusiveMinMax(t *testing.T) {
@@ -182,7 +186,31 @@ func TestFieldValidateTag_Pattern(t *testing.T) {
 	}
 
 	tag := g.fieldValidateTag(f)
-	assert.Equal(t, "", tag, "Pattern not supported by go-playground/validator struct tags — should be omitted")
+	assert.Empty(t, tag, "Pattern not supported by go-playground/validator struct tags — should be omitted")
+}
+
+func TestWriteTypeComment_AllKinds(t *testing.T) {
+	g := gen(nil)
+
+	tests := []struct {
+		name string
+		typ  *typegraph.Type
+	}{
+		{"struct", &typegraph.Type{Name: "User", Kind: typegraph.KindStruct, Description: "A user"}},
+		{"enum", enumType("Status", typegraph.EnumValue{Name: "Active", Value: "active"})},
+		{"union", &typegraph.Type{Name: "Shape", Kind: typegraph.KindUnion, Description: "A shape"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.typ.Description == "" {
+				tt.typ.Description = "Test desc"
+			}
+			out, err := g.GenerateFile([]*typegraph.Type{tt.typ}, nil)
+			require.NoError(t, err)
+			assert.Contains(t, out, fmt.Sprintf("// %s %s", tt.typ.Name, tt.typ.Description))
+		})
+	}
 }
 
 /*

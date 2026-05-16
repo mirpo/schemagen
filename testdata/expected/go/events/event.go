@@ -3,7 +3,7 @@
 package models
 
 import (
-	"github.com/go-playground/validator/v10"
+	_ "github.com/go-playground/validator/v10"
 	"github.com/mirpo/schemagen/testdata/expected/header"
 	"github.com/mirpo/schemagen/testdata/expected/meta"
 	"github.com/mirpo/schemagen/testdata/expected/payloads/ping"

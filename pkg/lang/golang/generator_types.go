@@ -76,15 +76,34 @@ func importsForPrimitive(p typegraph.PrimitiveKind) string {
 	}
 }
 
+func fieldHasValidation(field *typegraph.Field) bool {
+	if field.Required || field.HasConstraints() {
+		return true
+	}
+	if field.Type != nil {
+		switch field.Type.Format {
+		case "email", "uri", "url", "uuid":
+			return true
+		}
+		if len(field.Type.EnumValues) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *Generator) scanTypeForImports(typ *typegraph.Type) {
 	switch typ.Kind {
 	case typegraph.KindStruct:
 		for _, field := range typ.Fields {
 			g.scanTypeRefForImports(field.Type)
+			if fieldHasValidation(field) {
+				g.imports[validatorImport] = "_"
+			}
 		}
 	case typegraph.KindPrimitive:
 		if imp := importsForPrimitive(typ.Primitive); imp != "" {
-			g.imports[imp] = true
+			g.imports[imp] = ""
 		}
 	}
 }
@@ -92,11 +111,11 @@ func (g *Generator) scanTypeForImports(typ *typegraph.Type) {
 func (g *Generator) scanTypeRefForImports(ref *typegraph.TypeRef) {
 	ref.Walk(func(r *typegraph.TypeRef) {
 		if imp := importsForPrimitive(r.Primitive); imp != "" {
-			g.imports[imp] = true
+			g.imports[imp] = ""
 		}
 	})
 }
 
 func (g *Generator) resetImports() {
-	g.imports = make(map[string]bool)
+	g.imports = make(map[string]string)
 }

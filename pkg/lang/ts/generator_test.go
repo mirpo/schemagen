@@ -131,6 +131,21 @@ func TestGenerateEnum(t *testing.T) {
 		assert.Contains(t, result, "42")
 		assert.Contains(t, result, "null")
 	})
+
+	t.Run("complex values use any fallback", func(t *testing.T) {
+		typ := createTestType("Complex", typegraph.KindEnum)
+		typ.EnumType = "string"
+		typ.EnumValues = []typegraph.EnumValue{
+			{Name: "Simple", Value: "simple"},
+			{Name: "Obj", Value: map[string]interface{}{"complex": true}},
+			{Name: "Num", Value: 42},
+		}
+		result, err := g.generateEnum(typ)
+		require.NoError(t, err)
+		assert.Contains(t, result, `"simple"`)
+		assert.Contains(t, result, "42")
+		assert.Contains(t, result, "any")
+	})
 }
 
 func TestGenerateUnionAlias_WithMembers(t *testing.T) {

@@ -3,7 +3,7 @@
 package models
 
 import (
-	"github.com/go-playground/validator/v10"
+	_ "github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"time"
 )
@@ -43,7 +43,7 @@ type Arrays struct {
 
 type Numbers struct {
 	// Number with exclusive bounds
-	ExclusiveRange *float64 `json:"exclusiveRange,omitempty"`
+	ExclusiveRange *float64 `json:"exclusiveRange,omitempty" validate:"gt=0,lt=100"`
 	// Integer with constraints
 	MinMaxInteger *int `json:"minMaxInteger,omitempty" validate:"gte=1,lte=999"`
 	// Number with inclusive bounds

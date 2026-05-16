@@ -52,7 +52,7 @@ export const NodeSchema = z.object({
   get next() { return NodeSchema.optional() },
 });
 
-export type Status = "active" | "paused";
+export type Status = "active" | "paused" | any;
 
 export const StatusSchema = z.union([
   z.literal("active"),

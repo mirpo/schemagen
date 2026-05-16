@@ -285,17 +285,17 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		fmt.Fprintf(&sb, "export type %s = ", typ.Name)
 
 		values := make([]string, 0, len(typ.EnumValues))
+		hasComplexValues := false
 		for _, val := range typ.EnumValues {
-			switch v := val.Value.(type) {
-			case string:
-				values = append(values, fmt.Sprintf("%q", v))
-			case float64, int, int64:
-				values = append(values, fmt.Sprintf("%v", v))
-			case bool:
-				values = append(values, fmt.Sprintf("%t", v))
-			case nil:
-				values = append(values, "null")
+			switch val.Value.(type) {
+			case string, float64, int, int64, int32, bool, nil:
+				values = append(values, common.TSLiterals.FormatValue(val.Value))
+			default:
+				hasComplexValues = true
 			}
+		}
+		if hasComplexValues {
+			values = append(values, g.anyType())
 		}
 		sb.WriteString(strings.Join(values, " | "))
 		sb.WriteString(";")
