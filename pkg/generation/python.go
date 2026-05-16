@@ -12,6 +12,6 @@ func newPythonGenerator(cfg *Config) Generator {
 			SnakeCaseField:   cfg.Python.SnakeCaseField,
 			AllowExtraFields: cfg.Python.AdditionalProperties,
 		}),
-		&PythonImportConverter{},
+		&py.ImportConverter{},
 	)
 }

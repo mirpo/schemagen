@@ -14,6 +14,6 @@ func newGoGenerator(cfg *Config) Generator {
 			DisableHeaders:   cfg.DisableHeaders,
 			DisableTimestamp: cfg.DisableTimestamp,
 		}),
-		&GoImportConverter{ModulePath: cfg.Go.ModulePath},
+		&golang.ImportConverter{ModulePath: cfg.Go.ModulePath},
 	)
 }

@@ -89,28 +89,31 @@ func generateAll(
 	loader *schema.Loader,
 	flags *generation.GenerationFlags,
 ) error {
-	targets := []struct {
-		outDir   string
-		shortDir string
-		lang     generation.Language
-	}{
-		{flags.OutTS, constants.LanguageTypeScriptShort, generation.LanguageTypeScript},
-		{flags.OutPY, constants.LanguagePythonShort, generation.LanguagePython},
-		{flags.OutGo, constants.LanguageGoShort, generation.LanguageGo},
-	}
+	targets := generation.BuildTargets(flags)
 
-	for _, t := range targets {
-		if t.outDir == "" {
-			continue
-		}
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(),
-			filepath.Join(tmpDir, t.shortDir), t.lang)
-		if err := generation.Run(cfg); err != nil {
-			return fmt.Errorf("%s generation failed: %w", t.lang, err)
+	// Remap output dirs to temp subdirectories for comparison
+	remapped := make([]generation.GenerationTarget, len(targets))
+	for i, t := range targets {
+		remapped[i] = generation.GenerationTarget{
+			Dir:  filepath.Join(tmpDir, shortLangName(t.Lang)),
+			Lang: t.Lang,
 		}
 	}
 
-	return nil
+	return generation.RunTargets(remapped, flags, schemas, loader.Compiler())
+}
+
+func shortLangName(lang generation.Language) string {
+	switch lang {
+	case generation.LanguageTypeScript:
+		return constants.LanguageTypeScriptShort
+	case generation.LanguagePython:
+		return constants.LanguagePythonShort
+	case generation.LanguageGo:
+		return constants.LanguageGoShort
+	default:
+		return string(lang)
+	}
 }
 
 // compareDirectories compares generated and existing directories.

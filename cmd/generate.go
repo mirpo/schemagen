@@ -32,7 +32,6 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	input := args[0]
 	flags := GetGenerationFlags(cmd)
 
-	// Load schemas
 	log.Info().Str("input", input).Msg("Loading schemas")
 	loader := schema.NewLoader()
 	schemas, err := loader.Load(input)
@@ -42,25 +41,14 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 	log.Info().Int("count", len(schemas)).Msg("Loaded schemas")
 
-	targets := []struct {
-		dir  string
-		lang generation.Language
-	}{
-		{flags.OutTS, generation.LanguageTypeScript},
-		{flags.OutPY, generation.LanguagePython},
-		{flags.OutGo, generation.LanguageGo},
-	}
-
+	targets := generation.BuildTargets(flags)
 	for _, t := range targets {
-		if t.dir == "" {
-			continue
-		}
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), t.dir, t.lang)
+		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), t.Dir, t.Lang)
 		if err := generation.Run(cfg); err != nil {
-			log.Error().Err(err).Str("lang", string(t.lang)).Msg("Generation failed")
-			return errors.Wrap(err, "generating "+string(t.lang))
+			log.Error().Err(err).Str("lang", string(t.Lang)).Msg("Generation failed")
+			return errors.Wrap(err, "generating "+string(t.Lang))
 		}
-		log.Info().Str("dir", t.dir).Str("lang", string(t.lang)).Msg("Generation complete")
+		log.Info().Str("dir", t.Dir).Str("lang", string(t.Lang)).Msg("Generation complete")
 	}
 
 	return nil

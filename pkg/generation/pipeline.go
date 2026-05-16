@@ -45,14 +45,8 @@ func Run(cfg *Config) error {
 }
 
 func buildTypeGraph(cfg *Config) (*typegraph.Graph, error) {
-	extractInline := cfg.ExtractInline
-
-	if cfg.Language == LanguagePython || cfg.Language == LanguageGo {
-		extractInline = true
-	}
-
 	builder := typegraph.NewBuilderWithConfig(cfg.Compiler, &typegraph.BuildConfig{
-		ExtractInlined: extractInline,
+		ExtractInlined: cfg.ExtractInline,
 	})
 
 	return builder.Build(cfg.Schemas)
@@ -142,7 +136,9 @@ func applyDefaults(cfg *Config) {
 		if cfg.Python == nil {
 			cfg.Python = &PythonConfig{}
 		}
+		cfg.ExtractInline = true
 	case LanguageGo:
+		cfg.ExtractInline = true
 		if cfg.Go == nil {
 			cfg.Go = &GoConfig{
 				PackageName: "models",
