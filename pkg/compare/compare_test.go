@@ -3,6 +3,7 @@ package compare
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/mirpo/schemagen/pkg/generation"
@@ -239,11 +240,13 @@ func TestFileStatus_Constants(t *testing.T) {
 }
 
 func TestWalkExistingFiles_StatErrorPropagated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0o000 does not restrict access on Windows")
+	}
+
 	_, generatedDir, existingDir := setupDirs(t)
 	createTestOutput(t, existingDir, "file.ts", "content")
 
-	// Make generated dir unreadable so os.Stat on the joined path fails
-	// with a permission error, not IsNotExist
 	unreadableDir := filepath.Join(generatedDir, "noperm")
 	require.NoError(t, os.MkdirAll(unreadableDir, 0o000))
 	t.Cleanup(func() { _ = os.Chmod(unreadableDir, 0o755) })
