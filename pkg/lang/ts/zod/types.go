@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -99,15 +100,9 @@ func (e *Emitter) enumValuesToZod(values []interface{}) string {
 		return "z.never()"
 	}
 
-	allStrings := true
-	for _, v := range values {
-		if _, ok := v.(string); !ok {
-			allStrings = false
-			break
-		}
-	}
+	category := enumutil.AnalyzeRawValues(values)
 
-	if allStrings {
+	if category.AllStrings {
 		strValues := make([]string, len(values))
 		for i, v := range values {
 			strValues[i] = fmt.Sprintf("%q", v.(string))

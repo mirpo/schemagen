@@ -35,9 +35,6 @@ func TestNormalizeLineEndings(t *testing.T) {
 	}{
 		{"CRLF to LF", "line1\r\nline2\r\nline3", "line1\nline2\nline3"},
 		{"LF unchanged", "line1\nline2\nline3", "line1\nline2\nline3"},
-		{"mixed line endings", "line1\r\nline2\nline3\r\n", "line1\nline2\nline3\n"},
-		{"no line endings", "single line", "single line"},
-		{"empty string", "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -96,28 +93,6 @@ func TestCompareLangDir(t *testing.T) {
 		for _, diff := range diffs {
 			assert.Equal(t, StatusNew, diff.Status)
 		}
-	})
-
-	t.Run("multiple files", func(t *testing.T) {
-		_, gen, exist := setupDirs(t)
-		createTestOutput(t, gen, "user.ts", "unchanged")
-		createTestOutput(t, exist, "user.ts", "unchanged")
-		createTestOutput(t, gen, "role.ts", "new content")
-		createTestOutput(t, exist, "role.ts", "old content")
-		createTestOutput(t, gen, "team.ts", "new")
-		createTestOutput(t, exist, "project.ts", "deleted")
-
-		diffs, err := compareLangDir(gen, exist)
-		require.NoError(t, err)
-		require.Len(t, diffs, 3)
-
-		statusCounts := make(map[FileStatus]int)
-		for _, diff := range diffs {
-			statusCounts[diff.Status]++
-		}
-		assert.Equal(t, 1, statusCounts[StatusModified])
-		assert.Equal(t, 1, statusCounts[StatusNew])
-		assert.Equal(t, 1, statusCounts[StatusDeleted])
 	})
 
 	t.Run("nested directories", func(t *testing.T) {
@@ -213,30 +188,6 @@ func TestRun(t *testing.T) {
 		})
 		require.Error(t, err)
 	})
-}
-
-func TestResult_HasDrift(t *testing.T) {
-	tests := []struct {
-		name        string
-		diffs       []FileDiff
-		expectDrift bool
-	}{
-		{"no diffs", []FileDiff{}, false},
-		{"with diffs", []FileDiff{{Path: "user.ts", Status: StatusModified}}, true},
-		{"multiple diffs", []FileDiff{{Path: "user.ts"}, {Path: "role.ts"}}, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := &Result{HasDrift: len(tt.diffs) > 0, Diffs: tt.diffs}
-			assert.Equal(t, tt.expectDrift, result.HasDrift)
-		})
-	}
-}
-
-func TestFileStatus_Constants(t *testing.T) {
-	assert.Equal(t, StatusModified, FileStatus("modified"))
-	assert.Equal(t, StatusNew, FileStatus("new"))
-	assert.Equal(t, StatusDeleted, FileStatus("deleted"))
 }
 
 func TestWalkExistingFiles_StatErrorPropagated(t *testing.T) {

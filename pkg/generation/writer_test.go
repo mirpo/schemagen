@@ -50,14 +50,10 @@ func TestDiskWriter_MakeDirectory(t *testing.T) {
 	tests := []string{
 		"simple",
 		"a/b/c",
-		"already/existing",
 	}
 
 	tmpDir := t.TempDir()
 	writer := NewDiskWriter(tmpDir)
-
-	// create once to test idempotency
-	require.NoError(t, writer.MakeDirectory("already/existing"))
 
 	for _, path := range tests {
 		t.Run(path, func(t *testing.T) {

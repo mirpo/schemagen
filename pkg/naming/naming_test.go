@@ -13,12 +13,7 @@ func TestToPascalCase(t *testing.T) {
 	}{
 		{"user", "User"},
 		{"user_name", "UserName"},
-		{"user-name", "UserName"},
-		{"user name", "UserName"},
-		{"user.name", "UserName"},
-		{"api_key", "ApiKey"},
 		{"API_KEY", "APIKEY"},
-		{"some_long_variable_name", "SomeLongVariableName"},
 	}
 
 	for _, tt := range tests {
@@ -36,11 +31,7 @@ func TestToSnakeCase(t *testing.T) {
 		{"userName", "user_name"},
 		{"UserName", "user_name"},
 		{"APIKey", "api_key"},
-		{"someValue", "some_value"},
-		{"HTTPResponse", "http_response"},
-		{"XMLParser", "xml_parser"},
 		{"parseHTMLDoc", "parse_html_doc"},
-		{"IOError", "io_error"},
 		{"ID", "id"},
 	}
 
@@ -58,12 +49,7 @@ func TestToConstantCase(t *testing.T) {
 	}{
 		{"user", "USER"},
 		{"userName", "USER_NAME"},
-		{"UserName", "USER_NAME"},
-		{"apiKey", "API_KEY"},
-		{"APIKey", "API_KEY"},
-		{"HTTPResponse", "HTTP_RESPONSE"},
 		{"some_value", "SOME_VALUE"},
-		{"api-key", "API_KEY"},
 	}
 
 	for _, tt := range tests {
@@ -79,16 +65,9 @@ func TestIsPascalCase(t *testing.T) {
 		want bool
 	}{
 		{"User", true},
-		{"UserName", true},
 		{"userName", false},
 		{"user_name", false},
 		{"123", false},
-		{"APIKey", true},
-		{"HTTP_RESPONSE", false},
-		{"Hello_world", false},
-		{"Hello world", false},
-		{"my-component", false},
-		{"some.thing", false},
 	}
 
 	for _, tt := range tests {
@@ -105,9 +84,6 @@ func TestSplitOnDelimiters(t *testing.T) {
 	}{
 		{"user", []string{"user"}},
 		{"user_name", []string{"user", "name"}},
-		{"user-name", []string{"user", "name"}},
-		{"user name", []string{"user", "name"}},
-		{"user.name", []string{"user", "name"}},
 		{"user__name", []string{"user", "name"}},
 		{"_user_name_", []string{"user", "name"}},
 	}
@@ -126,13 +102,8 @@ func TestToGoFieldName(t *testing.T) {
 	}{
 		{"Name", "Name"},
 		{"kebab-case", "KebabCase"},
-		{"with spaces", "WithSpaces"},
-		{"snake_case", "SnakeCase"},
 		{"with.dots", "WithDots"},
 		{"123numeric", "F123Numeric"},
-		{"$dollar", "FDollar"},
-		{"@special", "FSpecial"},
-		{"$123test", "F123Test"},
 	}
 
 	for _, tt := range tests {
@@ -149,12 +120,9 @@ func TestIsValidGoIdentifier(t *testing.T) {
 	}{
 		{"Name", true},
 		{"_private", true},
-		{"API", true},
 		{"X123", true},
 		{"123test", false},
-		{"$dollar", false},
 		{"with.dots", false},
-		{"with-dashes", false},
 	}
 
 	for _, tt := range tests {

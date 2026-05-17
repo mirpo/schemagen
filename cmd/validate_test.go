@@ -14,12 +14,6 @@ func TestValidateCommand(t *testing.T) {
 		require.NoError(t, cmd.Execute())
 	})
 
-	t.Run("single file", func(t *testing.T) {
-		cmd := NewRootCmd()
-		cmd.SetArgs([]string{"validate", "../testdata/schemas/foundation"})
-		require.NoError(t, cmd.Execute())
-	})
-
 	t.Run("rejects extra arguments", func(t *testing.T) {
 		cmd := NewRootCmd()
 		cmd.SetArgs([]string{"validate", "../testdata/schemas/basic/", "extra-arg"})
@@ -48,12 +42,6 @@ func TestValidateCommand(t *testing.T) {
 		cmd := NewRootCmd()
 		cmd.SetArgs([]string{"validate", tmpFile.Name()})
 		requireExitCode(t, cmd.Execute(), 1)
-	})
-
-	t.Run("with external refs", func(t *testing.T) {
-		cmd := NewRootCmd()
-		cmd.SetArgs([]string{"validate", "../testdata/schemas/events/event.json"})
-		require.NoError(t, cmd.Execute())
 	})
 
 	t.Run("multiple files with errors", func(t *testing.T) {

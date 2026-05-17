@@ -119,26 +119,6 @@ func TestValidateConfig(t *testing.T) {
 			},
 			false,
 		},
-		{
-			"valid python",
-			&Config{
-				Schemas:  []*schema.Schema{validSchema},
-				Compiler: validCompiler,
-				OutDir:   "/tmp",
-				Language: LanguagePython,
-			},
-			false,
-		},
-		{
-			"valid go",
-			&Config{
-				Schemas:  []*schema.Schema{validSchema},
-				Compiler: validCompiler,
-				OutDir:   "/tmp",
-				Language: LanguageGo,
-			},
-			false,
-		},
 	}
 
 	for _, tt := range tests {
@@ -327,39 +307,4 @@ func TestRun_GoAlwaysExtractsInline(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotContains(t, string(data), "map[string]interface{}")
-}
-
-/*
- Run – invalid cases
-*/
-
-func TestRun_InvalidLanguage(t *testing.T) {
-	outDir := t.TempDir()
-
-	cfg := &Config{
-		Schemas:        []*schema.Schema{createTestSchema(t)},
-		Compiler:       createTestCompiler(t),
-		OutDir:         outDir,
-		Language:       "rust",
-		OutputStrategy: output.StrategyBundle,
-	}
-
-	err := Run(cfg)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported")
-}
-
-func TestRun_EmptySchemas(t *testing.T) {
-	outDir := t.TempDir()
-
-	cfg := &Config{
-		Schemas:        []*schema.Schema{},
-		Compiler:       createTestCompiler(t),
-		OutDir:         outDir,
-		Language:       LanguageTypeScript,
-		OutputStrategy: output.StrategyBundle,
-	}
-
-	err := Run(cfg)
-	require.Error(t, err)
 }

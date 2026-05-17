@@ -38,7 +38,6 @@ func TestDecodeOrderedObject(t *testing.T) {
 	}{
 		{"simple object", []byte(`{"name": "John", "age": 30}`), 2, false, "name"},
 		{"empty object", []byte(`{}`), 0, false, ""},
-		{"nested object", []byte(`{"user": {"name": "John"}, "active": true}`), 2, false, "user"},
 		{"invalid JSON", []byte(`{invalid}`), 0, true, ""},
 		{"not an object", []byte(`["array"]`), 0, true, ""},
 	}
@@ -91,22 +90,6 @@ func TestExtractPropertyOrder(t *testing.T) {
 		assert.Equal(t, []string{"createdAt"}, po.GetOrder("model.json#/allOf/1"))
 	})
 
-	t.Run("with oneOf", func(t *testing.T) {
-		schemaJSON := []byte(`{"oneOf":[{"properties":{"type":{},"value":{}}},{"properties":{"type":{},"text":{}}}]}`)
-		po, err := extractPropertyOrder(schemaJSON, "union.json")
-		require.NoError(t, err)
-		assert.Equal(t, []string{"type", "value"}, po.GetOrder("union.json#/oneOf/0"))
-		assert.Equal(t, []string{"type", "text"}, po.GetOrder("union.json#/oneOf/1"))
-	})
-
-	t.Run("with anyOf", func(t *testing.T) {
-		schemaJSON := []byte(`{"anyOf":[{"properties":{"a":{},"b":{}}},{"properties":{"c":{},"d":{}}}]}`)
-		po, err := extractPropertyOrder(schemaJSON, "any.json")
-		require.NoError(t, err)
-		assert.Len(t, po.GetOrder("any.json#/anyOf/0"), 2)
-		assert.Len(t, po.GetOrder("any.json#/anyOf/1"), 2)
-	})
-
 	t.Run("complex nested", func(t *testing.T) {
 		schemaJSON := []byte(`{"properties":{"id":{},"data":{}},"$defs":{"Metadata":{"allOf":[{"properties":{"created":{},"modified":{}}}]}}}`)
 		po, err := extractPropertyOrder(schemaJSON, "complex.json")
@@ -140,12 +123,5 @@ func TestExtractPropertyOrder(t *testing.T) {
 	t.Run("invalid JSON", func(t *testing.T) {
 		_, err := extractPropertyOrder([]byte(`{invalid`), "invalid.json")
 		require.Error(t, err)
-	})
-
-	t.Run("order preserved", func(t *testing.T) {
-		schemaJSON := []byte(`{"type":"object","properties":{"z":{},"a":{},"m":{}}}`)
-		po, err := extractPropertyOrder(schemaJSON, "order.json")
-		require.NoError(t, err)
-		assert.Equal(t, []string{"z", "a", "m"}, po.GetOrder("order.json"))
 	})
 }

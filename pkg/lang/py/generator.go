@@ -50,56 +50,7 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	}))
 	sb.WriteString("from __future__ import annotations\n\n")
 
-	// Reset and scan for imports from these specific types
-	g.imports = make(map[string]bool)
-	g.needsAny = false
-
-	// Check if we need BaseModel (any struct or class type)
-	hasStructTypes := false
-	for _, typ := range types {
-		switch typ.Kind {
-		case typegraph.KindStruct:
-			hasStructTypes = true
-			for _, field := range typ.Fields {
-				g.checkTypeRefForImports(field.Type)
-				if needsField(field, g.fieldNeedsAlias(field)) {
-					g.imports["pydantic_field"] = true
-				}
-			}
-		case typegraph.KindUnion:
-			g.needsAny = true
-		case typegraph.KindPrimitive:
-			if typ.Primitive == typegraph.PrimUnknown {
-				g.needsAny = true
-			}
-		case typegraph.KindEnum:
-			category := enumutil.AnalyzeEnumValues(typ.EnumValues)
-			if category.HasMixed {
-				g.imports["typing_literal"] = true
-			} else if category.AllNumbers {
-				g.imports["enum_int"] = true
-			} else {
-				g.imports["enum"] = true
-			}
-		}
-	}
-
-	// Always import BaseModel if we have struct types
-	if hasStructTypes {
-		g.imports["pydantic"] = true
-
-		// Check if we need ConfigDict for additionalProperties
-		if g.config.AllowExtraFields {
-			for _, typ := range types {
-				if typ.Kind == typegraph.KindStruct && typ.AdditionalProps != nil && typ.AdditionalProps.Allowed {
-					g.imports["pydantic_config"] = true
-					break
-				}
-			}
-		}
-	}
-
-	// Write standard library and typing imports
+	g.scanTypesForImports(types)
 	sb.WriteString(g.generateImports())
 
 	// Write relative imports from other files
@@ -138,7 +89,57 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, fileImports []typegrap
 	return sb.String(), nil
 }
 
-// generateImports generates the import statements.
+func (g *Generator) scanTypesForImports(types []*typegraph.Type) {
+	g.imports = make(map[string]bool)
+	g.needsAny = false
+
+	hasStructTypes := false
+	for _, typ := range types {
+		switch typ.Kind {
+		case typegraph.KindStruct:
+			hasStructTypes = true
+			for _, field := range typ.Fields {
+				g.checkTypeRefForImports(field.Type)
+				if needsField(field, g.fieldNeedsAlias(field)) {
+					g.imports["pydantic_field"] = true
+				}
+			}
+		case typegraph.KindUnion:
+			g.needsAny = true
+		case typegraph.KindPrimitive:
+			if typ.Primitive == typegraph.PrimUnknown {
+				g.needsAny = true
+			}
+		case typegraph.KindEnum:
+			category := enumutil.AnalyzeEnumValues(typ.EnumValues)
+			if category.HasMixed {
+				g.imports["typing_literal"] = true
+			} else if category.AllNumbers {
+				g.imports["enum_int"] = true
+			} else {
+				g.imports["enum"] = true
+			}
+		}
+	}
+
+	if !hasStructTypes {
+		return
+	}
+
+	g.imports["pydantic"] = true
+
+	if !g.config.AllowExtraFields {
+		return
+	}
+
+	for _, typ := range types {
+		if typ.Kind == typegraph.KindStruct && typ.AdditionalProps != nil && typ.AdditionalProps.Allowed {
+			g.imports["pydantic_config"] = true
+			return
+		}
+	}
+}
+
 func (g *Generator) generateImports() string {
 	var sb strings.Builder
 
@@ -250,21 +251,13 @@ func sanitizePythonIdentifier(s string) string {
 	var result strings.Builder
 	for i, r := range s {
 		if i == 0 {
-			// First character must be letter or underscore
 			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' {
 				result.WriteRune(r)
 			} else if r >= '0' && r <= '9' {
-				// Starts with number - prefix with "field_"
 				result.WriteString("field_")
 				result.WriteRune(r)
 			} else {
-				// Starts with special char - prefix with "field_"
-				result.WriteString("field_")
-				if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
-					result.WriteRune(r)
-				} else {
-					result.WriteRune('_')
-				}
+				result.WriteString("field__")
 			}
 		} else {
 			// Subsequent characters can be letter, digit, or underscore
@@ -286,10 +279,7 @@ func sanitizePythonIdentifier(s string) string {
 	return sanitized
 }
 
-// escapeDocstring escapes triple quotes in Python docstrings to prevent syntax errors.
-// Python docstrings are delimited by """ and any """ inside must be escaped.
 func escapeDocstring(s string) string {
-	// Escape triple double quotes to prevent premature docstring termination
 	return strings.ReplaceAll(s, `"""`, `\"\"\"`)
 }
 
@@ -340,69 +330,47 @@ func (g *Generator) generateClass(typ *typegraph.Type) (string, error) {
 		sb.WriteString("    model_config = ConfigDict(extra='allow')\n\n")
 	}
 
-	// Fields
-	if len(typ.Fields) == 0 && len(typ.Extends) > 0 {
-		// If we have no fields but extend other types, use pass
-		sb.WriteString("    pass\n")
-	} else if len(typ.Fields) == 0 {
+	if len(typ.Fields) == 0 {
 		sb.WriteString("    pass\n")
 	} else {
 		for _, field := range typ.Fields {
-			pyType := g.typeRefToPython(field.Type, !field.Required)
-
-			// Determine field name (snake_case if flag is enabled)
-			fieldName := field.JSONName
-			needsAlias := false
-
-			// Sanitize field name to be a valid Python identifier
-			sanitized := sanitizePythonIdentifier(field.JSONName)
-			if sanitized != field.JSONName {
-				fieldName = sanitized
-				needsAlias = true
-			}
-
-			if g.config.SnakeCaseField {
-				snakeName := naming.ToSnakeCase(fieldName)
-				if snakeName != fieldName {
-					fieldName = snakeName
-					needsAlias = true
-				}
-			}
-
-			// Build Field() parameters (empty if not needed)
-			fieldParams := g.buildFieldParams(field, field.Required, needsAlias, field.JSONName)
-
-			if len(fieldParams) > 0 {
-				// Use Field() with constraints
-				fmt.Fprintf(&sb, "    %s: %s = Field(%s)\n",
-					fieldName, pyType, strings.Join(fieldParams, ", "))
-			} else {
-				// Simple field without Field()
-				if field.Required {
-					fmt.Fprintf(&sb, "    %s: %s\n", fieldName, pyType)
-				} else {
-					fmt.Fprintf(&sb, "    %s: %s = None\n", fieldName, pyType)
-				}
-			}
+			g.renderField(&sb, field)
 		}
 	}
 
 	return sb.String(), nil
 }
 
-// sanitizeEnumMemberName ensures the enum member name is a valid Python identifier.
-// Numeric names like "1", "2" are prefixed with "N_" to become "N_1", "N_2".
-func sanitizeEnumMemberName(name string) string {
-	if len(name) == 0 {
-		return "EMPTY"
+func (g *Generator) renderField(sb *strings.Builder, field *typegraph.Field) {
+	pyType := g.typeRefToPython(field.Type, !field.Required)
+
+	fieldName := field.JSONName
+	needsAlias := false
+
+	sanitized := sanitizePythonIdentifier(field.JSONName)
+	if sanitized != field.JSONName {
+		fieldName = sanitized
+		needsAlias = true
 	}
 
-	// Check if name starts with a digit
-	if name[0] >= '0' && name[0] <= '9' {
-		return "N_" + name
+	if g.config.SnakeCaseField {
+		snakeName := naming.ToSnakeCase(fieldName)
+		if snakeName != fieldName {
+			fieldName = snakeName
+			needsAlias = true
+		}
 	}
 
-	return name
+	fieldParams := g.buildFieldParams(field, field.Required, needsAlias, field.JSONName)
+
+	if len(fieldParams) > 0 {
+		fmt.Fprintf(sb, "    %s: %s = Field(%s)\n",
+			fieldName, pyType, strings.Join(fieldParams, ", "))
+	} else if field.Required {
+		fmt.Fprintf(sb, "    %s: %s\n", fieldName, pyType)
+	} else {
+		fmt.Fprintf(sb, "    %s: %s = None\n", fieldName, pyType)
+	}
 }
 
 // generateEnum generates a Python Enum class or Literal type alias.
@@ -442,7 +410,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 
 		// Enum values
 		for _, val := range typ.EnumValues {
-			memberName := sanitizeEnumMemberName(val.Name)
+			memberName := naming.SanitizeEnumMember(val.Name)
 			switch v := val.Value.(type) {
 			case float64:
 				fmt.Fprintf(&sb, "    %s = %d\n", memberName, int(v))
@@ -464,7 +432,7 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 	// Enum values
 	for _, val := range typ.EnumValues {
 		if strVal, ok := val.Value.(string); ok {
-			memberName := sanitizeEnumMemberName(val.Name)
+			memberName := naming.SanitizeEnumMember(val.Name)
 			fmt.Fprintf(&sb, "    %s = %q\n", memberName, strVal)
 		}
 	}

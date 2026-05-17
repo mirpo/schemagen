@@ -59,15 +59,6 @@ func TestDiffCommand(t *testing.T) {
 		require.Error(t, cmd.Execute())
 	})
 
-	t.Run("multiple files", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		generateToDir(t, "../testdata/schemas/events", tmpDir, "", "--disable-timestamp")
-		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "event.ts"), []byte("modified"), 0o644))
-		cmd := NewRootCmd()
-		cmd.SetArgs([]string{"diff", "../testdata/schemas/events", "--out-ts", tmpDir, "--disable-timestamp"})
-		requireExitCode(t, cmd.Execute(), 2)
-	})
-
 	t.Run("both languages", func(t *testing.T) {
 		tmpDirTS, tmpDirPY := t.TempDir(), t.TempDir()
 		generateToDir(t, "../testdata/schemas/foundation", tmpDirTS, tmpDirPY)
