@@ -308,4 +308,3 @@ func TestRun_GoAlwaysExtractsInline(t *testing.T) {
 
 	assert.NotContains(t, string(data), "map[string]interface{}")
 }
-

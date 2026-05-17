@@ -195,6 +195,18 @@ func ToGoFieldName(name string) string {
 	return pascal
 }
 
+// SanitizeEnumMember ensures an enum member name is a valid identifier.
+// Numeric names like "1", "2" are prefixed with "N_" to become "N_1", "N_2".
+func SanitizeEnumMember(name string) string {
+	if name == "" {
+		return "EMPTY"
+	}
+	if name[0] >= '0' && name[0] <= '9' {
+		return "N_" + name
+	}
+	return name
+}
+
 // isValidGoIdentifier checks if a string is a valid Go identifier.
 func isValidGoIdentifier(s string) bool {
 	if s == "" {

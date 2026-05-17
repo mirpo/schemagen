@@ -64,41 +64,45 @@ func extractConstraints(field *Field, sch *jsonschema.Schema) {
 	}
 }
 
+// filterOrderedKeys returns ordered filtered to only keys present in existing,
+// then appends any extra keys from existing not in ordered (sorted).
+func filterOrderedKeys[V any](ordered []string, existing map[string]V) []string {
+	if len(ordered) == 0 {
+		return slices.Sorted(maps.Keys(existing))
+	}
+
+	remaining := make(map[string]V, len(existing))
+	for k, v := range existing {
+		remaining[k] = v
+	}
+
+	result := make([]string, 0, len(ordered))
+	for _, key := range ordered {
+		if _, ok := remaining[key]; ok {
+			result = append(result, key)
+			delete(remaining, key)
+		}
+	}
+
+	if len(remaining) > 0 {
+		result = append(result, slices.Sorted(maps.Keys(remaining))...)
+	}
+
+	return result
+}
+
 func getOrderedPropertyNames(properties *jsonschema.SchemaMap, schemaPath string, order *schema.PropertyOrder) []string {
 	if properties == nil {
 		return nil
 	}
 
-	// Try to get order from extracted property order
 	if order != nil {
 		if ordered := order.GetOrder(schemaPath); len(ordered) > 0 {
-			// Filter to only include keys that exist in the properties map
-			mapKeys := make(map[string]bool)
-			for key := range *properties {
-				mapKeys[key] = true
-			}
-
-			result := make([]string, 0, len(ordered))
-			for _, key := range ordered {
-				if mapKeys[key] {
-					result = append(result, key)
-					delete(mapKeys, key)
-				}
-			}
-
-			// Add any keys not in order (shouldn't happen, but be safe)
-			if len(mapKeys) > 0 {
-				extra := slices.Sorted(maps.Keys(mapKeys))
-				result = append(result, extra...)
-			}
-
-			return result
+			return filterOrderedKeys(ordered, *properties)
 		}
 	}
 
-	// Fallback to alphabetical sorting for backward compatibility
-	names := slices.Sorted(maps.Keys(*properties))
-	return names
+	return slices.Sorted(maps.Keys(*properties))
 }
 
 func buildFieldsFromSchema(ctx *buildContext, sch *jsonschema.Schema, orderPath string, buildTypeRef func(*buildContext, *jsonschema.Schema, string) *TypeRef) []*Field {

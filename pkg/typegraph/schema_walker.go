@@ -2,8 +2,6 @@ package typegraph
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	"github.com/kaptinlin/jsonschema"
 	"github.com/mirpo/schemagen/pkg/naming"
@@ -12,35 +10,13 @@ import (
 
 // getOrderedDefNames returns $defs names in original schema order.
 func (w *schemaWalker) getOrderedDefNames(s *schema.Schema, defs map[string]*jsonschema.Schema) []string {
-	// PropertyOrder may be nil in tests that create schemas manually
 	if s.PropertyOrder == nil {
-		return slices.Sorted(maps.Keys(defs))
+		return filterOrderedKeys(nil, defs)
 	}
 
 	defsPath := s.RelativePath + "#/$defs"
 	ordered := s.PropertyOrder.GetDefsOrder(defsPath)
-
-	// Filter to only include keys that exist in defs (defensive)
-	mapKeys := make(map[string]bool)
-	for key := range defs {
-		mapKeys[key] = true
-	}
-
-	result := make([]string, 0, len(ordered))
-	for _, key := range ordered {
-		if mapKeys[key] {
-			result = append(result, key)
-			delete(mapKeys, key)
-		}
-	}
-
-	// Add any keys not in order (shouldn't happen, but be safe)
-	if len(mapKeys) > 0 {
-		extra := slices.Sorted(maps.Keys(mapKeys))
-		result = append(result, extra...)
-	}
-
-	return result
+	return filterOrderedKeys(ordered, defs)
 }
 
 type typeBuilder interface {

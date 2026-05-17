@@ -490,4 +490,3 @@ func TestHelpers_FormatNumber(t *testing.T) {
 		assert.Equal(t, tt.expected, formatNumber(tt.input))
 	}
 }
-

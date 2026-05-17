@@ -54,7 +54,6 @@ func (r *refResolver) extractTypeName(ref string) string {
 }
 
 func (r *refResolver) deriveTypeName(refSchema *jsonschema.Schema, refURI string) string {
-	// Try to get the title from the schema - use as-is if already PascalCase
 	if refSchema.Title != nil && *refSchema.Title != "" {
 		title := *refSchema.Title
 		if naming.IsPascalCase(title) {
@@ -63,21 +62,9 @@ func (r *refResolver) deriveTypeName(refSchema *jsonschema.Schema, refURI string
 		return naming.ToPascalCase(title)
 	}
 
-	// Fall back to deriving from the URI
 	if refURI != "" {
-		name := refURI
-		if lastSlash := len(refURI) - 1; lastSlash >= 0 {
-			for i := len(refURI) - 1; i >= 0; i-- {
-				if refURI[i] == '/' {
-					name = refURI[i+1:]
-					break
-				}
-			}
-		}
-
-		// Remove .json extension
+		name := filepath.Base(refURI)
 		name = strings.TrimSuffix(name, constants.ExtJSON)
-
 		return naming.ToPascalCase(name)
 	}
 
@@ -85,53 +72,35 @@ func (r *refResolver) deriveTypeName(refSchema *jsonschema.Schema, refURI string
 }
 
 // normalizeRefPath normalizes a $ref path for schema lookup.
-// Handles various relative path formats: "./", "../", "../../", etc.
-// Returns multiple normalized variants to try during schema lookup.
+// Returns deduplicated variants to try during schema lookup.
 func normalizeRefPath(ref string) []string {
-	variants := []string{ref} // Always try original first
+	seen := make(map[string]bool)
+	variants := []string{ref}
+	seen[ref] = true
 
-	// Clean the path to normalize "./" "../" etc using Go's filepath
-	cleaned := filepath.Clean(ref)
-	if cleaned != ref {
-		variants = append(variants, cleaned)
-	}
-
-	// Convert to forward slashes (schemas registered with ToSlash)
-	slashed := filepath.ToSlash(cleaned)
-	if slashed != cleaned && slashed != ref {
-		variants = append(variants, slashed)
-	}
-
-	// Try without "./" prefix if present
-	if strings.HasPrefix(ref, "./") {
-		withoutDot := strings.TrimPrefix(ref, "./")
-		variants = append(variants, withoutDot)
-
-		// Also try cleaned version without "./"
-		cleanedWithoutDot := filepath.Clean(withoutDot)
-		if cleanedWithoutDot != withoutDot {
-			variants = append(variants, cleanedWithoutDot)
+	add := func(v string) {
+		if v != "" && !seen[v] {
+			seen[v] = true
+			variants = append(variants, v)
 		}
 	}
 
-	// Try stripping "../" and "../../" prefixes
+	cleaned := filepath.Clean(ref)
+	add(cleaned)
+	add(filepath.ToSlash(cleaned))
+
+	if strings.HasPrefix(ref, "./") {
+		add(strings.TrimPrefix(ref, "./"))
+	}
+
 	stripped := ref
 	for strings.HasPrefix(stripped, "../") {
 		stripped = strings.TrimPrefix(stripped, "../")
 	}
-	if stripped != ref && stripped != "" {
-		variants = append(variants, stripped)
+	add(stripped)
 
-		// Also try cleaned version of stripped
-		cleanedStripped := filepath.Clean(stripped)
-		if cleanedStripped != stripped {
-			variants = append(variants, cleanedStripped)
-		}
-	}
-
-	// Try adding "./" prefix if not present and not starting with "../"
 	if !strings.HasPrefix(ref, "./") && !strings.HasPrefix(ref, "../") {
-		variants = append(variants, "./"+ref)
+		add("./" + ref)
 	}
 
 	return variants

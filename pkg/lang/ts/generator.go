@@ -9,6 +9,7 @@ import (
 	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/lang/ts/zod"
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
+	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/typegraph"
 )
 
@@ -61,62 +62,18 @@ func NewGeneratorWithConfig(cfg *Config) *Generator {
 func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.ImportSpec) (string, error) {
 	var sb strings.Builder
 
-	// Header
 	sb.WriteString(common.GenerateHeader(common.HeaderConfig{
 		CommentPrefix:    common.CommentPrefixSlash,
 		DisableHeaders:   g.config.DisableHeaders,
 		DisableTimestamp: g.config.DisableTimestamp,
 	}))
 
-	// Add Zod import if generating Zod schemas
 	if g.config.ZodMode != ZodModeOff {
 		sb.WriteString("import { z } from 'zod';\n\n")
 	}
 
-	// Generate type imports (for interfaces or schema references)
-	if len(imports) > 0 {
-		for _, imp := range imports {
-			if len(imp.TypeNames) == 0 {
-				continue
-			}
+	g.writeImports(&sb, imports)
 
-			sort.Strings(imp.TypeNames)
-
-			switch g.config.ZodMode {
-			case ZodModeOnly:
-				// Import schemas only (types are inferred)
-				schemaNames := make([]string, len(imp.TypeNames))
-				for i, name := range imp.TypeNames {
-					schemaNames[i] = name + "Schema"
-				}
-				fmt.Fprintf(&sb, "import { %s } from '%s';\n",
-					strings.Join(schemaNames, ", "),
-					imp.ImportPath)
-
-			case ZodModeWithInterface:
-				// Import both types (for interfaces) and schemas (for Zod)
-				fmt.Fprintf(&sb, "import type { %s } from '%s';\n",
-					strings.Join(imp.TypeNames, ", "),
-					imp.ImportPath)
-				schemaNames := make([]string, len(imp.TypeNames))
-				for i, name := range imp.TypeNames {
-					schemaNames[i] = name + "Schema"
-				}
-				fmt.Fprintf(&sb, "import { %s } from '%s';\n",
-					strings.Join(schemaNames, ", "),
-					imp.ImportPath)
-
-			default:
-				// ZodModeOff - import types only
-				fmt.Fprintf(&sb, "import type { %s } from '%s';\n",
-					strings.Join(imp.TypeNames, ", "),
-					imp.ImportPath)
-			}
-		}
-		sb.WriteString("\n")
-	}
-
-	// Create Zod emitter if needed
 	var zodEmitter *zod.Emitter
 	if g.config.ZodMode != ZodModeOff {
 		zodEmitter = zod.NewEmitter(&zod.Config{
@@ -125,41 +82,87 @@ func (g *Generator) GenerateFile(types []*typegraph.Type, imports []typegraph.Im
 		})
 	}
 
-	// Generate types (preserving input order for correct schema references)
 	for i, typ := range types {
 		if i > 0 {
 			sb.WriteString("\n\n")
 		}
 
-		switch g.config.ZodMode {
-		case ZodModeOff:
-			// Generate only interfaces
-			code, err := g.generateType(typ)
-			if err != nil {
-				return "", err
-			}
-			sb.WriteString(code)
-
-		case ZodModeWithInterface:
-			// Generate interface first
-			code, err := g.generateType(typ)
-			if err != nil {
-				return "", err
-			}
-			sb.WriteString(code)
-			// Then generate Zod schema
-			sb.WriteString("\n\n")
-			sb.WriteString(zodEmitter.GenerateSchema(typ))
-
-		case ZodModeOnly:
-			// Generate only Zod schema with z.infer type
-			sb.WriteString(zodEmitter.GenerateSchemaWithInfer(typ))
+		if err := g.writeType(&sb, typ, zodEmitter); err != nil {
+			return "", err
 		}
 	}
 
-	// Add final newline at EOF
 	sb.WriteString("\n")
 	return sb.String(), nil
+}
+
+func (g *Generator) writeImports(sb *strings.Builder, imports []typegraph.ImportSpec) {
+	if len(imports) == 0 {
+		return
+	}
+
+	for _, imp := range imports {
+		if len(imp.TypeNames) == 0 {
+			continue
+		}
+
+		sort.Strings(imp.TypeNames)
+
+		switch g.config.ZodMode {
+		case ZodModeOnly:
+			schemaNames := toSchemaNames(imp.TypeNames)
+			fmt.Fprintf(sb, "import { %s } from '%s';\n",
+				strings.Join(schemaNames, ", "),
+				imp.ImportPath)
+
+		case ZodModeWithInterface:
+			fmt.Fprintf(sb, "import type { %s } from '%s';\n",
+				strings.Join(imp.TypeNames, ", "),
+				imp.ImportPath)
+			schemaNames := toSchemaNames(imp.TypeNames)
+			fmt.Fprintf(sb, "import { %s } from '%s';\n",
+				strings.Join(schemaNames, ", "),
+				imp.ImportPath)
+
+		default:
+			fmt.Fprintf(sb, "import type { %s } from '%s';\n",
+				strings.Join(imp.TypeNames, ", "),
+				imp.ImportPath)
+		}
+	}
+	sb.WriteString("\n")
+}
+
+func toSchemaNames(typeNames []string) []string {
+	names := make([]string, len(typeNames))
+	for i, name := range typeNames {
+		names[i] = name + "Schema"
+	}
+	return names
+}
+
+func (g *Generator) writeType(sb *strings.Builder, typ *typegraph.Type, zodEmitter *zod.Emitter) error {
+	switch g.config.ZodMode {
+	case ZodModeOff:
+		code, err := g.generateType(typ)
+		if err != nil {
+			return err
+		}
+		sb.WriteString(code)
+
+	case ZodModeWithInterface:
+		code, err := g.generateType(typ)
+		if err != nil {
+			return err
+		}
+		sb.WriteString(code)
+		sb.WriteString("\n\n")
+		sb.WriteString(zodEmitter.GenerateSchema(typ))
+
+	case ZodModeOnly:
+		sb.WriteString(zodEmitter.GenerateSchemaWithInfer(typ))
+	}
+	return nil
 }
 
 // generateType generates code for a single type.
@@ -304,18 +307,12 @@ func (g *Generator) generateEnum(typ *typegraph.Type) (string, error) {
 		sb.WriteString(strings.Join(values, " | "))
 		sb.WriteString(";")
 	} else {
-		// For numeric-only enums, use actual enum (though less common in TS)
 		fmt.Fprintf(&sb, "export enum %s {\n", typ.Name)
 		for i, val := range typ.EnumValues {
 			if i > 0 {
 				sb.WriteString(",\n")
 			}
-			// Sanitize enum member name (prefix numeric names with N_)
-			memberName := val.Name
-			if len(memberName) > 0 && memberName[0] >= '0' && memberName[0] <= '9' {
-				memberName = "N_" + memberName
-			}
-			fmt.Fprintf(&sb, "  %s = %v", memberName, val.Value)
+			fmt.Fprintf(&sb, "  %s = %v", naming.SanitizeEnumMember(val.Name), val.Value)
 		}
 		sb.WriteString("\n}")
 	}

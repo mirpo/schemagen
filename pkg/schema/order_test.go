@@ -124,5 +124,4 @@ func TestExtractPropertyOrder(t *testing.T) {
 		_, err := extractPropertyOrder([]byte(`{invalid`), "invalid.json")
 		require.Error(t, err)
 	})
-
 }
