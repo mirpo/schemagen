@@ -1412,6 +1412,48 @@ func TestBuild_ProcessedTypesGuard_SetBeforeRecursion(t *testing.T) {
 	assert.Equal(t, KindEnum, tm["Status2"].Kind)
 }
 
+// ==================== Warnings ====================
+
+func TestBuild_Warnings_EmptyGraph(t *testing.T) {
+	g := buildOne(t, "Empty", `{}`, BuildConfig{})
+	assert.Empty(t, g.Types)
+	require.NotEmpty(t, g.Warnings, "empty schema that produces no type should warn")
+}
+
+func TestBuild_Warnings_UnresolvedRef(t *testing.T) {
+	g := buildOne(t, "Root", `{
+		"type": "object",
+		"properties": {
+			"other": {"$ref": "./nonexistent/schema.json"}
+		}
+	}`, BuildConfig{})
+
+	require.NotEmpty(t, g.Warnings, "unresolved external $ref should produce a warning")
+	assert.Contains(t, g.Warnings[0], "nonexistent/schema.json")
+}
+
+func TestBuild_Warnings_NormalSchemaNoWarnings(t *testing.T) {
+	g := buildOne(t, "User", `{
+		"type": "object",
+		"properties": {
+			"name": {"type": "string"},
+			"age": {"type": "integer"}
+		}
+	}`, BuildConfig{})
+
+	require.NotEmpty(t, g.Types)
+	assert.Empty(t, g.Warnings, "valid schema should produce no warnings")
+}
+
+func TestBuild_Warnings_BooleanSchemaFalse(t *testing.T) {
+	node, err := parse.ParseJSON(strings.NewReader(`false`))
+	require.NoError(t, err)
+	ns := &parse.NamedSchema{Name: "Forbidden", Schema: node}
+	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
+	require.NoError(t, err)
+	require.NotEmpty(t, g.Warnings, "boolean false schema produces no type — should warn")
+}
+
 // ==================== AllOf root required merge ====================
 
 func TestBuild_AllOfRootRequired(t *testing.T) {

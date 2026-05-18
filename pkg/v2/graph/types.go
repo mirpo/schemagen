@@ -135,6 +135,7 @@ type ImportSpec struct {
 
 type Graph struct {
 	Types     []*Type
+	Warnings  []string
 	typeIndex map[string]*Type
 }
 

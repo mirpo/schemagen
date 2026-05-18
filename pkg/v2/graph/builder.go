@@ -37,6 +37,7 @@ func Build(schemas []*parse.NamedSchema, cfg BuildConfig) (*Graph, error) {
 		b.buildType(rootName, ns.Schema, ns.Name)
 	}
 
+	g.Warnings = b.warnings
 	return g, nil
 }
 
@@ -46,6 +47,11 @@ type builder struct {
 	globalDefs     map[string]*parse.SchemaNode
 	processedTypes map[string]bool
 	schemaNames    map[string]string
+	warnings       []string
+}
+
+func (b *builder) warn(format string, args ...any) {
+	b.warnings = append(b.warnings, fmt.Sprintf(format, args...))
 }
 
 func (b *builder) registerSchemaName(ns *parse.NamedSchema) {
@@ -109,6 +115,8 @@ func (b *builder) buildType(name string, node *parse.SchemaNode, rootName string
 			Kind:      KindPrimitive,
 			Primitive: mapPrimitive(node.Type.Single(), node.Format),
 		})
+	default:
+		b.warn("schema %q did not produce a type (no recognizable structure)", name)
 	}
 }
 
@@ -341,6 +349,7 @@ func (b *builder) resolveRefName(ref string, rootName string) string {
 		}
 	}
 
+	b.warn("$ref %q could not be resolved to a known schema; using filename-derived name", ref)
 	base := path.Base(ref)
 	name := strings.TrimSuffix(base, path.Ext(base))
 	return naming.ToPascalCase(name)

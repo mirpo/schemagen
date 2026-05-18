@@ -21,6 +21,10 @@ func Run(cfg *Config) error {
 		return err
 	}
 
+	for _, w := range g.Warnings {
+		log.Warn().Str("language", string(cfg.Language)).Msg(w)
+	}
+
 	log.Debug().
 		Str("language", string(cfg.Language)).
 		Int("types", len(g.Types)).
