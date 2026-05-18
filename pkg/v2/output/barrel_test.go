@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mirpo/schemagen/pkg/constants"
 )
 
 func TestGenerateNestedBarrels_Minimal(t *testing.T) {
@@ -15,7 +17,7 @@ func TestGenerateNestedBarrels_Minimal(t *testing.T) {
 		{RelativePath: filepath.Join("a", "b", "file2.ts")},
 	}
 
-	barrels := GenerateNestedBarrels(files, "ts")
+	barrels := GenerateNestedBarrels(files, constants.LanguageTypeScript)
 
 	require.Len(t, barrels, 3)
 
@@ -36,7 +38,7 @@ func TestGenerateNestedBarrels_SkipExistingBarrels(t *testing.T) {
 		{RelativePath: "a/file.ts"},
 	}
 
-	barrels := GenerateNestedBarrels(files, "ts")
+	barrels := GenerateNestedBarrels(files, constants.LanguageTypeScript)
 
 	require.Len(t, barrels, 1)
 	assert.ElementsMatch(
@@ -53,8 +55,58 @@ func TestGenerateBarrelContent_TypeScript(t *testing.T) {
 		Exports: []string{"a", "b"},
 	}
 
-	out := GenerateBarrelContent(barrel, "ts")
+	out := GenerateBarrelContent(barrel, constants.LanguageTypeScript)
 
 	assert.Contains(t, out, "export * from './a';")
 	assert.Contains(t, out, "export * from './b';")
+}
+
+func TestGenerateBarrelContent_Python(t *testing.T) {
+	barrel := BarrelFile{
+		Path:    "__init__.py",
+		Exports: []string{"user_model", "product"},
+	}
+
+	out := GenerateBarrelContent(barrel, constants.LanguagePython)
+
+	assert.Contains(t, out, "from .user_model import *")
+	assert.Contains(t, out, "from .product import *")
+	assert.Contains(t, out, "#")
+}
+
+func TestGenerateBarrelContent_UnsupportedLanguage(t *testing.T) {
+	barrel := BarrelFile{
+		Path:    "barrel.go",
+		Exports: []string{"a"},
+	}
+
+	out := GenerateBarrelContent(barrel, constants.LanguageGo)
+	assert.Empty(t, out)
+}
+
+func TestGenerateNestedBarrels_Python(t *testing.T) {
+	files := []OutputFile{
+		{RelativePath: "user.py"},
+		{RelativePath: filepath.Join("models", "product.py")},
+	}
+
+	barrels := GenerateNestedBarrels(files, constants.LanguagePython)
+	require.NotEmpty(t, barrels)
+
+	found := map[string][]string{}
+	for _, b := range barrels {
+		found[b.Path] = b.Exports
+	}
+
+	assert.ElementsMatch(t, []string{"user"}, found["__init__.py"])
+	assert.ElementsMatch(t, []string{"product"}, found[filepath.Join("models", "__init__.py")])
+}
+
+func TestGenerateNestedBarrels_UnsupportedLanguage(t *testing.T) {
+	files := []OutputFile{
+		{RelativePath: "models.go"},
+	}
+
+	barrels := GenerateNestedBarrels(files, constants.LanguageGo)
+	assert.Nil(t, barrels)
 }

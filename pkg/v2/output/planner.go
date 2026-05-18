@@ -59,7 +59,7 @@ type BarrelFile struct {
 	Exports []string
 }
 
-func PlanOutput(g *graph.Graph, schemas []parse.NamedSchema, strategy OutputStrategy, language string, bundleName string) (*OutputPlan, error) {
+func PlanOutput(g *graph.Graph, schemas []parse.NamedSchema, strategy OutputStrategy, language constants.Language, bundleName string) (*OutputPlan, error) {
 	typeSourceMap := buildTypeSourceMap(schemas)
 
 	switch strategy {
@@ -104,8 +104,8 @@ func extractTypesFromSchema(s *parse.NamedSchema) []string {
 	return types
 }
 
-func planBundle(g *graph.Graph, language string, bundleName string) *OutputPlan {
-	ext := constants.GetExtension(language)
+func planBundle(g *graph.Graph, language constants.Language, bundleName string) *OutputPlan {
+	ext := constants.GetExtension(string(language))
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
 	return &OutputPlan{
@@ -120,7 +120,7 @@ func planBundle(g *graph.Graph, language string, bundleName string) *OutputPlan 
 	}
 }
 
-func planMultiFile(g *graph.Graph, schemas []parse.NamedSchema, typeSourceMap map[string]*parse.NamedSchema, language string) *OutputPlan {
+func planMultiFile(g *graph.Graph, schemas []parse.NamedSchema, typeSourceMap map[string]*parse.NamedSchema, language constants.Language) *OutputPlan {
 	schemaFiles := make(map[string]*OutputFile)
 
 	for i := range schemas {
@@ -171,12 +171,12 @@ func markOrphanedTypes(typ *graph.Type, g *graph.Graph, typeSourceMap map[string
 	})
 }
 
-func planBundleDeps(g *graph.Graph, schemas []parse.NamedSchema, typeSourceMap map[string]*parse.NamedSchema, language string, bundleName string) *OutputPlan {
+func planBundleDeps(g *graph.Graph, schemas []parse.NamedSchema, typeSourceMap map[string]*parse.NamedSchema, language constants.Language, bundleName string) *OutputPlan {
 	if len(schemas) == 0 {
 		return &OutputPlan{}
 	}
 
-	ext := constants.GetExtension(language)
+	ext := constants.GetExtension(string(language))
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
 	rootSchema := &schemas[0]
@@ -249,13 +249,13 @@ func walkReachableTypes(typ *graph.Type, g *graph.Graph, shouldVisit func(string
 	}
 }
 
-func convertSchemaPathToOutputForLanguage(schemaPath string, language string) string {
-	ext := constants.GetExtension(language)
+func convertSchemaPathToOutputForLanguage(schemaPath string, language constants.Language) string {
+	ext := constants.GetExtension(string(language))
 	dir := filepath.Dir(schemaPath)
 	base := filepath.Base(schemaPath)
 	nameWithoutExt := stripExtension(base)
 
-	if constants.IsPython(language) {
+	if constants.IsPython(string(language)) {
 		nameWithoutExt = strings.ReplaceAll(nameWithoutExt, "-", "_")
 	}
 

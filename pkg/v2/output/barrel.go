@@ -10,11 +10,10 @@ import (
 )
 
 func GenerateBarrelContent(barrel BarrelFile, language constants.Language) string {
-	barrelName := constants.GetBarrelFileName(string(language))
-	switch barrelName {
-	case "index.ts":
+	switch language {
+	case constants.LanguageTypeScript:
 		return generateTypeScriptBarrel(barrel)
-	case "__init__.py":
+	case constants.LanguagePython:
 		return generatePythonBarrel(barrel)
 	default:
 		return ""

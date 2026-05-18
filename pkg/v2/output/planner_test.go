@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/v2/graph"
 	"github.com/mirpo/schemagen/pkg/v2/parse"
 )
@@ -45,6 +46,28 @@ func TestOutputStrategy_Set(t *testing.T) {
 	}
 }
 
+func TestParseStrategy(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected OutputStrategy
+	}{
+		{"bundle", "bundle", StrategyBundle},
+		{"multi-file", "multi-file", StrategyMultiFile},
+		{"multifile", "multifile", StrategyMultiFile},
+		{"bundle-deps", "bundle-deps", StrategyBundleDeps},
+		{"bundledeps", "bundledeps", StrategyBundleDeps},
+		{"invalid falls back to multi-file", "invalid", StrategyMultiFile},
+		{"empty falls back to multi-file", "", StrategyMultiFile},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, ParseStrategy(tt.input))
+		})
+	}
+}
+
 func TestPlanOutput_Bundle(t *testing.T) {
 	g := &graph.Graph{
 		Types: []*graph.Type{
@@ -57,7 +80,7 @@ func TestPlanOutput_Bundle(t *testing.T) {
 		g,
 		nil,
 		StrategyBundle,
-		"ts",
+		constants.LanguageTypeScript,
 		"models",
 	)
 
@@ -94,7 +117,7 @@ func TestPlanOutput_MultiFile_Basic(t *testing.T) {
 		g,
 		[]parse.NamedSchema{userSchema, profileSchema},
 		StrategyMultiFile,
-		"ts",
+		constants.LanguageTypeScript,
 		"",
 	)
 
@@ -139,7 +162,7 @@ func TestPlanOutput_MultiFile_IncludesOrphanedTypes(t *testing.T) {
 		g,
 		[]parse.NamedSchema{userSchema},
 		StrategyMultiFile,
-		"ts",
+		constants.LanguageTypeScript,
 		"",
 	)
 
@@ -189,7 +212,7 @@ func TestPlanOutput_BundleDeps(t *testing.T) {
 		g,
 		[]parse.NamedSchema{childSchema},
 		StrategyBundleDeps,
-		"ts",
+		constants.LanguageTypeScript,
 		"bundle",
 	)
 
@@ -221,9 +244,7 @@ func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
 		},
 	}
 
-	g := &graph.Graph{
-		Types: []*graph.Type{circle, square, shape},
-	}
+	g := graph.NewGraph()
 	g.AddType(circle)
 	g.AddType(square)
 	g.AddType(shape)
@@ -237,7 +258,7 @@ func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
 		g,
 		[]parse.NamedSchema{shapeSchema},
 		StrategyBundleDeps,
-		"ts",
+		constants.LanguageTypeScript,
 		"bundle",
 	)
 
@@ -267,7 +288,7 @@ func TestPlanOutput_MultiFile_DeterministicOrder(t *testing.T) {
 
 	var firstOrder []string
 	for run := range 50 {
-		plan, err := PlanOutput(g, schemas, StrategyMultiFile, "ts", "")
+		plan, err := PlanOutput(g, schemas, StrategyMultiFile, constants.LanguageTypeScript, "")
 		require.NoError(t, err)
 		require.Len(t, plan.Files, 10)
 
@@ -296,7 +317,7 @@ func TestPlanOutput_BundleDeps_EmptySchemas(t *testing.T) {
 		g,
 		[]parse.NamedSchema{},
 		StrategyBundleDeps,
-		"ts",
+		constants.LanguageTypeScript,
 		"bundle",
 	)
 

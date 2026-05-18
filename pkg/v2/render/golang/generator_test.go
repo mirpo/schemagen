@@ -44,6 +44,9 @@ func field(json string, prim graph.PrimitiveKind, required bool) *graph.Field {
 	}
 }
 
+func intPtr(v int) *int           { return &v }
+func floatPtr(v float64) *float64 { return &v }
+
 /*
 1. Struct generation (core behavior)
 */
@@ -122,7 +125,60 @@ func TestGenerateEnum_Mixed(t *testing.T) {
 }
 
 /*
-3. Imports + validation
+3. Union generation
+*/
+
+func TestGenerateUnion(t *testing.T) {
+	g := gen(nil)
+
+	union := &graph.Type{
+		Name:        "Shape",
+		Kind:        graph.KindUnion,
+		Description: "A shape union",
+		UnionMembers: []*graph.TypeRef{
+			{Kind: graph.KindRef, TypeName: "Circle"},
+			{Kind: graph.KindRef, TypeName: "Square"},
+		},
+	}
+
+	out, err := g.generateUnion(union)
+	require.NoError(t, err)
+	assert.Contains(t, out, "type Shape = any")
+}
+
+func TestGenerateUnion_NoDescription(t *testing.T) {
+	g := gen(&Config{DisableComments: true})
+
+	union := &graph.Type{
+		Name: "Value",
+		Kind: graph.KindUnion,
+	}
+
+	out, err := g.generateUnion(union)
+	require.NoError(t, err)
+	assert.Contains(t, out, "type Value = any")
+	assert.NotContains(t, out, "//")
+}
+
+func TestGenerateFile_UnionInOutput(t *testing.T) {
+	g := gen(&Config{DisableHeaders: true})
+
+	union := &graph.Type{
+		Name: "Response",
+		Kind: graph.KindUnion,
+		UnionMembers: []*graph.TypeRef{
+			{Kind: graph.KindRef, TypeName: "Success"},
+			{Kind: graph.KindRef, TypeName: "Error"},
+		},
+	}
+
+	out, err := g.GenerateFile([]*graph.Type{union}, nil)
+	require.NoError(t, err)
+	assert.Contains(t, out, "type Response = any")
+}
+
+/*
+4. Imports + validation
 */
 
 func TestGenerateFile_ValidatorImport(t *testing.T) {
@@ -157,6 +213,123 @@ func TestFieldValidateTag_ExclusiveMinMax(t *testing.T) {
 	tag := g.fieldValidateTag(f)
 	assert.Contains(t, tag, "gt=0")
 	assert.Contains(t, tag, "lt=100")
+}
+
+func TestFieldValidateTag_Comprehensive(t *testing.T) {
+	g := gen(nil)
+
+	tests := []struct {
+		name     string
+		field    *graph.Field
+		expected string
+	}{
+		{
+			"required only",
+			&graph.Field{JSONName: "x", Required: true, Type: &graph.TypeRef{Kind: graph.KindPrimitive}},
+			"required",
+		},
+		{
+			"min/max length",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}, MinLength: intPtr(5), MaxLength: intPtr(100)},
+			"min=5,max=100",
+		},
+		{
+			"min/max numeric",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}, Minimum: floatPtr(0), Maximum: floatPtr(999)},
+			"gte=0,lte=999",
+		},
+		{
+			"min/max items",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindArray}, MinItems: intPtr(1), MaxItems: intPtr(10)},
+			"min=1,max=10",
+		},
+		{
+			"email format",
+			&graph.Field{JSONName: "x", Required: true, Type: &graph.TypeRef{Kind: graph.KindPrimitive, Format: "email"}},
+			"required,email",
+		},
+		{
+			"uri format",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive, Format: "uri"}},
+			"url",
+		},
+		{
+			"url format",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive, Format: "url"}},
+			"url",
+		},
+		{
+			"uuid format",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive, Format: "uuid"}},
+			"uuid",
+		},
+		{
+			"inline enum oneof strings",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{"a", "b", "c"}}},
+			"oneof=a b c",
+		},
+		{
+			"inline enum oneof numbers",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{float64(1), float64(2)}}},
+			"oneof=1 2",
+		},
+		{
+			"no constraints not required",
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}},
+			"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, g.fieldValidateTag(tt.field))
+		})
+	}
+}
+
+func TestFieldHasValidation(t *testing.T) {
+	tests := []struct {
+		name     string
+		field    *graph.Field
+		expected bool
+	}{
+		{
+			"required",
+			&graph.Field{Required: true},
+			true,
+		},
+		{
+			"has constraints",
+			&graph.Field{MinLength: intPtr(1)},
+			true,
+		},
+		{
+			"email format",
+			&graph.Field{Type: &graph.TypeRef{Format: "email"}},
+			true,
+		},
+		{
+			"enum values",
+			&graph.Field{Type: &graph.TypeRef{EnumValues: []any{"a"}}},
+			true,
+		},
+		{
+			"no validation",
+			&graph.Field{Type: &graph.TypeRef{Kind: graph.KindPrimitive}},
+			false,
+		},
+		{
+			"nil type no required",
+			&graph.Field{},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, fieldHasValidation(tt.field))
+		})
+	}
 }
 
 func TestFieldValidateTag_Pattern(t *testing.T) {
@@ -222,6 +395,39 @@ func TestGenerateFile_NilTypeRef(t *testing.T) {
 	assert.NotPanics(t, func() {
 		_, _ = g.GenerateFile([]*graph.Type{typ}, nil)
 	})
+}
+
+func TestTypeRefToGoType_KindCheckedBeforeTypeName(t *testing.T) {
+	g := gen(nil)
+
+	tests := []struct {
+		name     string
+		ref      *graph.TypeRef
+		expected string
+	}{
+		{
+			"KindRef with TypeName",
+			&graph.TypeRef{Kind: graph.KindRef, TypeName: "User"},
+			"User",
+		},
+		{
+			"KindArray with TypeName should produce slice",
+			&graph.TypeRef{Kind: graph.KindArray, TypeName: "ignored", ItemType: &graph.TypeRef{Kind: graph.KindRef, TypeName: "Item"}},
+			"[]Item",
+		},
+		{
+			"KindMap with TypeName should produce map",
+			&graph.TypeRef{Kind: graph.KindMap, TypeName: "ignored", ValueType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}},
+			"map[string]string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := g.typeRefToGoType(tt.ref)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestTypeRefToGoType_UsesAnyNotInterface(t *testing.T) {

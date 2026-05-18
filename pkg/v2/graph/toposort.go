@@ -60,18 +60,9 @@ func collectDeps(t *Type) map[string]bool {
 }
 
 func collectRefDeps(ref *TypeRef, deps map[string]bool) {
-	if ref == nil {
-		return
-	}
-	if ref.Kind == KindRef && ref.TypeName != "" {
-		deps[ref.TypeName] = true
-	}
-	collectRefDeps(ref.ItemType, deps)
-	collectRefDeps(ref.ValueType, deps)
-	for _, m := range ref.UnionMembers {
-		collectRefDeps(m, deps)
-	}
-	for _, f := range ref.ObjectFields {
-		collectRefDeps(f.Type, deps)
-	}
+	ref.Walk(func(r *TypeRef) {
+		if r.Kind == KindRef && r.TypeName != "" {
+			deps[r.TypeName] = true
+		}
+	})
 }

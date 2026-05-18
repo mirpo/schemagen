@@ -35,6 +35,14 @@ const (
 	KindInterface TypeKind = "interface"
 )
 
+type EnumKind string
+
+const (
+	EnumKindString EnumKind = "string"
+	EnumKindInt    EnumKind = "int"
+	EnumKindMixed  EnumKind = "mixed"
+)
+
 type Type struct {
 	Name        string
 	Kind        TypeKind
@@ -44,7 +52,7 @@ type Type struct {
 	Extends         []string
 	AdditionalProps *AdditionalPropsConfig
 
-	EnumType   string
+	EnumType   EnumKind
 	EnumValues []EnumValue
 
 	Primitive PrimitiveKind
@@ -108,6 +116,9 @@ func (ref *TypeRef) Walk(visitor func(*TypeRef)) {
 	for _, m := range ref.UnionMembers {
 		m.Walk(visitor)
 	}
+	for _, f := range ref.ObjectFields {
+		f.Type.Walk(visitor)
+	}
 }
 
 type EnumValue struct {
@@ -135,10 +146,10 @@ func NewGraph() *Graph {
 }
 
 func (g *Graph) AddType(t *Type) {
-	g.Types = append(g.Types, t)
-	if g.typeIndex == nil {
-		g.typeIndex = make(map[string]*Type)
+	if _, exists := g.typeIndex[t.Name]; exists {
+		return
 	}
+	g.Types = append(g.Types, t)
 	g.typeIndex[t.Name] = t
 }
 

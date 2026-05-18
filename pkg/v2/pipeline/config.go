@@ -27,6 +27,8 @@ const (
 	LanguageTypeScript = constants.LanguageTypeScript
 	LanguagePython     = constants.LanguagePython
 	LanguageGo         = constants.LanguageGo
+
+	DefaultBundleName = "types"
 )
 
 type TypeScriptConfig struct {

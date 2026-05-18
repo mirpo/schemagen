@@ -19,11 +19,12 @@ func (g *Generator) typeRefToGoType(ref *graph.TypeRef) string {
 		return "any"
 	}
 
-	if ref.TypeName != "" {
-		return ref.TypeName
-	}
-
 	switch ref.Kind {
+	case graph.KindRef:
+		if ref.TypeName != "" {
+			return ref.TypeName
+		}
+		return "any"
 	case graph.KindPrimitive, graph.KindEnum:
 		return primitiveToGo(ref.Primitive)
 	case graph.KindUnion:

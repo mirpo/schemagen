@@ -59,6 +59,79 @@ func TestValidateConfig(t *testing.T) {
 	})
 }
 
+func TestConfigFromFlags(t *testing.T) {
+	schemas := []*parse.NamedSchema{{Name: "test"}}
+
+	t.Run("TypeScript config", func(t *testing.T) {
+		flags := &GenerationFlags{
+			ExtractInline:          true,
+			DisableHeaders:         true,
+			DisableTimestamp:       true,
+			OutputStrategy:         output.StrategyMultiFile,
+			TSUnknownAny:           true,
+			TSAdditionalProperties: true,
+			TSZod:                  true,
+			TSZodOnly:              true,
+			TSZodCoerceDates:       true,
+			TSZodStrict:            true,
+		}
+		cfg := ConfigFromFlags(flags, schemas, "/out/ts", LanguageTypeScript)
+
+		assert.Equal(t, schemas, cfg.Schemas)
+		assert.Equal(t, "/out/ts", cfg.OutDir)
+		assert.Equal(t, LanguageTypeScript, cfg.Language)
+		assert.True(t, cfg.ExtractInline)
+		assert.True(t, cfg.DisableHeaders)
+		assert.True(t, cfg.DisableTimestamp)
+		assert.Equal(t, output.StrategyMultiFile, cfg.OutputStrategy)
+
+		require.NotNil(t, cfg.TypeScript)
+		assert.True(t, cfg.TypeScript.UnknownAny)
+		assert.True(t, cfg.TypeScript.AdditionalProperties)
+		assert.True(t, cfg.TypeScript.Zod)
+		assert.True(t, cfg.TypeScript.ZodOnly)
+		assert.True(t, cfg.TypeScript.ZodCoerceDates)
+		assert.True(t, cfg.TypeScript.ZodStrict)
+
+		assert.Nil(t, cfg.Python)
+		assert.Nil(t, cfg.Go)
+	})
+
+	t.Run("Python config", func(t *testing.T) {
+		flags := &GenerationFlags{
+			PySnakeCaseField:       true,
+			PyAdditionalProperties: true,
+		}
+		cfg := ConfigFromFlags(flags, schemas, "/out/py", LanguagePython)
+
+		require.NotNil(t, cfg.Python)
+		assert.True(t, cfg.Python.SnakeCaseField)
+		assert.True(t, cfg.Python.AdditionalProperties)
+
+		assert.Nil(t, cfg.TypeScript)
+		assert.Nil(t, cfg.Go)
+	})
+
+	t.Run("Go config", func(t *testing.T) {
+		flags := &GenerationFlags{
+			GoPackageName: "types",
+			GoUsePointers: true,
+			GoOmitEmpty:   true,
+			GoModulePath:  "github.com/example/pkg",
+		}
+		cfg := ConfigFromFlags(flags, schemas, "/out/go", LanguageGo)
+
+		require.NotNil(t, cfg.Go)
+		assert.Equal(t, "types", cfg.Go.PackageName)
+		assert.True(t, cfg.Go.UsePointers)
+		assert.True(t, cfg.Go.OmitEmpty)
+		assert.Equal(t, "github.com/example/pkg", cfg.Go.ModulePath)
+
+		assert.Nil(t, cfg.TypeScript)
+		assert.Nil(t, cfg.Python)
+	})
+}
+
 func TestApplyDefaults(t *testing.T) {
 	t.Run("python forces extract inline", func(t *testing.T) {
 		cfg := &Config{Language: LanguagePython}

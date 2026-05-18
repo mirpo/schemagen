@@ -35,8 +35,8 @@ func Run(cfg *Config) error {
 		g,
 		schemas,
 		cfg.OutputStrategy,
-		string(cfg.Language),
-		"types",
+		cfg.Language,
+		DefaultBundleName,
 	)
 	if err != nil {
 		return err

@@ -91,14 +91,14 @@ func TestInferEnumType(t *testing.T) {
 	tests := []struct {
 		name     string
 		values   []any
-		expected string
+		expected EnumKind
 	}{
-		{"all strings", []any{"a", "b", "c"}, "string"},
-		{"all ints", []any{int64(1), int64(2), int64(3)}, "int"},
-		{"all floats", []any{1.5, 2.5}, "int"},
-		{"mixed string and number", []any{"a", int64(1)}, "mixed"},
-		{"mixed with bool", []any{"a", true}, "mixed"},
-		{"mixed with nil", []any{"a", nil}, "mixed"},
+		{"all strings", []any{"a", "b", "c"}, EnumKindString},
+		{"all ints", []any{int64(1), int64(2), int64(3)}, EnumKindInt},
+		{"all floats", []any{1.5, 2.5}, EnumKindInt},
+		{"mixed string and number", []any{"a", int64(1)}, EnumKindMixed},
+		{"mixed with bool", []any{"a", true}, EnumKindMixed},
+		{"mixed with nil", []any{"a", nil}, EnumKindMixed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestBuild_StringEnum(t *testing.T) {
 	require.Len(t, g.Types, 1)
 	typ := g.Types[0]
 	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Equal(t, "string", typ.EnumType)
+	assert.Equal(t, EnumKindString, typ.EnumType)
 	require.Len(t, typ.EnumValues, 3)
 	assert.Equal(t, "ACTIVE", typ.EnumValues[0].Name)
 	assert.Equal(t, "active", typ.EnumValues[0].Value)
@@ -263,7 +263,7 @@ func TestBuild_NumberEnum(t *testing.T) {
 	require.Len(t, g.Types, 1)
 	typ := g.Types[0]
 	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Equal(t, "int", typ.EnumType)
+	assert.Equal(t, EnumKindInt, typ.EnumType)
 	require.Len(t, typ.EnumValues, 3)
 }
 
@@ -275,7 +275,7 @@ func TestBuild_MixedEnum(t *testing.T) {
 	require.Len(t, g.Types, 1)
 	typ := g.Types[0]
 	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Equal(t, "mixed", typ.EnumType)
+	assert.Equal(t, EnumKindMixed, typ.EnumType)
 	assert.Len(t, typ.EnumValues, 4)
 }
 
@@ -947,6 +947,56 @@ func TestTypeRef_Walk(t *testing.T) {
 	assert.Equal(t, []TypeKind{KindArray, KindPrimitive}, visited)
 }
 
+func TestTypeRef_Walk_ObjectFields(t *testing.T) {
+	inner := &TypeRef{Kind: KindRef, TypeName: "Nested"}
+	ref := &TypeRef{
+		Kind: KindInterface,
+		ObjectFields: []*Field{
+			{JSONName: "child", Type: inner},
+		},
+	}
+
+	var visited []string
+	ref.Walk(func(r *TypeRef) {
+		if r.TypeName != "" {
+			visited = append(visited, r.TypeName)
+		}
+	})
+	assert.Contains(t, visited, "Nested", "Walk must visit TypeRefs inside ObjectFields")
+}
+
+func TestTypeRef_Walk_ValueType(t *testing.T) {
+	inner := &TypeRef{Kind: KindRef, TypeName: "Val"}
+	ref := &TypeRef{Kind: KindMap, ValueType: inner}
+
+	var visited []string
+	ref.Walk(func(r *TypeRef) {
+		if r.TypeName != "" {
+			visited = append(visited, r.TypeName)
+		}
+	})
+	assert.Contains(t, visited, "Val")
+}
+
+func TestTypeRef_Walk_UnionMembers(t *testing.T) {
+	ref := &TypeRef{
+		Kind: KindUnion,
+		UnionMembers: []*TypeRef{
+			{Kind: KindRef, TypeName: "A"},
+			{Kind: KindRef, TypeName: "B"},
+		},
+	}
+
+	var visited []string
+	ref.Walk(func(r *TypeRef) {
+		if r.TypeName != "" {
+			visited = append(visited, r.TypeName)
+		}
+	})
+	assert.Contains(t, visited, "A")
+	assert.Contains(t, visited, "B")
+}
+
 func TestTypeRef_Walk_Nil(t *testing.T) {
 	var ref *TypeRef
 	ref.Walk(func(r *TypeRef) {
@@ -964,6 +1014,21 @@ func TestGraph_AddTypeAndGetType(t *testing.T) {
 	assert.Equal(t, "Foo", g.GetType("Foo").Name)
 	assert.Equal(t, "Bar", g.GetType("Bar").Name)
 	assert.Nil(t, g.GetType("Baz"))
+}
+
+func TestGraph_AddType_Idempotent(t *testing.T) {
+	g := NewGraph()
+	typ := &Type{Name: "Foo", Kind: KindStruct}
+	g.AddType(typ)
+	g.AddType(typ)
+
+	count := 0
+	for _, t := range g.Types {
+		if t.Name == "Foo" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "AddType with same name should not duplicate")
 }
 
 func TestGraph_GetType_NilIndex(t *testing.T) {
@@ -1310,6 +1375,41 @@ func TestResolveRefName_ForwardSlashPaths(t *testing.T) {
 
 	name := b.resolveRefName("./other/person.json", "Root")
 	assert.Equal(t, "Person", name)
+}
+
+// ==================== processedTypes early guard ====================
+
+func TestBuild_ProcessedTypesGuard_SetBeforeRecursion(t *testing.T) {
+	// Root type "Status" is an object with a field "status" that has an inline enum.
+	// With ExtractInlined=true, the extracted enum name would be PascalCase("status") = "Status",
+	// colliding with the root type name. ensureUniqueName must see "Status" as taken
+	// even though the struct hasn't been added to the graph yet.
+	g := buildOne(t, "Status", `{
+		"type": "object",
+		"properties": {
+			"status": {
+				"type": "string",
+				"enum": ["active", "inactive"]
+			},
+			"name": {"type": "string"}
+		}
+	}`, BuildConfig{ExtractInlined: true})
+
+	statusCount := 0
+	for _, typ := range g.Types {
+		if typ.Name == "Status" {
+			statusCount++
+		}
+	}
+	assert.Equal(t, 1, statusCount, "Status should appear exactly once — no duplicate from inline extraction collision")
+
+	tm := typeMap(g)
+	require.Contains(t, tm, "Status")
+	assert.Equal(t, KindStruct, tm["Status"].Kind, "Status should be the struct, not overwritten by extracted enum")
+
+	// The extracted enum should get a unique name like "Status2"
+	require.Contains(t, tm, "Status2", "extracted inline enum should be renamed to avoid collision")
+	assert.Equal(t, KindEnum, tm["Status2"].Kind)
 }
 
 // ==================== AllOf root required merge ====================

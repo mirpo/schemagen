@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/v2/parse"
 )
@@ -83,6 +84,7 @@ func (b *builder) buildType(name string, node *parse.SchemaNode, rootName string
 	if b.processedTypes[name] {
 		return
 	}
+	b.processedTypes[name] = true
 
 	switch {
 	case node.IsAllOf():
@@ -108,8 +110,6 @@ func (b *builder) buildType(name string, node *parse.SchemaNode, rootName string
 			Primitive: mapPrimitive(node.Type.Single(), node.Format),
 		})
 	}
-
-	b.processedTypes[name] = true
 }
 
 func (b *builder) buildStruct(name string, node *parse.SchemaNode, rootName string, sortProps bool) {
@@ -135,17 +135,21 @@ func (b *builder) buildStruct(name string, node *parse.SchemaNode, rootName stri
 	}
 
 	for _, p := range props {
-		f := &Field{
-			JSONName:    p.Name,
-			Type:        b.buildTypeRef(name, p.Name, p.Schema, rootName),
-			Description: p.Schema.Description,
-			Required:    node.IsRequired(p.Name),
-		}
-		extractConstraints(p.Schema, f)
-		t.Fields = append(t.Fields, f)
+		t.Fields = append(t.Fields, b.buildField(name, p, rootName, node.IsRequired(p.Name)))
 	}
 
 	b.graph.AddType(t)
+}
+
+func (b *builder) buildField(parentName string, p parse.NamedSchema, rootName string, required bool) *Field {
+	f := &Field{
+		JSONName:    p.Name,
+		Type:        b.buildTypeRef(parentName, p.Name, p.Schema, rootName),
+		Description: p.Schema.Description,
+		Required:    required,
+	}
+	extractConstraints(p.Schema, f)
+	return f
 }
 
 func (b *builder) buildEnum(name string, node *parse.SchemaNode) {
@@ -213,14 +217,7 @@ func (b *builder) buildAllOf(name string, node *parse.SchemaNode, rootName strin
 					continue
 				}
 				seen[p.Name] = true
-				f := &Field{
-					JSONName:    p.Name,
-					Type:        b.buildTypeRef(name, p.Name, p.Schema, rootName),
-					Description: p.Schema.Description,
-					Required:    requiredMap[p.Name],
-				}
-				extractConstraints(p.Schema, f)
-				t.Fields = append(t.Fields, f)
+				t.Fields = append(t.Fields, b.buildField(name, p, rootName, requiredMap[p.Name]))
 			}
 		}
 	}
@@ -230,14 +227,7 @@ func (b *builder) buildAllOf(name string, node *parse.SchemaNode, rootName strin
 			continue
 		}
 		seen[p.Name] = true
-		f := &Field{
-			JSONName:    p.Name,
-			Type:        b.buildTypeRef(name, p.Name, p.Schema, rootName),
-			Description: p.Schema.Description,
-			Required:    node.IsRequired(p.Name),
-		}
-		extractConstraints(p.Schema, f)
-		t.Fields = append(t.Fields, f)
+		t.Fields = append(t.Fields, b.buildField(name, p, rootName, node.IsRequired(p.Name)))
 	}
 
 	b.graph.AddType(t)
@@ -306,14 +296,7 @@ func (b *builder) buildTypeRef(parentName, fieldName string, node *parse.SchemaN
 		sortedProps := sortedProperties(node.Properties)
 		var fields []*Field
 		for _, p := range sortedProps {
-			f := &Field{
-				JSONName:    p.Name,
-				Type:        b.buildTypeRef(parentName, p.Name, p.Schema, rootName),
-				Description: p.Schema.Description,
-				Required:    node.IsRequired(p.Name),
-			}
-			extractConstraints(p.Schema, f)
-			fields = append(fields, f)
+			fields = append(fields, b.buildField(parentName, p, rootName, node.IsRequired(p.Name)))
 		}
 		return &TypeRef{Kind: KindInterface, ObjectFields: fields, Nullable: nullable}
 	}
@@ -466,30 +449,15 @@ func isNullType(node *parse.SchemaNode) bool {
 	return len(node.Type) == 1 && node.Type[0] == parse.TypeNull
 }
 
-func inferEnumType(values []any) string {
-	allStr, allNum, hasComplex := true, true, false
-	for _, v := range values {
-		switch v.(type) {
-		case string:
-			allNum = false
-		case int64, float64, int:
-			allStr = false
-		case bool, nil:
-			allStr = false
-			allNum = false
-		default:
-			hasComplex = true
-		}
-	}
+func inferEnumType(values []any) EnumKind {
+	cat := enumutil.AnalyzeRawValues(values)
 	switch {
-	case hasComplex:
-		return "any"
-	case allStr:
-		return "string"
-	case allNum:
-		return "int"
+	case cat.AllStrings:
+		return EnumKindString
+	case cat.AllNumbers:
+		return EnumKindInt
 	default:
-		return "mixed"
+		return EnumKindMixed
 	}
 }
 
