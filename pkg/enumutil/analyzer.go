@@ -15,16 +15,16 @@ func AnalyzeEnumValues(values []typegraph.EnumValue) EnumCategory {
 		return EnumCategory{AllStrings: true}
 	}
 
-	raw := make([]interface{}, len(values))
+	raw := make([]any, len(values))
 	for i, v := range values {
 		raw[i] = v.Value
 	}
 	return AnalyzeRawValues(raw)
 }
 
-// AnalyzeRawValues analyzes raw enum values ([]interface{}) to determine their category.
+// AnalyzeRawValues analyzes raw enum values ([]any) to determine their category.
 // Used for inline enums in TypeRef where values aren't wrapped in EnumValue.
-func AnalyzeRawValues(values []interface{}) EnumCategory {
+func AnalyzeRawValues(values []any) EnumCategory {
 	if len(values) == 0 {
 		return EnumCategory{AllStrings: true}
 	}

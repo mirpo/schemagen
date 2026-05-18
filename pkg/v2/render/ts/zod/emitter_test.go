@@ -3,7 +3,7 @@ package zod
 import (
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/typegraph"
+	"github.com/mirpo/schemagen/pkg/v2/graph"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,14 +13,14 @@ func createTestEmitter(cfg *Config) *Emitter {
 	return NewEmitter(cfg)
 }
 
-func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {
-	return &typegraph.Type{Name: name, Kind: kind, Fields: []*typegraph.Field{}}
+func createTestType(name string, kind graph.TypeKind) *graph.Type {
+	return &graph.Type{Name: name, Kind: kind, Fields: []*graph.Field{}}
 }
 
-func createTestField(jsonName string, prim typegraph.PrimitiveKind, required bool) *typegraph.Field {
-	return &typegraph.Field{
+func createTestField(jsonName string, prim graph.PrimitiveKind, required bool) *graph.Field {
+	return &graph.Field{
 		JSONName: jsonName,
-		Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: prim},
+		Type:     &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: prim},
 		Required: required,
 	}
 }
@@ -30,18 +30,18 @@ func createTestField(jsonName string, prim typegraph.PrimitiveKind, required boo
 func TestEmitter_GenerateObjectSchema(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func() (*Emitter, *typegraph.Type)
+		setup    func() (*Emitter, *graph.Type)
 		contains []string
 		excludes []string
 	}{
 		{
 			name: "simple object",
-			setup: func() (*Emitter, *typegraph.Type) {
+			setup: func() (*Emitter, *graph.Type) {
 				e := createTestEmitter(nil)
-				typ := createTestType("User", typegraph.KindStruct)
-				typ.Fields = []*typegraph.Field{
-					createTestField("id", typegraph.PrimString, true),
-					createTestField("name", typegraph.PrimString, true),
+				typ := createTestType("User", graph.KindStruct)
+				typ.Fields = []*graph.Field{
+					createTestField("id", graph.PrimString, true),
+					createTestField("name", graph.PrimString, true),
 				}
 				return e, typ
 			},
@@ -49,33 +49,33 @@ func TestEmitter_GenerateObjectSchema(t *testing.T) {
 		},
 		{
 			name: "with description",
-			setup: func() (*Emitter, *typegraph.Type) {
+			setup: func() (*Emitter, *graph.Type) {
 				e := createTestEmitter(nil)
-				typ := createTestType("User", typegraph.KindStruct)
+				typ := createTestType("User", graph.KindStruct)
 				typ.Description = "Represents a user"
-				typ.Fields = []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}
+				typ.Fields = []*graph.Field{createTestField("id", graph.PrimString, true)}
 				return e, typ
 			},
 			contains: []string{`.meta({ description: "Represents a user" })`},
 		},
 		{
 			name: "strict flag uses strictObject constructor",
-			setup: func() (*Emitter, *typegraph.Type) {
+			setup: func() (*Emitter, *graph.Type) {
 				e := createTestEmitter(&Config{Strict: true})
-				typ := createTestType("User", typegraph.KindStruct)
-				typ.Fields = []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}
+				typ := createTestType("User", graph.KindStruct)
+				typ.Fields = []*graph.Field{createTestField("id", graph.PrimString, true)}
 				return e, typ
 			},
 			contains: []string{"export const UserSchema = z.strictObject({"},
 		},
 		{
 			name: "optional fields",
-			setup: func() (*Emitter, *typegraph.Type) {
+			setup: func() (*Emitter, *graph.Type) {
 				e := createTestEmitter(nil)
-				typ := createTestType("User", typegraph.KindStruct)
-				typ.Fields = []*typegraph.Field{
-					createTestField("id", typegraph.PrimString, true),
-					createTestField("email", typegraph.PrimString, false),
+				typ := createTestType("User", graph.KindStruct)
+				typ.Fields = []*graph.Field{
+					createTestField("id", graph.PrimString, true),
+					createTestField("email", graph.PrimString, false),
 				}
 				return e, typ
 			},
@@ -103,18 +103,18 @@ func TestEmitter_GenerateObjectSchema_Extends(t *testing.T) {
 	tests := []struct {
 		name     string
 		extends  []string
-		fields   []*typegraph.Field
+		fields   []*graph.Field
 		contains string
 	}{
-		{"single", []string{"Person"}, []*typegraph.Field{createTestField("employeeId", typegraph.PrimString, true)}, "PersonSchema.extend({"},
-		{"multiple", []string{"Person", "Timestamped"}, []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}, "PersonSchema.merge(TimestampedSchema).extend({"},
-		{"no fields", []string{"Person"}, []*typegraph.Field{}, "export const EmployeeSchema = PersonSchema;"},
+		{"single", []string{"Person"}, []*graph.Field{createTestField("employeeId", graph.PrimString, true)}, "PersonSchema.extend({"},
+		{"multiple", []string{"Person", "Timestamped"}, []*graph.Field{createTestField("id", graph.PrimString, true)}, "PersonSchema.merge(TimestampedSchema).extend({"},
+		{"no fields", []string{"Person"}, []*graph.Field{}, "export const EmployeeSchema = PersonSchema;"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := createTestEmitter(nil)
-			typ := createTestType("Employee", typegraph.KindStruct)
+			typ := createTestType("Employee", graph.KindStruct)
 			typ.Extends = tt.extends
 			typ.Fields = tt.fields
 			result := e.GenerateSchema(typ)
@@ -128,27 +128,27 @@ func TestEmitter_GenerateObjectSchema_Extends(t *testing.T) {
 func TestEmitter_GenerateEnumSchema(t *testing.T) {
 	tests := []struct {
 		name     string
-		values   []typegraph.EnumValue
+		values   []graph.EnumValue
 		contains []string
 	}{
 		{
 			"string enum",
-			[]typegraph.EnumValue{{Name: "Active", Value: "active"}, {Name: "Inactive", Value: "inactive"}},
+			[]graph.EnumValue{{Name: "Active", Value: "active"}, {Name: "Inactive", Value: "inactive"}},
 			[]string{`z.enum(["active", "inactive"])`},
 		},
 		{
 			"numeric enum",
-			[]typegraph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}},
+			[]graph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}},
 			[]string{"z.union([\n", "  z.literal(1),\n", "  z.literal(2),\n"},
 		},
 		{
 			"with object value",
-			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Complex", Value: map[string]any{"complex": true}}},
+			[]graph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Complex", Value: map[string]any{"complex": true}}},
 			[]string{"z.union([\n", "  z.literal(\"simple\"),\n", "  z.object({ complex: z.literal(true) }).strict(),\n"},
 		},
 		{
 			"with array value",
-			[]typegraph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Array", Value: []any{"a", "b"}}},
+			[]graph.EnumValue{{Name: "Simple", Value: "simple"}, {Name: "Array", Value: []any{"a", "b"}}},
 			[]string{"z.union([\n", "  z.literal(\"simple\"),\n", `  z.tuple([z.literal("a"), z.literal("b")]),` + "\n"},
 		},
 	}
@@ -156,7 +156,7 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := createTestEmitter(nil)
-			typ := createTestType("TestEnum", typegraph.KindEnum)
+			typ := createTestType("TestEnum", graph.KindEnum)
 			typ.EnumValues = tt.values
 			result := e.GenerateSchema(typ)
 			for _, c := range tt.contains {
@@ -171,26 +171,26 @@ func TestEmitter_GenerateEnumSchema(t *testing.T) {
 func TestEmitter_PrimitiveToZod(t *testing.T) {
 	tests := []struct {
 		name     string
-		prim     typegraph.PrimitiveKind
+		prim     graph.PrimitiveKind
 		expected string
 	}{
-		{"string", typegraph.PrimString, "z.string()"},
-		{"int", typegraph.PrimInt, "z.int()"},
-		{"int32", typegraph.PrimInt32, "z.int()"},
-		{"int64", typegraph.PrimInt64, "z.int()"},
-		{"float64", typegraph.PrimFloat64, "z.number()"},
-		{"float32", typegraph.PrimFloat32, "z.number()"},
-		{"bool", typegraph.PrimBool, "z.boolean()"},
-		{"unknown", typegraph.PrimUnknown, "z.unknown()"},
-		{"email", typegraph.PrimEmail, "z.email()"},
-		{"uri", typegraph.PrimURI, "z.url()"},
-		{"uuid", typegraph.PrimUUID, "z.uuid()"},
-		{"ipv4", typegraph.PrimIPv4, "z.ipv4()"},
-		{"ipv6", typegraph.PrimIPv6, "z.ipv6()"},
-		{"datetime", typegraph.PrimDateTime, "z.iso.datetime()"},
-		{"date", typegraph.PrimDate, "z.iso.date()"},
-		{"time", typegraph.PrimTime, "z.iso.time()"},
-		{"hostname", typegraph.PrimHostname, "z.string()"},
+		{"string", graph.PrimString, "z.string()"},
+		{"int", graph.PrimInt, "z.int()"},
+		{"int32", graph.PrimInt32, "z.int()"},
+		{"int64", graph.PrimInt64, "z.int()"},
+		{"float64", graph.PrimFloat64, "z.number()"},
+		{"float32", graph.PrimFloat32, "z.number()"},
+		{"bool", graph.PrimBool, "z.boolean()"},
+		{"unknown", graph.PrimUnknown, "z.unknown()"},
+		{"email", graph.PrimEmail, "z.email()"},
+		{"uri", graph.PrimURI, "z.url()"},
+		{"uuid", graph.PrimUUID, "z.uuid()"},
+		{"ipv4", graph.PrimIPv4, "z.ipv4()"},
+		{"ipv6", graph.PrimIPv6, "z.ipv6()"},
+		{"datetime", graph.PrimDateTime, "z.iso.datetime()"},
+		{"date", graph.PrimDate, "z.iso.date()"},
+		{"time", graph.PrimTime, "z.iso.time()"},
+		{"hostname", graph.PrimHostname, "z.string()"},
 	}
 
 	e := createTestEmitter(nil)
@@ -203,7 +203,7 @@ func TestEmitter_PrimitiveToZod(t *testing.T) {
 
 func TestEmitter_PrimitiveToZod_CoerceDates(t *testing.T) {
 	e := createTestEmitter(&Config{CoerceDates: true})
-	assert.Equal(t, "z.coerce.date()", e.primitiveToZod(typegraph.PrimDateTime, nil))
+	assert.Equal(t, "z.coerce.date()", e.primitiveToZod(graph.PrimDateTime, nil))
 }
 
 // Constraints
@@ -213,9 +213,9 @@ func TestEmitter_Constraints(t *testing.T) {
 
 	t.Run("string min/max/pattern", func(t *testing.T) {
 		minLen, maxLen, pattern := 3, 20, "^[a-z]+$"
-		field := &typegraph.Field{
+		field := &graph.Field{
 			JSONName: "username", Required: true,
-			Type:      &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
+			Type:      &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
 			MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern,
 		}
 		assert.Contains(t, e.generateField(field), "z.string().min(3).max(20).regex(/^[a-z]+$/)")
@@ -223,9 +223,9 @@ func TestEmitter_Constraints(t *testing.T) {
 
 	t.Run("number min/max", func(t *testing.T) {
 		min, max := float64(0), float64(100)
-		field := &typegraph.Field{
+		field := &graph.Field{
 			JSONName: "age", Required: true,
-			Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt},
+			Type:    &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt},
 			Minimum: &min, Maximum: &max,
 		}
 		assert.Contains(t, e.generateField(field), "z.int().gte(0).lte(100)")
@@ -233,9 +233,9 @@ func TestEmitter_Constraints(t *testing.T) {
 
 	t.Run("number exclusive bounds", func(t *testing.T) {
 		exMin, exMax := float64(0), float64(100)
-		field := &typegraph.Field{
+		field := &graph.Field{
 			JSONName: "value", Required: true,
-			Type:             &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimFloat64},
+			Type:             &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
 			ExclusiveMinimum: &exMin, ExclusiveMaximum: &exMax,
 		}
 		assert.Contains(t, e.generateField(field), "z.number().gt(0).lt(100)")
@@ -243,9 +243,9 @@ func TestEmitter_Constraints(t *testing.T) {
 
 	t.Run("array min/max items", func(t *testing.T) {
 		minItems, maxItems := 1, 10
-		field := &typegraph.Field{
+		field := &graph.Field{
 			JSONName: "items", Required: true,
-			Type:     &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}},
+			Type:     &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}},
 			MinItems: &minItems, MaxItems: &maxItems,
 		}
 		assert.Contains(t, e.generateField(field), "z.array(z.string()).min(1).max(10)")
@@ -253,9 +253,9 @@ func TestEmitter_Constraints(t *testing.T) {
 
 	t.Run("regex escaping", func(t *testing.T) {
 		pattern := "^[a-z]+/test$"
-		field := &typegraph.Field{
+		field := &graph.Field{
 			JSONName: "path", Required: true,
-			Type:    &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
+			Type:    &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
 			Pattern: &pattern,
 		}
 		assert.Contains(t, e.generateField(field), `regex(/^[a-z]+\/test$/)`)
@@ -267,14 +267,14 @@ func TestEmitter_Constraints(t *testing.T) {
 func TestEmitter_TypeRefToZod(t *testing.T) {
 	tests := []struct {
 		name     string
-		ref      *typegraph.TypeRef
+		ref      *graph.TypeRef
 		expected string
 	}{
-		{"named ref", &typegraph.TypeRef{Kind: typegraph.KindRef, TypeName: "User"}, "UserSchema"},
-		{"array", &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}, "z.array(z.string())"},
-		{"map", &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}, "z.record(z.string(), z.int())"},
-		{"nullable", &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString, Nullable: true}, "z.string().nullable()"},
-		{"inline enum", &typegraph.TypeRef{Kind: typegraph.KindEnum, EnumValues: []any{"a", "b", "c"}}, `z.enum(["a", "b", "c"])`},
+		{"named ref", &graph.TypeRef{Kind: graph.KindRef, TypeName: "User"}, "UserSchema"},
+		{"array", &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}}, "z.array(z.string())"},
+		{"map", &graph.TypeRef{Kind: graph.KindMap, ValueType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt}}, "z.record(z.string(), z.int())"},
+		{"nullable", &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString, Nullable: true}, "z.string().nullable()"},
+		{"inline enum", &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{"a", "b", "c"}}, `z.enum(["a", "b", "c"])`},
 	}
 
 	e := createTestEmitter(nil)
@@ -286,11 +286,11 @@ func TestEmitter_TypeRefToZod(t *testing.T) {
 	}
 
 	t.Run("union", func(t *testing.T) {
-		ref := &typegraph.TypeRef{
-			Kind: typegraph.KindUnion,
-			UnionMembers: []*typegraph.TypeRef{
-				{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
-				{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt},
+		ref := &graph.TypeRef{
+			Kind: graph.KindUnion,
+			UnionMembers: []*graph.TypeRef{
+				{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
+				{Kind: graph.KindPrimitive, Primitive: graph.PrimInt},
 			},
 		}
 		assert.Contains(t, e.typeRefToZod(ref, nil), "z.union([z.string(), z.int()])")
@@ -303,12 +303,12 @@ func TestEmitter_GenerateField_PropertyNames(t *testing.T) {
 	e := createTestEmitter(nil)
 
 	t.Run("needs quoting", func(t *testing.T) {
-		field := &typegraph.Field{JSONName: "kebab-case", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}
+		field := &graph.Field{JSONName: "kebab-case", Type: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}, Required: true}
 		assert.Contains(t, e.generateField(field), `"kebab-case": z.string()`)
 	})
 
 	t.Run("valid identifier", func(t *testing.T) {
-		field := &typegraph.Field{JSONName: "validName", Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}
+		field := &graph.Field{JSONName: "validName", Type: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}, Required: true}
 		result := e.generateField(field)
 		assert.Contains(t, result, "validName: z.string()")
 		assert.NotContains(t, result, `"validName"`)
@@ -319,18 +319,18 @@ func TestEmitter_GenerateField_PropertyNames(t *testing.T) {
 
 func TestEmitter_GenerateUnionSchema(t *testing.T) {
 	e := createTestEmitter(nil)
-	typ := createTestType("Response", typegraph.KindUnion)
-	typ.UnionMembers = []*typegraph.TypeRef{
-		{Kind: typegraph.KindRef, TypeName: "Success"},
-		{Kind: typegraph.KindRef, TypeName: "Error"},
+	typ := createTestType("Response", graph.KindUnion)
+	typ.UnionMembers = []*graph.TypeRef{
+		{Kind: graph.KindRef, TypeName: "Success"},
+		{Kind: graph.KindRef, TypeName: "Error"},
 	}
 	assert.Contains(t, e.GenerateSchema(typ), "z.union([SuccessSchema, ErrorSchema])")
 }
 
 func TestEmitter_GeneratePrimitiveSchema(t *testing.T) {
 	e := createTestEmitter(nil)
-	typ := createTestType("Counter", typegraph.KindPrimitive)
-	typ.Primitive = typegraph.PrimInt
+	typ := createTestType("Counter", graph.KindPrimitive)
+	typ.Primitive = graph.PrimInt
 	typ.Description = "A counter value"
 	result := e.GenerateSchema(typ)
 	assert.Contains(t, result, "z.int()")
@@ -341,9 +341,9 @@ func TestEmitter_GeneratePrimitiveSchema(t *testing.T) {
 
 func TestEmitter_GenerateSchemaWithInfer(t *testing.T) {
 	e := createTestEmitter(nil)
-	typ := createTestType("User", typegraph.KindStruct)
+	typ := createTestType("User", graph.KindStruct)
 	typ.Description = "User account"
-	typ.Fields = []*typegraph.Field{createTestField("id", typegraph.PrimString, true)}
+	typ.Fields = []*graph.Field{createTestField("id", graph.PrimString, true)}
 
 	result := e.GenerateSchemaWithInfer(typ)
 	assert.Contains(t, result, "/**")
@@ -357,29 +357,29 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 	tests := []struct {
 		name     string
 		config   *Config
-		props    *typegraph.AdditionalPropsConfig
+		props    *graph.AdditionalPropsConfig
 		contains string
 		excludes []string
 	}{
 		{
 			name:     "true uses looseObject",
-			props:    &typegraph.AdditionalPropsConfig{Allowed: true, Type: nil},
+			props:    &graph.AdditionalPropsConfig{Allowed: true, Type: nil},
 			contains: "z.looseObject({",
 		},
 		{
 			name:     "false uses strictObject",
-			props:    &typegraph.AdditionalPropsConfig{Allowed: false},
+			props:    &graph.AdditionalPropsConfig{Allowed: false},
 			contains: "z.strictObject({",
 		},
 		{
 			name:     "typed uses catchall",
-			props:    &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}},
+			props:    &graph.AdditionalPropsConfig{Allowed: true, Type: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt}},
 			contains: "}).catchall(z.int())",
 		},
 		{
 			name:     "schema overrides strict flag",
 			config:   &Config{Strict: true},
-			props:    &typegraph.AdditionalPropsConfig{Allowed: true, Type: nil},
+			props:    &graph.AdditionalPropsConfig{Allowed: true, Type: nil},
 			contains: "z.looseObject({",
 			excludes: []string{"z.strictObject"},
 		},
@@ -394,8 +394,8 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := createTestEmitter(tt.config)
-			typ := createTestType("TestObject", typegraph.KindStruct)
-			typ.Fields = []*typegraph.Field{createTestField("name", typegraph.PrimString, true)}
+			typ := createTestType("TestObject", graph.KindStruct)
+			typ.Fields = []*graph.Field{createTestField("name", graph.PrimString, true)}
 			typ.AdditionalProps = tt.props
 
 			result := e.GenerateSchema(typ)
@@ -411,7 +411,7 @@ func TestEmitter_AdditionalProperties(t *testing.T) {
 
 func TestEmitter_GenerateInlineObject(t *testing.T) {
 	e := createTestEmitter(nil)
-	fields := []*typegraph.Field{createTestField("nested", typegraph.PrimString, true)}
+	fields := []*graph.Field{createTestField("nested", graph.PrimString, true)}
 	result := e.generateInlineObject(fields)
 	assert.Contains(t, result, "z.object({")
 	assert.NotContains(t, result, "z.strictObject")
@@ -444,7 +444,6 @@ func TestHelpers_FormatZodLiteral(t *testing.T) {
 		input    any
 		expected string
 	}{
-		// Primitives wrap in z.literal()
 		{"string", "hello", `z.literal("hello")`},
 		{"number", 42, "z.literal(42)"},
 		{"float", 3.14, "z.literal(3.14)"},
@@ -452,16 +451,13 @@ func TestHelpers_FormatZodLiteral(t *testing.T) {
 		{"bool false", false, "z.literal(false)"},
 		{"null", nil, "z.literal(null)"},
 
-		// Objects use z.object with literal values
 		{"simple object", map[string]any{"complex": true}, `z.object({ complex: z.literal(true) }).strict()`},
 		{"object with string", map[string]any{"name": "test"}, `z.object({ name: z.literal("test") }).strict()`},
 		{"object with number", map[string]any{"count": float64(42)}, `z.object({ count: z.literal(42) }).strict()`},
 
-		// Arrays use z.tuple with literal values
 		{"simple array", []any{"a", "b"}, `z.tuple([z.literal("a"), z.literal("b")])`},
 		{"mixed array", []any{"text", float64(42)}, `z.tuple([z.literal("text"), z.literal(42)])`},
 
-		// Nested structures
 		{"nested object", map[string]any{"nested": map[string]any{"deep": float64(1)}}, `z.object({ nested: z.object({ deep: z.literal(1) }).strict() }).strict()`},
 		{"nested array", []any{[]any{"inner"}}, `z.tuple([z.tuple([z.literal("inner")])])`},
 	}

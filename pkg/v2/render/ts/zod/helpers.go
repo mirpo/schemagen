@@ -10,10 +10,7 @@ import (
 	"github.com/mirpo/schemagen/pkg/lang/tscommon"
 )
 
-// escapeRegex escapes special characters in a regex pattern for use in JavaScript.
-// It also handles forward slashes which are regex delimiters in JS.
 func escapeRegex(pattern string) string {
-	// Escape forward slashes for JS regex literal syntax
 	return strings.ReplaceAll(pattern, "/", "\\/")
 }
 
@@ -28,7 +25,6 @@ func formatLiteral(v any) string {
 	}
 }
 
-// formatJSObject formats a Go map as a JavaScript object literal.
 func formatJSObject(m map[string]any) string {
 	if len(m) == 0 {
 		return "{}"
@@ -47,7 +43,6 @@ func formatJSObject(m map[string]any) string {
 	return fmt.Sprintf("{ %s }", strings.Join(parts, ", "))
 }
 
-// formatJSArray formats a Go slice as a JavaScript array literal.
 func formatJSArray(arr []any) string {
 	if len(arr) == 0 {
 		return "[]"
@@ -60,9 +55,6 @@ func formatJSArray(arr []any) string {
 	return fmt.Sprintf("[%s]", strings.Join(parts, ", "))
 }
 
-// formatZodLiteral formats a value as a Zod schema for use in enum unions.
-// For primitives, it wraps in z.literal(). For complex values (objects/arrays),
-// it generates proper Zod structures since z.literal() only accepts primitives.
 func formatZodLiteral(v any) string {
 	switch val := v.(type) {
 	case map[string]any:
@@ -70,12 +62,10 @@ func formatZodLiteral(v any) string {
 	case []any:
 		return formatZodTuple(val)
 	default:
-		// Primitives use z.literal()
 		return fmt.Sprintf("z.literal(%s)", formatLiteral(v))
 	}
 }
 
-// formatZodObject formats a Go map as a Zod object schema with literal values.
 func formatZodObject(m map[string]any) string {
 	if len(m) == 0 {
 		return "z.object({}).strict()"
@@ -94,7 +84,6 @@ func formatZodObject(m map[string]any) string {
 	return fmt.Sprintf("z.object({ %s }).strict()", strings.Join(parts, ", "))
 }
 
-// formatZodTuple formats a Go slice as a Zod tuple schema with literal values.
 func formatZodTuple(arr []any) string {
 	if len(arr) == 0 {
 		return "z.tuple([])"

@@ -174,7 +174,7 @@ func isYAMLFile(path string) bool {
 }
 
 func convertYAMLToJSON(yamlData []byte) ([]byte, error) {
-	var v interface{}
+	var v any
 	if err := yaml.Unmarshal(yamlData, &v); err != nil {
 		return nil, fmt.Errorf("unmarshal YAML: %w", err)
 	}
@@ -182,10 +182,10 @@ func convertYAMLToJSON(yamlData []byte) ([]byte, error) {
 	return json.Marshal(normalizeYAMLValue(v))
 }
 
-func normalizeYAMLValue(v interface{}) interface{} {
+func normalizeYAMLValue(v any) any {
 	switch x := v.(type) {
-	case map[interface{}]interface{}:
-		m := make(map[string]interface{}, len(x))
+	case map[any]any:
+		m := make(map[string]any, len(x))
 		for k, v := range x {
 			if ks, ok := k.(string); ok {
 				m[ks] = normalizeYAMLValue(v)
@@ -193,14 +193,14 @@ func normalizeYAMLValue(v interface{}) interface{} {
 		}
 		return m
 
-	case map[string]interface{}:
-		m := make(map[string]interface{}, len(x))
+	case map[string]any:
+		m := make(map[string]any, len(x))
 		for k, v := range x {
 			m[k] = normalizeYAMLValue(v)
 		}
 		return m
 
-	case []interface{}:
+	case []any:
 		for i := range x {
 			x[i] = normalizeYAMLValue(x[i])
 		}

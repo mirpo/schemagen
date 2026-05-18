@@ -18,11 +18,16 @@ linters:
     - usestdlibvars
     - wastedassign
     - whitespace
+    - revive
   settings:
     staticcheck:
       checks:
         - -SA1019
         - all
+    revive:
+      rules:
+        - name: use-any
+          severity: error
   exclusions:
     generated: lax
     presets:

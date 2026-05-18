@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/typegraph"
+	"github.com/mirpo/schemagen/pkg/v2/graph"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,24 +13,24 @@ import (
 
 func createTestGenerator(config *Config) *Generator {
 	if config == nil {
-		return NewGenerator()
+		return NewGeneratorWithConfig(nil)
 	}
 	return NewGeneratorWithConfig(config)
 }
 
-func createTestType(name string, kind typegraph.TypeKind) *typegraph.Type {
-	return &typegraph.Type{
+func createTestType(name string, kind graph.TypeKind) *graph.Type {
+	return &graph.Type{
 		Name:   name,
 		Kind:   kind,
-		Fields: []*typegraph.Field{},
+		Fields: []*graph.Field{},
 	}
 }
 
-func createTestField(name string, jsonName string, prim typegraph.PrimitiveKind, required bool) *typegraph.Field {
-	return &typegraph.Field{
+func createTestField(name string, jsonName string, prim graph.PrimitiveKind, required bool) *graph.Field {
+	return &graph.Field{
 		JSONName: jsonName,
-		Type: &typegraph.TypeRef{
-			Kind:      typegraph.KindPrimitive,
+		Type: &graph.TypeRef{
+			Kind:      graph.KindPrimitive,
 			Primitive: prim,
 		},
 		Required: required,
@@ -41,8 +41,8 @@ func TestGenerateInterface(t *testing.T) {
 	g := createTestGenerator(nil)
 
 	t.Run("simple", func(t *testing.T) {
-		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("ID", "id", typegraph.PrimString, true), createTestField("Name", "name", typegraph.PrimString, true)}
+		typ := createTestType("User", graph.KindStruct)
+		typ.Fields = []*graph.Field{createTestField("ID", "id", graph.PrimString, true), createTestField("Name", "name", graph.PrimString, true)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export interface User {")
@@ -50,24 +50,24 @@ func TestGenerateInterface(t *testing.T) {
 	})
 
 	t.Run("with description", func(t *testing.T) {
-		typ := createTestType("User", typegraph.KindStruct)
+		typ := createTestType("User", graph.KindStruct)
 		typ.Description = "Represents a user"
-		typ.Fields = []*typegraph.Field{createTestField("ID", "id", typegraph.PrimString, true)}
+		typ.Fields = []*graph.Field{createTestField("ID", "id", graph.PrimString, true)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "* Represents a user")
 	})
 
 	t.Run("empty fields", func(t *testing.T) {
-		typ := createTestType("Empty", typegraph.KindStruct)
+		typ := createTestType("Empty", graph.KindStruct)
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export interface Empty {")
 	})
 
 	t.Run("optional fields", func(t *testing.T) {
-		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("ID", "id", typegraph.PrimString, true), createTestField("Email", "email", typegraph.PrimString, false)}
+		typ := createTestType("User", graph.KindStruct)
+		typ.Fields = []*graph.Field{createTestField("ID", "id", graph.PrimString, true), createTestField("Email", "email", graph.PrimString, false)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "email?: string;")
@@ -78,9 +78,9 @@ func TestGenerateEnum(t *testing.T) {
 	g := createTestGenerator(nil)
 
 	t.Run("string union", func(t *testing.T) {
-		typ := createTestType("Status", typegraph.KindEnum)
+		typ := createTestType("Status", graph.KindEnum)
 		typ.EnumType = "string"
-		typ.EnumValues = []typegraph.EnumValue{{Name: "Active", Value: "active"}, {Name: "Inactive", Value: "inactive"}}
+		typ.EnumValues = []graph.EnumValue{{Name: "Active", Value: "active"}, {Name: "Inactive", Value: "inactive"}}
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export type Status =")
@@ -88,9 +88,9 @@ func TestGenerateEnum(t *testing.T) {
 	})
 
 	t.Run("numeric enum", func(t *testing.T) {
-		typ := createTestType("Priority", typegraph.KindEnum)
+		typ := createTestType("Priority", graph.KindEnum)
 		typ.EnumType = "int"
-		typ.EnumValues = []typegraph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}}
+		typ.EnumValues = []graph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}}
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export enum Priority {")
@@ -98,9 +98,9 @@ func TestGenerateEnum(t *testing.T) {
 	})
 
 	t.Run("mixed types", func(t *testing.T) {
-		typ := createTestType("Mixed", typegraph.KindEnum)
+		typ := createTestType("Mixed", graph.KindEnum)
 		typ.EnumType = "string"
-		typ.EnumValues = []typegraph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Null", Value: nil}}
+		typ.EnumValues = []graph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Null", Value: nil}}
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, `"text"`)
@@ -109,9 +109,9 @@ func TestGenerateEnum(t *testing.T) {
 	})
 
 	t.Run("complex values use any fallback", func(t *testing.T) {
-		typ := createTestType("Complex", typegraph.KindEnum)
+		typ := createTestType("Complex", graph.KindEnum)
 		typ.EnumType = "string"
-		typ.EnumValues = []typegraph.EnumValue{
+		typ.EnumValues = []graph.EnumValue{
 			{Name: "Simple", Value: "simple"},
 			{Name: "Obj", Value: map[string]any{"complex": true}},
 			{Name: "Num", Value: 42},
@@ -127,13 +127,13 @@ func TestGenerateEnum(t *testing.T) {
 func TestGenerateUnionAlias_WithMembers(t *testing.T) {
 	g := createTestGenerator(nil)
 
-	typ := &typegraph.Type{
+	typ := &graph.Type{
 		Name: "Shape",
-		Kind: typegraph.KindUnion,
-		UnionMembers: []*typegraph.TypeRef{
-			{Kind: typegraph.KindRef, TypeName: "Circle"},
-			{Kind: typegraph.KindRef, TypeName: "Square"},
-			{Kind: typegraph.KindRef, TypeName: "Triangle"},
+		Kind: graph.KindUnion,
+		UnionMembers: []*graph.TypeRef{
+			{Kind: graph.KindRef, TypeName: "Circle"},
+			{Kind: graph.KindRef, TypeName: "Square"},
+			{Kind: graph.KindRef, TypeName: "Triangle"},
 		},
 	}
 
@@ -147,9 +147,9 @@ func TestGenerateUnionAlias_WithMembers(t *testing.T) {
 func TestGenerateUnionAlias_EmptyMembers(t *testing.T) {
 	g := createTestGenerator(nil)
 
-	typ := &typegraph.Type{
+	typ := &graph.Type{
 		Name: "Unknown",
-		Kind: typegraph.KindUnion,
+		Kind: graph.KindUnion,
 	}
 
 	result, err := g.generateUnionAlias(typ)
@@ -163,21 +163,21 @@ func TestGenerateUnionAlias_EmptyMembers(t *testing.T) {
 func TestTypeRefToTS_Primitives(t *testing.T) {
 	tests := []struct {
 		name     string
-		prim     typegraph.PrimitiveKind
+		prim     graph.PrimitiveKind
 		expected string
 	}{
-		{"string type", typegraph.PrimString, "string"},
-		{"int type", typegraph.PrimInt, "number"},
-		{"float64 type", typegraph.PrimFloat64, "number"},
-		{"bool type", typegraph.PrimBool, "boolean"},
-		{"unknown type", typegraph.PrimUnknown, "any"},
+		{"string type", graph.PrimString, "string"},
+		{"int type", graph.PrimInt, "number"},
+		{"float64 type", graph.PrimFloat64, "number"},
+		{"bool type", graph.PrimBool, "boolean"},
+		{"unknown type", graph.PrimUnknown, "any"},
 	}
 
 	g := createTestGenerator(nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ref := &typegraph.TypeRef{
-				Kind:      typegraph.KindPrimitive,
+			ref := &graph.TypeRef{
+				Kind:      graph.KindPrimitive,
 				Primitive: tt.prim,
 			}
 			result := g.typeRefToTS(ref)
@@ -187,7 +187,7 @@ func TestTypeRefToTS_Primitives(t *testing.T) {
 }
 
 func TestTypeRefToTS_UnknownVsAny(t *testing.T) {
-	ref := &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUnknown}
+	ref := &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimUnknown}
 	assert.Equal(t, "any", createTestGenerator(nil).typeRefToTS(ref))
 	assert.Equal(t, "unknown", createTestGenerator(&Config{UnknownAny: true}).typeRefToTS(ref))
 }
@@ -196,44 +196,44 @@ func TestTypeRefToTS_Complex(t *testing.T) {
 	g := createTestGenerator(nil)
 
 	t.Run("arrays", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}
+		ref := &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}}
 		assert.Equal(t, "string[]", g.typeRefToTS(ref))
 	})
 
 	t.Run("maps", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}
+		ref := &graph.TypeRef{Kind: graph.KindMap, ValueType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt}}
 		assert.Equal(t, "Record<string, number>", g.typeRefToTS(ref))
 	})
 
 	t.Run("named types", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindRef, TypeName: "User"}
+		ref := &graph.TypeRef{Kind: graph.KindRef, TypeName: "User"}
 		assert.Equal(t, "User", g.typeRefToTS(ref))
 	})
 
 	t.Run("union", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindUnion, UnionMembers: []*typegraph.TypeRef{{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, {Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimInt}}}
+		ref := &graph.TypeRef{Kind: graph.KindUnion, UnionMembers: []*graph.TypeRef{{Kind: graph.KindPrimitive, Primitive: graph.PrimString}, {Kind: graph.KindPrimitive, Primitive: graph.PrimInt}}}
 		result := g.typeRefToTS(ref)
 		assert.Contains(t, result, "string")
 		assert.Contains(t, result, "number")
 	})
 
 	t.Run("nested array of maps", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindArray, ItemType: &typegraph.TypeRef{Kind: typegraph.KindMap, ValueType: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}}
+		ref := &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindMap, ValueType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}}}
 		assert.Equal(t, "Record<string, string>[]", g.typeRefToTS(ref))
 	})
 }
 
 func TestGenerateFile_Headers(t *testing.T) {
-	typ := createTestType("User", typegraph.KindStruct)
+	typ := createTestType("User", graph.KindStruct)
 
 	t.Run("with header", func(t *testing.T) {
-		result, err := createTestGenerator(&Config{DisableHeaders: false}).GenerateFile([]*typegraph.Type{typ}, nil)
+		result, err := createTestGenerator(&Config{DisableHeaders: false}).GenerateFile([]*graph.Type{typ}, nil)
 		require.NoError(t, err)
 		assert.Contains(t, result, "DO NOT EDIT")
 	})
 
 	t.Run("without header", func(t *testing.T) {
-		result, err := createTestGenerator(&Config{DisableHeaders: true}).GenerateFile([]*typegraph.Type{typ}, nil)
+		result, err := createTestGenerator(&Config{DisableHeaders: true}).GenerateFile([]*graph.Type{typ}, nil)
 		require.NoError(t, err)
 		assert.NotContains(t, result, "DO NOT EDIT")
 	})
@@ -241,7 +241,7 @@ func TestGenerateFile_Headers(t *testing.T) {
 
 func TestGenerateFile_TypeOrdering(t *testing.T) {
 	g := createTestGenerator(nil)
-	types := []*typegraph.Type{createTestType("Zebra", typegraph.KindStruct), createTestType("Apple", typegraph.KindStruct)}
+	types := []*graph.Type{createTestType("Zebra", graph.KindStruct), createTestType("Apple", graph.KindStruct)}
 	result, err := g.GenerateFile(types, nil)
 	require.NoError(t, err)
 	assert.Less(t, strings.Index(result, "Zebra"), strings.Index(result, "Apple"))
@@ -249,12 +249,12 @@ func TestGenerateFile_TypeOrdering(t *testing.T) {
 
 func TestGenerateInterface_QuotedPropertyNames(t *testing.T) {
 	g := createTestGenerator(nil)
-	typ := createTestType("Special", typegraph.KindStruct)
-	typ.Fields = []*typegraph.Field{
-		createTestField("ValidName", "validName", typegraph.PrimString, true),
-		createTestField("KebabCase", "kebab-case", typegraph.PrimString, true),
-		createTestField("WithSpace", "with space", typegraph.PrimString, true),
-		createTestField("AtSign", "@special", typegraph.PrimString, true),
+	typ := createTestType("Special", graph.KindStruct)
+	typ.Fields = []*graph.Field{
+		createTestField("ValidName", "validName", graph.PrimString, true),
+		createTestField("KebabCase", "kebab-case", graph.PrimString, true),
+		createTestField("WithSpace", "with space", graph.PrimString, true),
+		createTestField("AtSign", "@special", graph.PrimString, true),
 	}
 
 	result, err := g.generateInterface(typ)
@@ -269,12 +269,12 @@ func TestGenerateInterface_QuotedPropertyNames(t *testing.T) {
 
 func TestGenerateInterface_FieldDescriptions(t *testing.T) {
 	g := createTestGenerator(nil)
-	typ := createTestType("User", typegraph.KindStruct)
-	typ.Fields = []*typegraph.Field{
+	typ := createTestType("User", graph.KindStruct)
+	typ.Fields = []*graph.Field{
 		{
 			JSONName:    "email",
 			Description: "User email address",
-			Type:        &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString},
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
 			Required:    true,
 		},
 	}
@@ -286,13 +286,13 @@ func TestGenerateInterface_FieldDescriptions(t *testing.T) {
 
 func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 	g := createTestGenerator(nil)
-	typ := createTestType("Event", typegraph.KindStruct)
-	typ.Fields = []*typegraph.Field{
+	typ := createTestType("Event", graph.KindStruct)
+	typ.Fields = []*graph.Field{
 		{
 			JSONName: "id",
-			Type: &typegraph.TypeRef{
-				Kind:      typegraph.KindPrimitive,
-				Primitive: typegraph.PrimString,
+			Type: &graph.TypeRef{
+				Kind:      graph.KindPrimitive,
+				Primitive: graph.PrimString,
 				Format:    "uuid",
 			},
 			Required: true,
@@ -300,9 +300,9 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 		{
 			JSONName:    "timestamp",
 			Description: "Event timestamp",
-			Type: &typegraph.TypeRef{
-				Kind:      typegraph.KindPrimitive,
-				Primitive: typegraph.PrimString,
+			Type: &graph.TypeRef{
+				Kind:      graph.KindPrimitive,
+				Primitive: graph.PrimString,
 				Format:    "date-time",
 			},
 			Required: true,
@@ -320,10 +320,10 @@ func TestGenerateInterface_FormatAnnotations(t *testing.T) {
 
 func TestGenerateInterface_WithExtends(t *testing.T) {
 	g := createTestGenerator(nil)
-	typ := createTestType("User", typegraph.KindStruct)
+	typ := createTestType("User", graph.KindStruct)
 	typ.Extends = []string{"BaseModel"}
-	typ.Fields = []*typegraph.Field{
-		createTestField("Name", "name", typegraph.PrimString, true),
+	typ.Fields = []*graph.Field{
+		createTestField("Name", "name", graph.PrimString, true),
 	}
 
 	result, err := g.generateInterface(typ)
@@ -334,10 +334,10 @@ func TestGenerateInterface_WithExtends(t *testing.T) {
 
 func TestGenerateInterface_MultipleExtends(t *testing.T) {
 	g := createTestGenerator(nil)
-	typ := createTestType("User", typegraph.KindStruct)
+	typ := createTestType("User", graph.KindStruct)
 	typ.Extends = []string{"BaseModel", "Timestamped", "Auditable"}
-	typ.Fields = []*typegraph.Field{
-		createTestField("Name", "name", typegraph.PrimString, true),
+	typ.Fields = []*graph.Field{
+		createTestField("Name", "name", graph.PrimString, true),
 	}
 
 	result, err := g.generateInterface(typ)
@@ -347,18 +347,18 @@ func TestGenerateInterface_MultipleExtends(t *testing.T) {
 
 func TestGenerateFile_Imports(t *testing.T) {
 	g := createTestGenerator(nil)
-	typ := createTestType("User", typegraph.KindStruct)
+	typ := createTestType("User", graph.KindStruct)
 
 	t.Run("single import", func(t *testing.T) {
-		imports := []typegraph.ImportSpec{{ImportPath: "./base", TypeNames: []string{"BaseModel", "Auditable"}}}
-		result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
+		imports := []graph.ImportSpec{{ImportPath: "./base", TypeNames: []string{"BaseModel", "Auditable"}}}
+		result, err := g.GenerateFile([]*graph.Type{typ}, imports)
 		require.NoError(t, err)
 		assert.Contains(t, result, "import type { Auditable, BaseModel } from './base';")
 	})
 
 	t.Run("multiple imports", func(t *testing.T) {
-		imports := []typegraph.ImportSpec{{ImportPath: "./base", TypeNames: []string{"BaseModel"}}, {ImportPath: "./timestamps", TypeNames: []string{"Timestamped"}}}
-		result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
+		imports := []graph.ImportSpec{{ImportPath: "./base", TypeNames: []string{"BaseModel"}}, {ImportPath: "./timestamps", TypeNames: []string{"Timestamped"}}}
+		result, err := g.GenerateFile([]*graph.Type{typ}, imports)
 		require.NoError(t, err)
 		assert.Contains(t, result, "BaseModel")
 		assert.Contains(t, result, "Timestamped")
@@ -368,37 +368,56 @@ func TestGenerateFile_Imports(t *testing.T) {
 func TestGenerateIndexSignature(t *testing.T) {
 	t.Run("disabled", func(t *testing.T) {
 		g := createTestGenerator(&Config{AdditionalProperties: false})
-		typ := createTestType("Config", typegraph.KindStruct)
-		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}
+		typ := createTestType("Config", graph.KindStruct)
+		typ.AdditionalProps = &graph.AdditionalPropsConfig{Allowed: true, Type: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}}
 		assert.Empty(t, g.generateIndexSignature(typ))
 	})
 
 	t.Run("untyped any", func(t *testing.T) {
 		g := createTestGenerator(&Config{AdditionalProperties: true})
-		typ := createTestType("Config", typegraph.KindStruct)
-		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: nil}
+		typ := createTestType("Config", graph.KindStruct)
+		typ.AdditionalProps = &graph.AdditionalPropsConfig{Allowed: true, Type: nil}
 		assert.Contains(t, g.generateIndexSignature(typ), "[key: string]: any;")
 	})
 
 	t.Run("typed string", func(t *testing.T) {
 		g := createTestGenerator(&Config{AdditionalProperties: true})
-		typ := createTestType("Config", typegraph.KindStruct)
-		typ.AdditionalProps = &typegraph.AdditionalPropsConfig{Allowed: true, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}}
+		typ := createTestType("Config", graph.KindStruct)
+		typ.AdditionalProps = &graph.AdditionalPropsConfig{Allowed: true, Type: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}}
 		assert.Contains(t, g.generateIndexSignature(typ), "[key: string]: string;")
 	})
+}
+
+func TestGenerateFile_ImportWriteDoesNotMutateInput(t *testing.T) {
+	g := createTestGenerator(&Config{DisableHeaders: true})
+
+	imports := []graph.ImportSpec{
+		{ImportPath: "./models", TypeNames: []string{"Zebra", "Apple", "Mango"}},
+	}
+
+	original := make([]string, len(imports[0].TypeNames))
+	copy(original, imports[0].TypeNames)
+
+	_, err := g.GenerateFile([]*graph.Type{
+		createTestType("Test", graph.KindStruct),
+	}, imports)
+	require.NoError(t, err)
+
+	assert.Equal(t, original, imports[0].TypeNames,
+		"GenerateFile must not mutate the caller's TypeNames slice")
 }
 
 func TestEdgeCases(t *testing.T) {
 	g := createTestGenerator(nil)
 
 	t.Run("empty type list", func(t *testing.T) {
-		result, err := g.GenerateFile([]*typegraph.Type{}, nil)
+		result, err := g.GenerateFile([]*graph.Type{}, nil)
 		require.NoError(t, err)
 		assert.NotContains(t, result, "export")
 	})
 
 	t.Run("empty enum values", func(t *testing.T) {
-		typ := createTestType("Status", typegraph.KindEnum)
+		typ := createTestType("Status", graph.KindEnum)
 		typ.EnumType = "string"
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
@@ -406,23 +425,23 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	t.Run("quoted description", func(t *testing.T) {
-		typ := createTestType("User", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{{JSONName: "name", Description: `This is a "quoted" description`, Type: &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimString}, Required: true}}
+		typ := createTestType("User", graph.KindStruct)
+		typ.Fields = []*graph.Field{{JSONName: "name", Description: `This is a "quoted" description`, Type: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}, Required: true}}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, `"quoted"`)
 	})
 
 	t.Run("unicode in names", func(t *testing.T) {
-		typ := createTestType("Café", typegraph.KindStruct)
-		typ.Fields = []*typegraph.Field{createTestField("Naïve", "naïve", typegraph.PrimString, true)}
+		typ := createTestType("Café", graph.KindStruct)
+		typ.Fields = []*graph.Field{createTestField("Naïve", "naïve", graph.PrimString, true)}
 		result, err := g.generateInterface(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export interface Café")
 	})
 
 	t.Run("inline enum", func(t *testing.T) {
-		ref := &typegraph.TypeRef{Kind: typegraph.KindEnum, EnumValues: []any{"option1", 42, nil}}
+		ref := &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{"option1", 42, nil}}
 		result := g.typeRefToTS(ref)
 		assert.Contains(t, result, `"option1"`)
 		assert.Contains(t, result, "42")
@@ -433,25 +452,23 @@ func TestEdgeCases(t *testing.T) {
 func TestGenerateFile_MixedTypes(t *testing.T) {
 	g := createTestGenerator(nil)
 
-	interfaceType := createTestType("User", typegraph.KindStruct)
-	interfaceType.Fields = []*typegraph.Field{
-		createTestField("Name", "name", typegraph.PrimString, true),
+	interfaceType := createTestType("User", graph.KindStruct)
+	interfaceType.Fields = []*graph.Field{
+		createTestField("Name", "name", graph.PrimString, true),
 	}
 
-	enumType := createTestType("Status", typegraph.KindEnum)
+	enumType := createTestType("Status", graph.KindEnum)
 	enumType.EnumType = "string"
-	enumType.EnumValues = []typegraph.EnumValue{
+	enumType.EnumValues = []graph.EnumValue{
 		{Name: "Active", Value: "active"},
 	}
 
-	result, err := g.GenerateFile([]*typegraph.Type{interfaceType, enumType}, nil)
+	result, err := g.GenerateFile([]*graph.Type{interfaceType, enumType}, nil)
 	require.NoError(t, err)
 
-	// Both types present
 	assert.Contains(t, result, "export type Status =")
 	assert.Contains(t, result, "export interface User")
 
-	// User comes before Status (input order preserved)
 	userPos := strings.Index(result, "export interface User")
 	statusPos := strings.Index(result, "export type Status")
 	assert.Less(t, userPos, statusPos, "User should come before Status (input order)")
@@ -465,24 +482,21 @@ func TestGenerateFile_AllConfigOptions(t *testing.T) {
 		AdditionalProperties: false,
 	})
 
-	typ := createTestType("User", typegraph.KindStruct)
+	typ := createTestType("User", graph.KindStruct)
 	typ.Description = "This comment should appear"
-	typ.Fields = []*typegraph.Field{
+	typ.Fields = []*graph.Field{
 		{
 			JSONName: "data",
-			Type:     &typegraph.TypeRef{Kind: typegraph.KindPrimitive, Primitive: typegraph.PrimUnknown},
+			Type:     &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimUnknown},
 			Required: true,
 		},
 	}
 
-	result, err := g.GenerateFile([]*typegraph.Type{typ}, nil)
+	result, err := g.GenerateFile([]*graph.Type{typ}, nil)
 	require.NoError(t, err)
 
-	// Check no headers
 	assert.NotContains(t, result, "DO NOT EDIT")
-	// Check unknown instead of any
 	assert.Contains(t, result, "data: unknown;")
-	// Check comments still appear
 	assert.Contains(t, result, "This comment should appear")
 }
 
@@ -491,26 +505,24 @@ func TestGenerateFile_ZodBothModeImportsSchemas(t *testing.T) {
 		ZodMode: ZodModeWithInterface,
 	})
 
-	typ := createTestType("Event", typegraph.KindStruct)
-	typ.Fields = []*typegraph.Field{
+	typ := createTestType("Event", graph.KindStruct)
+	typ.Fields = []*graph.Field{
 		{
 			JSONName: "header",
-			Type:     &typegraph.TypeRef{Kind: typegraph.KindRef, TypeName: "EventHeader"},
+			Type:     &graph.TypeRef{Kind: graph.KindRef, TypeName: "EventHeader"},
 			Required: true,
 		},
 	}
 
-	imports := []typegraph.ImportSpec{
+	imports := []graph.ImportSpec{
 		{ImportPath: "./header", TypeNames: []string{"EventHeader"}},
 	}
 
-	result, err := g.GenerateFile([]*typegraph.Type{typ}, imports)
+	result, err := g.GenerateFile([]*graph.Type{typ}, imports)
 	require.NoError(t, err)
 
-	// Should import both type and schema for cross-file references
 	assert.Contains(t, result, "import type { EventHeader } from './header';")
 	assert.Contains(t, result, "import { EventHeaderSchema } from './header';")
 
-	// Should use the schema in the Zod definition
 	assert.Contains(t, result, "EventHeaderSchema")
 }

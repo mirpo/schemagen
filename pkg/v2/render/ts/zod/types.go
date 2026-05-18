@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/mirpo/schemagen/pkg/enumutil"
-	"github.com/mirpo/schemagen/pkg/typegraph"
+	"github.com/mirpo/schemagen/pkg/v2/graph"
 )
 
-func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) string {
+func (e *Emitter) typeRefToZod(ref *graph.TypeRef, field *graph.Field) string {
 	if ref == nil {
 		return "z.unknown()"
 	}
@@ -16,34 +16,34 @@ func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) s
 	var zodType string
 
 	switch ref.Kind {
-	case typegraph.KindRef:
+	case graph.KindRef:
 		zodType = ref.TypeName + "Schema"
 
-	case typegraph.KindPrimitive:
+	case graph.KindPrimitive:
 		zodType = e.primitiveToZod(ref.Primitive, field)
 
-	case typegraph.KindArray:
+	case graph.KindArray:
 		itemType := e.typeRefToZod(ref.ItemType, nil)
 		zodType = fmt.Sprintf("z.array(%s)", itemType)
 		if field != nil {
 			zodType += arrayConstraints(field)
 		}
 
-	case typegraph.KindMap:
+	case graph.KindMap:
 		valueType := e.typeRefToZod(ref.ValueType, nil)
 		zodType = fmt.Sprintf("z.record(z.string(), %s)", valueType)
 
-	case typegraph.KindEnum:
+	case graph.KindEnum:
 		zodType = e.enumValuesToZod(ref.EnumValues)
 
-	case typegraph.KindUnion:
+	case graph.KindUnion:
 		members := make([]string, len(ref.UnionMembers))
 		for i, member := range ref.UnionMembers {
 			members[i] = e.typeRefToZod(member, nil)
 		}
 		zodType = fmt.Sprintf("z.union([%s])", strings.Join(members, ", "))
 
-	case typegraph.KindInterface:
+	case graph.KindInterface:
 		if len(ref.ObjectFields) > 0 {
 			zodType = e.generateInlineObject(ref.ObjectFields)
 		} else {
@@ -61,34 +61,34 @@ func (e *Emitter) typeRefToZod(ref *typegraph.TypeRef, field *typegraph.Field) s
 	return zodType
 }
 
-func (e *Emitter) primitiveToZod(p typegraph.PrimitiveKind, field *typegraph.Field) string {
+func (e *Emitter) primitiveToZod(p graph.PrimitiveKind, field *graph.Field) string {
 	switch p {
-	case typegraph.PrimEmail:
+	case graph.PrimEmail:
 		return "z.email()" + stringConstraints(field)
-	case typegraph.PrimURI:
+	case graph.PrimURI:
 		return "z.url()" + stringConstraints(field)
-	case typegraph.PrimUUID:
+	case graph.PrimUUID:
 		return "z.uuid()"
-	case typegraph.PrimIPv4:
+	case graph.PrimIPv4:
 		return "z.ipv4()"
-	case typegraph.PrimIPv6:
+	case graph.PrimIPv6:
 		return "z.ipv6()"
-	case typegraph.PrimDateTime:
+	case graph.PrimDateTime:
 		if e.config.CoerceDates {
 			return "z.coerce.date()"
 		}
 		return "z.iso.datetime()"
-	case typegraph.PrimDate:
+	case graph.PrimDate:
 		return "z.iso.date()"
-	case typegraph.PrimTime:
+	case graph.PrimTime:
 		return "z.iso.time()"
-	case typegraph.PrimString, typegraph.PrimHostname:
+	case graph.PrimString, graph.PrimHostname:
 		return "z.string()" + stringConstraints(field)
-	case typegraph.PrimInt, typegraph.PrimInt32, typegraph.PrimInt64:
+	case graph.PrimInt, graph.PrimInt32, graph.PrimInt64:
 		return "z.int()" + numberConstraints(field)
-	case typegraph.PrimFloat32, typegraph.PrimFloat64:
+	case graph.PrimFloat32, graph.PrimFloat64:
 		return "z.number()" + numberConstraints(field)
-	case typegraph.PrimBool:
+	case graph.PrimBool:
 		return "z.boolean()"
 	default:
 		return "z.unknown()"
@@ -117,7 +117,7 @@ func (e *Emitter) enumValuesToZod(values []any) string {
 	return fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
 }
 
-func (e *Emitter) generateInlineObject(fields []*typegraph.Field) string {
+func (e *Emitter) generateInlineObject(fields []*graph.Field) string {
 	var sb strings.Builder
 
 	objectFunc := "z.object"

@@ -73,7 +73,7 @@ func (b *typeRefBuilder) buildRefTypeRef(ref *TypeRef, schema *jsonschema.Schema
 		ref.TypeName = typeName
 		return ref
 	}
-	// Unresolved ref - fall back to interface{}
+	// Unresolved ref - fall back to any
 	ref.Kind = KindInterface
 	ref.Primitive = PrimUnknown
 	return ref
@@ -83,7 +83,7 @@ func (b *typeRefBuilder) buildRefTypeRef(ref *TypeRef, schema *jsonschema.Schema
 func (b *typeRefBuilder) buildConstTypeRef(ref *TypeRef, schema *jsonschema.Schema) *TypeRef {
 	constValue := schema.Const.Value
 	ref.Kind = KindEnum
-	ref.EnumValues = []interface{}{constValue}
+	ref.EnumValues = []any{constValue}
 	ref.Primitive = b.inferPrimitiveFromValue(constValue)
 
 	return ref
@@ -187,7 +187,7 @@ func (b *typeRefBuilder) buildPrimitiveTypeRef(ref *TypeRef, schema *jsonschema.
 	return ref
 }
 
-func (b *typeRefBuilder) inferPrimitiveFromValue(val interface{}) PrimitiveKind {
+func (b *typeRefBuilder) inferPrimitiveFromValue(val any) PrimitiveKind {
 	switch val.(type) {
 	case string:
 		return PrimString
@@ -199,7 +199,7 @@ func (b *typeRefBuilder) inferPrimitiveFromValue(val interface{}) PrimitiveKind 
 }
 
 // inferEnumType infers enum type (string/int) from first value.
-func (b *typeRefBuilder) inferEnumType(val interface{}) string {
+func (b *typeRefBuilder) inferEnumType(val any) string {
 	switch val.(type) {
 	case string:
 		return "string"

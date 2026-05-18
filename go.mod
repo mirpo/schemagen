@@ -20,6 +20,7 @@ require (
 	github.com/kaptinlin/go-i18n v0.4.9 // indirect
 	github.com/kaptinlin/jsonpointer v0.4.24 // indirect
 	github.com/kaptinlin/messageformat-go v0.6.4 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

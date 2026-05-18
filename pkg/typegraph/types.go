@@ -108,7 +108,7 @@ type TypeRef struct {
 	UnionMembers []*TypeRef // For unions (oneOf/anyOf)
 
 	// For inline enums (not extracted as separate types)
-	EnumValues []interface{} // Enum literal values
+	EnumValues []any // Enum literal values
 
 	// For inline objects (objects with properties not extracted as separate types)
 	ObjectFields []*Field // Object fields for anonymous interfaces
@@ -130,8 +130,8 @@ func (ref *TypeRef) Walk(visitor func(*TypeRef)) {
 
 // EnumValue represents an enum constant.
 type EnumValue struct {
-	Name  string      // Constant name (UPPER_SNAKE_CASE)
-	Value interface{} // Actual value (string or int)
+	Name  string // Constant name (UPPER_SNAKE_CASE)
+	Value any    // Actual value (string or int)
 }
 
 // ImportSpec represents an import statement in generated code.
