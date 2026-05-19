@@ -57,7 +57,7 @@ func GenerateNestedBarrels(files []OutputFile, language Language) []BarrelFile {
 		}
 		barrelPath := barrelName
 		if dir != "" {
-			barrelPath = filepath.Join(dir, barrelName)
+			barrelPath = filepath.ToSlash(filepath.Join(dir, barrelName))
 		}
 
 		barrels = append(barrels, BarrelFile{
@@ -105,7 +105,7 @@ func groupFilesByDirectory(files []OutputFile) map[string][]OutputFile {
 	result := make(map[string][]OutputFile)
 
 	for _, f := range files {
-		dir := filepath.Dir(f.RelativePath)
+		dir := filepath.ToSlash(filepath.Dir(f.RelativePath))
 		if dir == "." {
 			dir = ""
 		}

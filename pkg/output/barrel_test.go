@@ -1,7 +1,6 @@
 package output
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,8 +10,8 @@ import (
 func TestGenerateNestedBarrels_Minimal(t *testing.T) {
 	files := []OutputFile{
 		{RelativePath: "root.ts"},
-		{RelativePath: filepath.Join("a", "file1.ts")},
-		{RelativePath: filepath.Join("a", "b", "file2.ts")},
+		{RelativePath: "a/file1.ts"},
+		{RelativePath: "a/b/file2.ts"},
 	}
 
 	barrels := GenerateNestedBarrels(files, LanguageTypeScript)
@@ -25,8 +24,8 @@ func TestGenerateNestedBarrels_Minimal(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, []string{"root"}, found["index.ts"])
-	assert.ElementsMatch(t, []string{"file1"}, found[filepath.Join("a", "index.ts")])
-	assert.ElementsMatch(t, []string{"file2"}, found[filepath.Join("a", "b", "index.ts")])
+	assert.ElementsMatch(t, []string{"file1"}, found["a/index.ts"])
+	assert.ElementsMatch(t, []string{"file2"}, found["a/b/index.ts"])
 }
 
 func TestGenerateNestedBarrels_SkipExistingBarrels(t *testing.T) {
@@ -44,7 +43,7 @@ func TestGenerateNestedBarrels_SkipExistingBarrels(t *testing.T) {
 		[]string{"file"},
 		barrels[0].Exports,
 	)
-	assert.Equal(t, filepath.Join("a", "index.ts"), barrels[0].Path)
+	assert.Equal(t, "a/index.ts", barrels[0].Path)
 }
 
 func TestGenerateBarrelContent_TypeScript(t *testing.T) {
@@ -85,7 +84,7 @@ func TestGenerateBarrelContent_UnsupportedLanguage(t *testing.T) {
 func TestGenerateNestedBarrels_Python(t *testing.T) {
 	files := []OutputFile{
 		{RelativePath: "user.py"},
-		{RelativePath: filepath.Join("models", "product.py")},
+		{RelativePath: "models/product.py"},
 	}
 
 	barrels := GenerateNestedBarrels(files, LanguagePython)
@@ -97,7 +96,7 @@ func TestGenerateNestedBarrels_Python(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, []string{"user"}, found["__init__.py"])
-	assert.ElementsMatch(t, []string{"product"}, found[filepath.Join("models", "__init__.py")])
+	assert.ElementsMatch(t, []string{"product"}, found["models/__init__.py"])
 }
 
 func TestGenerateNestedBarrels_UnsupportedLanguage(t *testing.T) {

@@ -94,6 +94,7 @@ func compareFiles(generated map[string][]byte, existingDir string) ([]FileDiff, 
 			if relErr != nil {
 				return relErr
 			}
+			rel = filepath.ToSlash(rel)
 			if _, exists := generated[rel]; !exists {
 				content, readErr := os.ReadFile(existPath)
 				if readErr != nil {

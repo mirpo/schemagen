@@ -6,9 +6,12 @@ import (
 )
 
 func computeRelativeImport(fromFile, toFile string) string {
-	fromDir := filepath.Dir(fromFile)
+	fromFile = filepath.ToSlash(fromFile)
+	toFile = filepath.ToSlash(toFile)
 
-	if filepath.Dir(toFile) == fromDir {
+	fromDir := filepath.ToSlash(filepath.Dir(fromFile))
+
+	if filepath.ToSlash(filepath.Dir(toFile)) == fromDir {
 		toBase := filepath.Base(toFile)
 		toName := toBase[:len(toBase)-len(filepath.Ext(toBase))]
 		return "./" + toName

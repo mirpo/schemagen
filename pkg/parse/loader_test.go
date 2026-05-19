@@ -151,8 +151,8 @@ func TestParseDirNestedRelativePaths(t *testing.T) {
 	}
 
 	assert.Equal(t, "root.json", pathMap["Root"])
-	assert.Equal(t, filepath.Join("sub", "mid.json"), pathMap["Mid"])
-	assert.Equal(t, filepath.Join("sub", "deep", "leaf.json"), pathMap["Leaf"])
+	assert.Equal(t, "sub/mid.json", pathMap["Mid"])
+	assert.Equal(t, "sub/deep/leaf.json", pathMap["Leaf"])
 
 	for _, s := range schemas {
 		assert.False(t, filepath.IsAbs(s.Path), "path should be relative: %s", s.Path)

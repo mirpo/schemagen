@@ -223,7 +223,7 @@ func convertSchemaPathToOutputForLanguage(schemaPath string, language Language) 
 	outputName := nameWithoutExt + ext
 
 	if dir != "." && dir != "" {
-		return filepath.Join(dir, outputName)
+		return filepath.ToSlash(filepath.Join(dir, outputName))
 	}
 	return outputName
 }

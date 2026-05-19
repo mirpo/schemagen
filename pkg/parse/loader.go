@@ -67,7 +67,7 @@ func ParseDir(dir string) ([]*NamedSchema, error) {
 		if err != nil {
 			return fmt.Errorf("relative path for %s: %w", path, err)
 		}
-		ns.Path = relPath
+		ns.Path = filepath.ToSlash(relPath)
 
 		schemas = append(schemas, ns)
 		return nil
