@@ -47,8 +47,6 @@ TypeScript interfaces, Python Pydantic v2 models, and Go structs.`,
 	return cmd
 }
 
-var rootCmd = NewRootCmd()
-
 func Execute() error {
-	return rootCmd.Execute()
+	return NewRootCmd().Execute()
 }

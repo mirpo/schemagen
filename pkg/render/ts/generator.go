@@ -255,7 +255,7 @@ func (g *Generator) generateEnum(typ *graph.Type) (string, error) {
 
 	category := graph.AnalyzeEnumValues(typ.EnumValues)
 
-	if typ.EnumType == graph.EnumKindString || category.HasMixed {
+	if category.AllStrings || category.HasMixed {
 		fmt.Fprintf(&sb, "export type %s = ", typ.Name)
 
 		values := make([]string, 0, len(typ.EnumValues))

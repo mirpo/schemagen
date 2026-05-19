@@ -76,7 +76,6 @@ func TestPlanOutput_Bundle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 
-	assert.Equal(t, StrategyBundle, plan.Strategy)
 	require.Len(t, plan.Files, 1)
 
 	file := plan.Files[0]
@@ -97,7 +96,6 @@ func TestPlanOutput_MultiFile_Basic(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 
-	assert.Equal(t, StrategyMultiFile, plan.Strategy)
 	require.Len(t, plan.Files, 2)
 
 	found := map[string]bool{}

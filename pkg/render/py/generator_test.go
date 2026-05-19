@@ -214,11 +214,10 @@ func TestBuildFieldParams_NoMinLengthCollision(t *testing.T) {
 	minItems := 1
 
 	f := &graph.Field{
-		JSONName:  "tags",
-		Type:      &graph.TypeRef{Kind: graph.KindArray},
-		Required:  true,
-		MinLength: &minLen,
-		MinItems:  &minItems,
+		JSONName:    "tags",
+		Type:        &graph.TypeRef{Kind: graph.KindArray},
+		Required:    true,
+		Constraints: graph.Constraints{MinLength: &minLen, MinItems: &minItems},
 	}
 
 	params := g.buildFieldParams(f, true, false, "tags")
@@ -226,6 +225,22 @@ func TestBuildFieldParams_NoMinLengthCollision(t *testing.T) {
 	count := strings.Count(combined, "min_length")
 	assert.LessOrEqual(t, count, 1,
 		"min_length should not appear twice: %s", combined)
+}
+
+func TestBuildFieldParams_MultipleOf(t *testing.T) {
+	g := newGen(nil)
+	mult := 0.5
+
+	f := &graph.Field{
+		JSONName:    "step",
+		Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
+		Required:    true,
+		Constraints: graph.Constraints{MultipleOf: &mult},
+	}
+
+	params := g.buildFieldParams(f, true, false, "step")
+	combined := strings.Join(params, ", ")
+	assert.Contains(t, combined, "multiple_of=0.5")
 }
 
 func TestGenerateFile_DisableHeaders(t *testing.T) {

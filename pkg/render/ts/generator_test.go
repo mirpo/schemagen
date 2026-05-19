@@ -79,7 +79,6 @@ func TestGenerateEnum(t *testing.T) {
 
 	t.Run("string union", func(t *testing.T) {
 		typ := createTestType("Status", graph.KindEnum)
-		typ.EnumType = graph.EnumKindString
 		typ.EnumValues = []graph.EnumValue{{Name: "Active", Value: "active"}, {Name: "Inactive", Value: "inactive"}}
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
@@ -89,7 +88,6 @@ func TestGenerateEnum(t *testing.T) {
 
 	t.Run("numeric enum", func(t *testing.T) {
 		typ := createTestType("Priority", graph.KindEnum)
-		typ.EnumType = graph.EnumKindInt
 		typ.EnumValues = []graph.EnumValue{{Name: "Low", Value: 1}, {Name: "High", Value: 2}}
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
@@ -99,7 +97,6 @@ func TestGenerateEnum(t *testing.T) {
 
 	t.Run("mixed types", func(t *testing.T) {
 		typ := createTestType("Mixed", graph.KindEnum)
-		typ.EnumType = graph.EnumKindString
 		typ.EnumValues = []graph.EnumValue{{Name: "String", Value: "text"}, {Name: "Number", Value: 42}, {Name: "Null", Value: nil}}
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
@@ -110,7 +107,6 @@ func TestGenerateEnum(t *testing.T) {
 
 	t.Run("complex values use any fallback", func(t *testing.T) {
 		typ := createTestType("Complex", graph.KindEnum)
-		typ.EnumType = graph.EnumKindString
 		typ.EnumValues = []graph.EnumValue{
 			{Name: "Simple", Value: "simple"},
 			{Name: "Obj", Value: map[string]any{"complex": true}},
@@ -418,7 +414,6 @@ func TestEdgeCases(t *testing.T) {
 
 	t.Run("empty enum values", func(t *testing.T) {
 		typ := createTestType("Status", graph.KindEnum)
-		typ.EnumType = graph.EnumKindString
 		result, err := g.generateEnum(typ)
 		require.NoError(t, err)
 		assert.Contains(t, result, "export type Status =")
@@ -458,7 +453,6 @@ func TestGenerateFile_MixedTypes(t *testing.T) {
 	}
 
 	enumType := createTestType("Status", graph.KindEnum)
-	enumType.EnumType = graph.EnumKindString
 	enumType.EnumValues = []graph.EnumValue{
 		{Name: "Active", Value: "active"},
 	}

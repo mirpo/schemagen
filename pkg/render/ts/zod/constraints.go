@@ -7,41 +7,16 @@ import (
 	"github.com/mirpo/schemagen/pkg/graph"
 )
 
-type stringFormatters struct {
-	MinLength func(int) string
-	MaxLength func(int) string
-	Pattern   func(string) string
-}
-
-type numberFormatters struct {
-	Min          func(float64) string
-	Max          func(float64) string
-	ExclusiveMin func(float64) string
-	ExclusiveMax func(float64) string
-}
-
-type arrayFormatters struct {
-	MinItems func(int) string
-	MaxItems func(int) string
-}
-
-var zodStringFmt = stringFormatters{
-	MinLength: func(n int) string { return fmt.Sprintf("min(%d)", n) },
-	MaxLength: func(n int) string { return fmt.Sprintf("max(%d)", n) },
-	Pattern:   func(p string) string { return fmt.Sprintf("regex(/%s/)", escapeRegex(p)) },
-}
-
-var zodNumberFmt = numberFormatters{
-	Min:          func(n float64) string { return fmt.Sprintf("gte(%v)", formatNumber(n)) },
-	Max:          func(n float64) string { return fmt.Sprintf("lte(%v)", formatNumber(n)) },
-	ExclusiveMin: func(n float64) string { return fmt.Sprintf("gt(%v)", formatNumber(n)) },
-	ExclusiveMax: func(n float64) string { return fmt.Sprintf("lt(%v)", formatNumber(n)) },
-}
-
-var zodArrayFmt = arrayFormatters{
-	MinItems: func(n int) string { return fmt.Sprintf("min(%d)", n) },
-	MaxItems: func(n int) string { return fmt.Sprintf("max(%d)", n) },
-}
+func zodMinLength(n int) string      { return fmt.Sprintf("min(%d)", n) }
+func zodMaxLength(n int) string      { return fmt.Sprintf("max(%d)", n) }
+func zodPattern(p string) string     { return fmt.Sprintf("regex(/%s/)", escapeRegex(p)) }
+func zodGte(n float64) string        { return fmt.Sprintf("gte(%v)", formatNumber(n)) }
+func zodLte(n float64) string        { return fmt.Sprintf("lte(%v)", formatNumber(n)) }
+func zodGt(n float64) string         { return fmt.Sprintf("gt(%v)", formatNumber(n)) }
+func zodLt(n float64) string         { return fmt.Sprintf("lt(%v)", formatNumber(n)) }
+func zodMultipleOf(n float64) string { return fmt.Sprintf("multipleOf(%v)", formatNumber(n)) }
+func zodMinItems(n int) string       { return fmt.Sprintf("min(%d)", n) }
+func zodMaxItems(n int) string       { return fmt.Sprintf("max(%d)", n) }
 
 func buildStringConstraints(field *graph.Field) []string {
 	if field == nil {
@@ -49,13 +24,13 @@ func buildStringConstraints(field *graph.Field) []string {
 	}
 	var result []string
 	if field.MinLength != nil {
-		result = append(result, zodStringFmt.MinLength(*field.MinLength))
+		result = append(result, zodMinLength(*field.MinLength))
 	}
 	if field.MaxLength != nil {
-		result = append(result, zodStringFmt.MaxLength(*field.MaxLength))
+		result = append(result, zodMaxLength(*field.MaxLength))
 	}
 	if field.Pattern != nil {
-		result = append(result, zodStringFmt.Pattern(*field.Pattern))
+		result = append(result, zodPattern(*field.Pattern))
 	}
 	return result
 }
@@ -66,16 +41,19 @@ func buildNumberConstraints(field *graph.Field) []string {
 	}
 	var result []string
 	if field.Minimum != nil {
-		result = append(result, zodNumberFmt.Min(*field.Minimum))
+		result = append(result, zodGte(*field.Minimum))
 	}
 	if field.Maximum != nil {
-		result = append(result, zodNumberFmt.Max(*field.Maximum))
+		result = append(result, zodLte(*field.Maximum))
 	}
 	if field.ExclusiveMinimum != nil {
-		result = append(result, zodNumberFmt.ExclusiveMin(*field.ExclusiveMinimum))
+		result = append(result, zodGt(*field.ExclusiveMinimum))
 	}
 	if field.ExclusiveMaximum != nil {
-		result = append(result, zodNumberFmt.ExclusiveMax(*field.ExclusiveMaximum))
+		result = append(result, zodLt(*field.ExclusiveMaximum))
+	}
+	if field.MultipleOf != nil {
+		result = append(result, zodMultipleOf(*field.MultipleOf))
 	}
 	return result
 }
@@ -86,10 +64,10 @@ func buildArrayConstraints(field *graph.Field) []string {
 	}
 	var result []string
 	if field.MinItems != nil {
-		result = append(result, zodArrayFmt.MinItems(*field.MinItems))
+		result = append(result, zodMinItems(*field.MinItems))
 	}
 	if field.MaxItems != nil {
-		result = append(result, zodArrayFmt.MaxItems(*field.MaxItems))
+		result = append(result, zodMaxItems(*field.MaxItems))
 	}
 	return result
 }

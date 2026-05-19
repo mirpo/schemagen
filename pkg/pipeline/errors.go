@@ -28,7 +28,3 @@ type ValidationError struct {
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error for %s: %s", e.Field, e.Message)
 }
-
-func (e *ValidationError) Unwrap() error {
-	return nil
-}

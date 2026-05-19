@@ -6,13 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestShortName(t *testing.T) {
-	assert.Equal(t, "ts", ShortName(LanguageTypeScript))
-	assert.Equal(t, "py", ShortName(LanguagePython))
-	assert.Equal(t, "go", ShortName(LanguageGo))
-	assert.Equal(t, "rust", ShortName(Language("rust")))
-}
-
 func TestGetExtension(t *testing.T) {
 	tests := []struct {
 		name     string

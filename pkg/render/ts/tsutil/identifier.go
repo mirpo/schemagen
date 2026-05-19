@@ -2,9 +2,7 @@ package tsutil
 
 import "unicode"
 
-// ReservedKeywords contains JavaScript/TypeScript reserved words that cannot be
-// used as unquoted property names.
-var ReservedKeywords = map[string]bool{
+var reservedKeywords = map[string]bool{
 	"break": true, "case": true, "catch": true, "continue": true,
 	"debugger": true, "default": true, "delete": true, "do": true,
 	"else": true, "finally": true, "for": true, "function": true,
@@ -42,5 +40,5 @@ func NeedsQuoting(name string) bool {
 	}
 
 	// Check for reserved words
-	return ReservedKeywords[name]
+	return reservedKeywords[name]
 }

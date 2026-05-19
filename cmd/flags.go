@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/mirpo/schemagen/pkg/output"
 	"github.com/mirpo/schemagen/pkg/pipeline"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +56,7 @@ func GetGenerationFlags(cmd *cobra.Command) *pipeline.GenerationFlags {
 	flags.DisableTimestamp, _ = cmd.Flags().GetBool("disable-timestamp")
 
 	strategyStr, _ := cmd.Flags().GetString("output-strategy")
-	flags.OutputStrategy = output.ParseStrategy(strategyStr)
+	flags.OutputStrategy = pipeline.ParseStrategy(strategyStr)
 
 	flags.TSUnknownAny, _ = cmd.Flags().GetBool("ts-unknown-any")
 	flags.TSAdditionalProperties, _ = cmd.Flags().GetBool("ts-additional-properties")

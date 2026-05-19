@@ -7,14 +7,6 @@ type EnumCategory struct {
 }
 
 func AnalyzeEnumValues(values []EnumValue) EnumCategory {
-	raw := make([]any, len(values))
-	for i, v := range values {
-		raw[i] = v.Value
-	}
-	return analyzeRawValues(raw)
-}
-
-func analyzeRawValues(values []any) EnumCategory {
 	if len(values) == 0 {
 		return EnumCategory{AllStrings: true}
 	}
@@ -24,7 +16,7 @@ func analyzeRawValues(values []any) EnumCategory {
 	hasOther := false
 
 	for _, v := range values {
-		switch v.(type) {
+		switch v.Value.(type) {
 		case string:
 			hasString = true
 		case float64, int, int64, int32:

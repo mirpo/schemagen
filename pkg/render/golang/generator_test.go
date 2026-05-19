@@ -204,10 +204,9 @@ func TestFieldValidateTag_ExclusiveMinMax(t *testing.T) {
 	excMax := float64(100)
 
 	f := &graph.Field{
-		JSONName:         "score",
-		Type:             &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
-		ExclusiveMinimum: &excMin,
-		ExclusiveMaximum: &excMax,
+		JSONName:    "score",
+		Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
+		Constraints: graph.Constraints{ExclusiveMinimum: &excMin, ExclusiveMaximum: &excMax},
 	}
 
 	tag := g.fieldValidateTag(f)
@@ -230,17 +229,17 @@ func TestFieldValidateTag_Comprehensive(t *testing.T) {
 		},
 		{
 			"min/max length",
-			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}, MinLength: intPtr(5), MaxLength: intPtr(100)},
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}, Constraints: graph.Constraints{MinLength: intPtr(5), MaxLength: intPtr(100)}},
 			"min=5,max=100",
 		},
 		{
 			"min/max numeric",
-			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}, Minimum: floatPtr(0), Maximum: floatPtr(999)},
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindPrimitive}, Constraints: graph.Constraints{Minimum: floatPtr(0), Maximum: floatPtr(999)}},
 			"gte=0,lte=999",
 		},
 		{
 			"min/max items",
-			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindArray}, MinItems: intPtr(1), MaxItems: intPtr(10)},
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindArray}, Constraints: graph.Constraints{MinItems: intPtr(1), MaxItems: intPtr(10)}},
 			"min=1,max=10",
 		},
 		{
@@ -300,7 +299,7 @@ func TestFieldHasValidation(t *testing.T) {
 		},
 		{
 			"has constraints",
-			&graph.Field{MinLength: intPtr(1)},
+			&graph.Field{Constraints: graph.Constraints{MinLength: intPtr(1)}},
 			true,
 		},
 		{
@@ -332,14 +331,28 @@ func TestFieldHasValidation(t *testing.T) {
 	}
 }
 
+func TestFieldValidateTag_MultipleOf(t *testing.T) {
+	g := gen(nil)
+	mult := 0.5
+
+	f := &graph.Field{
+		JSONName:    "step",
+		Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
+		Constraints: graph.Constraints{MultipleOf: &mult},
+	}
+
+	tag := g.fieldValidateTag(f)
+	assert.Empty(t, tag, "MultipleOf not supported by go-playground/validator struct tags — should be omitted")
+}
+
 func TestFieldValidateTag_Pattern(t *testing.T) {
 	g := gen(nil)
 	pattern := "^[a-z]+$"
 
 	f := &graph.Field{
-		JSONName: "code",
-		Type:     &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
-		Pattern:  &pattern,
+		JSONName:    "code",
+		Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
+		Constraints: graph.Constraints{Pattern: &pattern},
 	}
 
 	tag := g.fieldValidateTag(f)

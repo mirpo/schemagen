@@ -92,26 +92,6 @@ func TestMapPrimitive(t *testing.T) {
 
 // ==================== Enum Helpers ====================
 
-func TestInferEnumType(t *testing.T) {
-	tests := []struct {
-		name     string
-		values   []any
-		expected EnumKind
-	}{
-		{"all strings", []any{"a", "b", "c"}, EnumKindString},
-		{"all ints", []any{int64(1), int64(2), int64(3)}, EnumKindInt},
-		{"all floats", []any{1.5, 2.5}, EnumKindInt},
-		{"mixed string and number", []any{"a", int64(1)}, EnumKindMixed},
-		{"mixed with bool", []any{"a", true}, EnumKindMixed},
-		{"mixed with nil", []any{"a", nil}, EnumKindMixed},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, inferEnumType(tt.values))
-		})
-	}
-}
-
 func TestAnalyzeEnumValues(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -280,10 +260,29 @@ func TestBuild_Constraints(t *testing.T) {
 	assert.Equal(t, 10, *tagsF.MaxItems)
 }
 
+func TestBuild_MultipleOf(t *testing.T) {
+	g := buildOne(t, "Config", `{
+		"type": "object",
+		"properties": {
+			"step": {
+				"type": "number",
+				"multipleOf": 0.5
+			}
+		}
+	}`, BuildConfig{})
+
+	fm := fieldMap(g.Types[0])
+	stepF := fm["step"]
+	require.NotNil(t, stepF.MultipleOf)
+	assert.InDelta(t, 0.5, *stepF.MultipleOf, 0.001)
+}
+
 func TestField_HasConstraints(t *testing.T) {
 	minLen := 1
+	mult := 5.0
 	assert.False(t, (&Field{}).HasConstraints())
-	assert.True(t, (&Field{MinLength: &minLen}).HasConstraints())
+	assert.True(t, (&Field{Constraints: Constraints{MinLength: &minLen}}).HasConstraints())
+	assert.True(t, (&Field{Constraints: Constraints{MultipleOf: &mult}}).HasConstraints())
 }
 
 // ==================== Enum ====================
@@ -297,8 +296,8 @@ func TestBuild_StringEnum(t *testing.T) {
 	require.Len(t, g.Types, 1)
 	typ := g.Types[0]
 	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Equal(t, EnumKindString, typ.EnumType)
 	require.Len(t, typ.EnumValues, 3)
+	assert.True(t, AnalyzeEnumValues(typ.EnumValues).AllStrings)
 	assert.Equal(t, "ACTIVE", typ.EnumValues[0].Name)
 	assert.Equal(t, "active", typ.EnumValues[0].Value)
 }
@@ -312,8 +311,8 @@ func TestBuild_NumberEnum(t *testing.T) {
 	require.Len(t, g.Types, 1)
 	typ := g.Types[0]
 	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Equal(t, EnumKindInt, typ.EnumType)
 	require.Len(t, typ.EnumValues, 3)
+	assert.True(t, AnalyzeEnumValues(typ.EnumValues).AllNumbers)
 }
 
 func TestBuild_MixedEnum(t *testing.T) {
@@ -324,8 +323,8 @@ func TestBuild_MixedEnum(t *testing.T) {
 	require.Len(t, g.Types, 1)
 	typ := g.Types[0]
 	assert.Equal(t, KindEnum, typ.Kind)
-	assert.Equal(t, EnumKindMixed, typ.EnumType)
 	assert.Len(t, typ.EnumValues, 4)
+	assert.True(t, AnalyzeEnumValues(typ.EnumValues).HasMixed)
 }
 
 // ==================== Union (anyOf) ====================

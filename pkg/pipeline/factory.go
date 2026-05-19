@@ -9,43 +9,28 @@ import (
 	"github.com/mirpo/schemagen/pkg/render/ts"
 )
 
-type Generator interface {
+type generator interface {
 	Generate(types []*graph.Type, imports []graph.ImportSpec) (string, error)
 	ConvertImports(imports []graph.ImportSpec) []graph.ImportSpec
 }
 
-type LanguageGenerator interface {
-	GenerateFile(types []*graph.Type, imports []graph.ImportSpec) (string, error)
+type langGenerator struct {
+	generateFile  func([]*graph.Type, []graph.ImportSpec) (string, error)
+	convertImport func([]graph.ImportSpec) []graph.ImportSpec
 }
 
-type ImportConverter interface {
-	Convert(imports []graph.ImportSpec) []graph.ImportSpec
+func (g *langGenerator) Generate(types []*graph.Type, imports []graph.ImportSpec) (string, error) {
+	return g.generateFile(types, imports)
 }
 
-type PassthroughConverter struct{}
-
-func (c *PassthroughConverter) Convert(imports []graph.ImportSpec) []graph.ImportSpec {
-	return imports
+func (g *langGenerator) ConvertImports(imports []graph.ImportSpec) []graph.ImportSpec {
+	if g.convertImport == nil {
+		return imports
+	}
+	return g.convertImport(imports)
 }
 
-type combinedGenerator struct {
-	generator LanguageGenerator
-	converter ImportConverter
-}
-
-func newCombinedGenerator(gen LanguageGenerator, conv ImportConverter) *combinedGenerator {
-	return &combinedGenerator{generator: gen, converter: conv}
-}
-
-func (g *combinedGenerator) Generate(types []*graph.Type, imports []graph.ImportSpec) (string, error) {
-	return g.generator.GenerateFile(types, imports)
-}
-
-func (g *combinedGenerator) ConvertImports(imports []graph.ImportSpec) []graph.ImportSpec {
-	return g.converter.Convert(imports)
-}
-
-func createGenerator(cfg *Config) (Generator, error) {
+func createGenerator(cfg *Config) (generator, error) {
 	switch cfg.Language {
 	case LanguageTypeScript:
 		return newTypeScriptGenerator(cfg), nil
@@ -58,7 +43,7 @@ func createGenerator(cfg *Config) (Generator, error) {
 	}
 }
 
-func newTypeScriptGenerator(cfg *Config) Generator {
+func newTypeScriptGenerator(cfg *Config) generator {
 	tsCfg := &ts.Config{
 		DisableHeaders:       cfg.DisableHeaders,
 		DisableTimestamp:     cfg.DisableTimestamp,
@@ -74,33 +59,37 @@ func newTypeScriptGenerator(cfg *Config) Generator {
 		tsCfg.ZodMode = ts.ZodModeWithInterface
 	}
 
-	return newCombinedGenerator(
-		ts.NewGeneratorWithConfig(tsCfg),
-		&PassthroughConverter{},
-	)
+	gen := ts.NewGeneratorWithConfig(tsCfg)
+	return &langGenerator{
+		generateFile: gen.GenerateFile,
+	}
 }
 
-func newPythonGenerator(cfg *Config) Generator {
-	return newCombinedGenerator(
-		py.NewGeneratorWithConfig(&py.Config{
-			DisableHeaders:   cfg.DisableHeaders,
-			DisableTimestamp: cfg.DisableTimestamp,
-			SnakeCaseField:   cfg.Python.SnakeCaseField,
-			AllowExtraFields: cfg.Python.AdditionalProperties,
-		}),
-		&py.ImportConverter{},
-	)
+func newPythonGenerator(cfg *Config) generator {
+	gen := py.NewGeneratorWithConfig(&py.Config{
+		DisableHeaders:   cfg.DisableHeaders,
+		DisableTimestamp: cfg.DisableTimestamp,
+		SnakeCaseField:   cfg.Python.SnakeCaseField,
+		AllowExtraFields: cfg.Python.AdditionalProperties,
+	})
+	conv := &py.ImportConverter{}
+	return &langGenerator{
+		generateFile:  gen.GenerateFile,
+		convertImport: conv.Convert,
+	}
 }
 
-func newGoGenerator(cfg *Config) Generator {
-	return newCombinedGenerator(
-		golang.NewGenerator(&golang.Config{
-			PackageName:      cfg.Go.PackageName,
-			UsePointers:      cfg.Go.UsePointers,
-			OmitEmpty:        cfg.Go.OmitEmpty,
-			DisableHeaders:   cfg.DisableHeaders,
-			DisableTimestamp: cfg.DisableTimestamp,
-		}),
-		&golang.ImportConverter{ModulePath: cfg.Go.ModulePath},
-	)
+func newGoGenerator(cfg *Config) generator {
+	gen := golang.NewGenerator(&golang.Config{
+		PackageName:      cfg.Go.PackageName,
+		UsePointers:      cfg.Go.UsePointers,
+		OmitEmpty:        cfg.Go.OmitEmpty,
+		DisableHeaders:   cfg.DisableHeaders,
+		DisableTimestamp: cfg.DisableTimestamp,
+	})
+	conv := &golang.ImportConverter{ModulePath: cfg.Go.ModulePath}
+	return &langGenerator{
+		generateFile:  gen.GenerateFile,
+		convertImport: conv.Convert,
+	}
 }

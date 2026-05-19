@@ -27,7 +27,7 @@ func ToConstantCase(s string) string {
 	}
 
 	normalized := strings.Join(splitOnDelimiters(s), "_")
-	snake := toSnakeCase(normalized)
+	snake := ToSnakeCase(normalized)
 	return strings.ToUpper(snake)
 }
 
@@ -71,7 +71,7 @@ func capitalizeFirst(s string) string {
 	return string(r)
 }
 
-func toSnakeCase(s string) string {
+func ToSnakeCase(s string) string {
 	if s == "" {
 		return s
 	}

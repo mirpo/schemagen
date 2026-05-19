@@ -3,6 +3,8 @@ package golang
 import (
 	"strings"
 	"unicode"
+
+	"github.com/mirpo/schemagen/pkg/graph"
 )
 
 func toGoFieldName(name string) string {
@@ -38,7 +40,7 @@ func toGoFieldName(name string) string {
 	}
 	cleaned = string(rs)
 
-	pascal := toPascalCase(cleaned)
+	pascal := graph.ToPascalCase(cleaned)
 	if pascal == "" {
 		return "Field"
 	}
@@ -51,39 +53,6 @@ func toGoFieldName(name string) string {
 		return "Field"
 	}
 	return pascal
-}
-
-func toPascalCase(s string) string {
-	if s == "" {
-		return s
-	}
-
-	var parts []string
-	var cur strings.Builder
-	for _, r := range s {
-		if r == '_' || r == '-' || r == ' ' || r == '.' {
-			if cur.Len() > 0 {
-				parts = append(parts, cur.String())
-				cur.Reset()
-			}
-		} else {
-			cur.WriteRune(r)
-		}
-	}
-	if cur.Len() > 0 {
-		parts = append(parts, cur.String())
-	}
-
-	var b strings.Builder
-	for _, p := range parts {
-		if p == "" {
-			continue
-		}
-		r := []rune(p)
-		r[0] = unicode.ToUpper(r[0])
-		b.WriteString(string(r))
-	}
-	return b.String()
 }
 
 func isValidGoIdentifier(s string) bool {

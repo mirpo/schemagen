@@ -51,7 +51,7 @@ func TestNeedsQuoting(t *testing.T) {
 	}
 }
 
-func TestReservedKeywords(t *testing.T) {
+func TestReservedKeywordsMap(t *testing.T) {
 	// Ensure all expected keywords are present
 	expectedKeywords := []string{
 		"break", "case", "catch", "continue", "debugger", "default", "delete", "do",
@@ -63,9 +63,9 @@ func TestReservedKeywords(t *testing.T) {
 	}
 
 	for _, kw := range expectedKeywords {
-		assert.True(t, ReservedKeywords[kw], "expected %q to be a reserved keyword", kw)
+		assert.True(t, reservedKeywords[kw], "expected %q to be a reserved keyword", kw)
 	}
 
 	// Ensure count matches
-	assert.Len(t, ReservedKeywords, len(expectedKeywords))
+	assert.Len(t, reservedKeywords, len(expectedKeywords))
 }

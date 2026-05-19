@@ -35,14 +35,6 @@ const (
 	KindInterface TypeKind = "interface"
 )
 
-type EnumKind string
-
-const (
-	EnumKindString EnumKind = "string"
-	EnumKindInt    EnumKind = "int"
-	EnumKindMixed  EnumKind = "mixed"
-)
-
 type Type struct {
 	Name        string
 	Kind        TypeKind
@@ -53,7 +45,6 @@ type Type struct {
 	Extends         []string
 	AdditionalProps *AdditionalPropsConfig
 
-	EnumType   EnumKind
 	EnumValues []EnumValue
 
 	Primitive PrimitiveKind
@@ -66,12 +57,7 @@ type AdditionalPropsConfig struct {
 	Type    *TypeRef
 }
 
-type Field struct {
-	JSONName    string
-	Type        *TypeRef
-	Description string
-	Required    bool
-
+type Constraints struct {
 	MinLength        *int
 	MaxLength        *int
 	Pattern          *string
@@ -81,14 +67,24 @@ type Field struct {
 	ExclusiveMaximum *float64
 	MinItems         *int
 	MaxItems         *int
+	MultipleOf       *float64
 }
 
-func (f *Field) HasConstraints() bool {
-	return f.MinLength != nil || f.MaxLength != nil ||
-		f.Pattern != nil ||
-		f.Minimum != nil || f.Maximum != nil ||
-		f.ExclusiveMinimum != nil || f.ExclusiveMaximum != nil ||
-		f.MinItems != nil || f.MaxItems != nil
+func (c *Constraints) HasConstraints() bool {
+	return c.MinLength != nil || c.MaxLength != nil ||
+		c.Pattern != nil ||
+		c.Minimum != nil || c.Maximum != nil ||
+		c.ExclusiveMinimum != nil || c.ExclusiveMaximum != nil ||
+		c.MinItems != nil || c.MaxItems != nil ||
+		c.MultipleOf != nil
+}
+
+type Field struct {
+	JSONName    string
+	Type        *TypeRef
+	Description string
+	Required    bool
+	Constraints
 }
 
 type TypeRef struct {
@@ -108,17 +104,26 @@ type TypeRef struct {
 }
 
 func (ref *TypeRef) Walk(visitor func(*TypeRef)) {
+	visited := make(map[*TypeRef]struct{})
+	ref.walk(visitor, visited)
+}
+
+func (ref *TypeRef) walk(visitor func(*TypeRef), visited map[*TypeRef]struct{}) {
 	if ref == nil {
 		return
 	}
+	if _, seen := visited[ref]; seen {
+		return
+	}
+	visited[ref] = struct{}{}
 	visitor(ref)
-	ref.ItemType.Walk(visitor)
-	ref.ValueType.Walk(visitor)
+	ref.ItemType.walk(visitor, visited)
+	ref.ValueType.walk(visitor, visited)
 	for _, m := range ref.UnionMembers {
-		m.Walk(visitor)
+		m.walk(visitor, visited)
 	}
 	for _, f := range ref.ObjectFields {
-		f.Type.Walk(visitor)
+		f.Type.walk(visitor, visited)
 	}
 }
 

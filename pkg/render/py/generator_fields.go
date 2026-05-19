@@ -23,24 +23,20 @@ func (g *Generator) buildFieldParams(field *graph.Field, required bool, needsAli
 		return []string{} // Empty slice = no Field() needed
 	}
 
-	// 1. Default value (required or optional)
 	if required {
 		params = append(params, "...")
 	} else {
 		params = append(params, "None")
 	}
 
-	// 2. Alias if needed
 	if needsAlias {
 		params = append(params, fmt.Sprintf("alias=%q", jsonName))
 	}
 
-	// 3. Description
 	if field.Description != "" {
 		params = append(params, fmt.Sprintf("description=%s", formatPythonString(field.Description)))
 	}
 
-	// 4. String constraints
 	if field.MinLength != nil {
 		params = append(params, fmt.Sprintf("min_length=%d", *field.MinLength))
 	}
@@ -51,7 +47,6 @@ func (g *Generator) buildFieldParams(field *graph.Field, required bool, needsAli
 		params = append(params, fmt.Sprintf("pattern=%q", *field.Pattern))
 	}
 
-	// 5. Numeric constraints
 	if field.Minimum != nil {
 		params = append(params, fmt.Sprintf("ge=%g", *field.Minimum))
 	}
@@ -65,7 +60,10 @@ func (g *Generator) buildFieldParams(field *graph.Field, required bool, needsAli
 		params = append(params, fmt.Sprintf("lt=%g", *field.ExclusiveMaximum))
 	}
 
-	// 6. Array constraints (using min/max_length for list items)
+	if field.MultipleOf != nil {
+		params = append(params, fmt.Sprintf("multiple_of=%g", *field.MultipleOf))
+	}
+
 	if field.MinItems != nil && field.MinLength == nil {
 		params = append(params, fmt.Sprintf("min_length=%d", *field.MinItems))
 	}

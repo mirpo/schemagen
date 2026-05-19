@@ -16,6 +16,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	origOut := os.Stdout
 	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = origOut })
 
 	fn()
 

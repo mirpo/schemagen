@@ -1,5 +1,7 @@
 package cmd
 
+import "errors"
+
 const (
 	exitGeneral = 1
 	exitDrift   = 2
@@ -23,7 +25,8 @@ func (e *exitCodeError) Unwrap() error {
 }
 
 func ExitCode(err error) int {
-	if e, ok := err.(*exitCodeError); ok {
+	var e *exitCodeError
+	if errors.As(err, &e) {
 		return e.Code
 	}
 	return 1

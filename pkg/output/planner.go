@@ -41,8 +41,7 @@ func ParseStrategy(v string) OutputStrategy {
 }
 
 type OutputPlan struct {
-	Strategy OutputStrategy
-	Files    []OutputFile
+	Files []OutputFile
 }
 
 type OutputFile struct {
@@ -74,7 +73,6 @@ func planBundle(g *graph.Graph, language Language, bundleName string) *OutputPla
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
 	return &OutputPlan{
-		Strategy: StrategyBundle,
 		Files: []OutputFile{
 			{
 				RelativePath: filename,
@@ -99,8 +97,7 @@ func planMultiFile(g *graph.Graph, language Language) *OutputPlan {
 	assignOrphanedTypes(g, fileTypes)
 
 	plan := &OutputPlan{
-		Strategy: StrategyMultiFile,
-		Files:    make([]OutputFile, 0, len(fileTypes)),
+		Files: make([]OutputFile, 0, len(fileTypes)),
 	}
 
 	for _, p := range slices.Sorted(maps.Keys(fileTypes)) {
@@ -172,7 +169,6 @@ func planBundleDeps(g *graph.Graph, language Language, bundleName string, rootSo
 	}
 
 	return &OutputPlan{
-		Strategy: StrategyBundleDeps,
 		Files: []OutputFile{
 			{
 				RelativePath: filename,

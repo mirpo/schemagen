@@ -212,7 +212,7 @@ func (g *Generator) fieldNeedsAlias(field *graph.Field) bool {
 		return true
 	}
 	if g.config.SnakeCaseField {
-		return toSnakeCase(name) != name
+		return graph.ToSnakeCase(name) != name
 	}
 	return false
 }
@@ -330,7 +330,7 @@ func (g *Generator) renderField(sb *strings.Builder, field *graph.Field) {
 	}
 
 	if g.config.SnakeCaseField {
-		snakeName := toSnakeCase(fieldName)
+		snakeName := graph.ToSnakeCase(fieldName)
 		if snakeName != fieldName {
 			fieldName = snakeName
 			needsAlias = true

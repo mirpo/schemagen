@@ -32,6 +32,12 @@ const (
 	DefaultBundleName = "types"
 )
 
+type OutputStrategy = output.OutputStrategy
+
+func ParseStrategy(v string) OutputStrategy {
+	return output.ParseStrategy(v)
+}
+
 type TypeScriptConfig struct {
 	UnknownAny           bool
 	AdditionalProperties bool

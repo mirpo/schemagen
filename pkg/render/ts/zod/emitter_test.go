@@ -215,8 +215,8 @@ func TestEmitter_Constraints(t *testing.T) {
 		minLen, maxLen, pattern := 3, 20, "^[a-z]+$"
 		field := &graph.Field{
 			JSONName: "username", Required: true,
-			Type:      &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
-			MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern,
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
+			Constraints: graph.Constraints{MinLength: &minLen, MaxLength: &maxLen, Pattern: &pattern},
 		}
 		assert.Contains(t, e.generateField(field), "z.string().min(3).max(20).regex(/^[a-z]+$/)")
 	})
@@ -225,8 +225,8 @@ func TestEmitter_Constraints(t *testing.T) {
 		min, max := float64(0), float64(100)
 		field := &graph.Field{
 			JSONName: "age", Required: true,
-			Type:    &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt},
-			Minimum: &min, Maximum: &max,
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt},
+			Constraints: graph.Constraints{Minimum: &min, Maximum: &max},
 		}
 		assert.Contains(t, e.generateField(field), "z.int().gte(0).lte(100)")
 	})
@@ -235,8 +235,8 @@ func TestEmitter_Constraints(t *testing.T) {
 		exMin, exMax := float64(0), float64(100)
 		field := &graph.Field{
 			JSONName: "value", Required: true,
-			Type:             &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
-			ExclusiveMinimum: &exMin, ExclusiveMaximum: &exMax,
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
+			Constraints: graph.Constraints{ExclusiveMinimum: &exMin, ExclusiveMaximum: &exMax},
 		}
 		assert.Contains(t, e.generateField(field), "z.number().gt(0).lt(100)")
 	})
@@ -245,18 +245,38 @@ func TestEmitter_Constraints(t *testing.T) {
 		minItems, maxItems := 1, 10
 		field := &graph.Field{
 			JSONName: "items", Required: true,
-			Type:     &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}},
-			MinItems: &minItems, MaxItems: &maxItems,
+			Type:        &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}},
+			Constraints: graph.Constraints{MinItems: &minItems, MaxItems: &maxItems},
 		}
 		assert.Contains(t, e.generateField(field), "z.array(z.string()).min(1).max(10)")
+	})
+
+	t.Run("number multipleOf", func(t *testing.T) {
+		mult := 0.5
+		field := &graph.Field{
+			JSONName: "step", Required: true,
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimFloat64},
+			Constraints: graph.Constraints{MultipleOf: &mult},
+		}
+		assert.Contains(t, e.generateField(field), "z.number().multipleOf(0.5)")
+	})
+
+	t.Run("integer multipleOf", func(t *testing.T) {
+		mult := float64(5)
+		field := &graph.Field{
+			JSONName: "count", Required: true,
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt},
+			Constraints: graph.Constraints{MultipleOf: &mult},
+		}
+		assert.Contains(t, e.generateField(field), "z.int().multipleOf(5)")
 	})
 
 	t.Run("regex escaping", func(t *testing.T) {
 		pattern := "^[a-z]+/test$"
 		field := &graph.Field{
 			JSONName: "path", Required: true,
-			Type:    &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
-			Pattern: &pattern,
+			Type:        &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString},
+			Constraints: graph.Constraints{Pattern: &pattern},
 		}
 		assert.Contains(t, e.generateField(field), `regex(/^[a-z]+\/test$/)`)
 	})
