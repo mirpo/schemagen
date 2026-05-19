@@ -73,7 +73,7 @@ func (g *Generator) fieldValidateTag(field *graph.Field) string {
 		// Build oneof constraint from enum values
 		enumVals := make([]string, 0, len(field.Type.EnumValues))
 		for _, val := range field.Type.EnumValues {
-			switch v := val.(type) {
+			switch v := val.Value.(type) {
 			case string:
 				enumVals = append(enumVals, v)
 			case float64, int, int64:

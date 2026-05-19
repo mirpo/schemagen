@@ -276,7 +276,7 @@ func (b *builder) buildTypeRef(parentName, fieldName string, node *parse.SchemaN
 		if len(node.Enum) > 0 {
 			prim = inferPrimitiveFromValue(node.Enum[0])
 		}
-		return &TypeRef{Kind: KindEnum, EnumValues: node.Enum, Primitive: prim, Nullable: nullable}
+		return &TypeRef{Kind: KindEnum, EnumValues: rawToEnumValues(node.Enum), Primitive: prim, Nullable: nullable}
 	}
 
 	if node.IsUnion() {
@@ -370,7 +370,7 @@ func (b *builder) resolveRefName(ref string, rootName string) string {
 func (b *builder) buildConstTypeRef(node *parse.SchemaNode) *TypeRef {
 	return &TypeRef{
 		Kind:       KindEnum,
-		EnumValues: []any{node.Const},
+		EnumValues: []EnumValue{{Value: node.Const}},
 		Primitive:  inferPrimitiveFromValue(node.Const),
 		Nullable:   node.Type.IsNullable(),
 	}
@@ -480,6 +480,17 @@ func inferEnumType(values []any) EnumKind {
 	default:
 		return EnumKindMixed
 	}
+}
+
+func rawToEnumValues(values []any) []EnumValue {
+	if values == nil {
+		return nil
+	}
+	result := make([]EnumValue, len(values))
+	for i, v := range values {
+		result[i] = EnumValue{Value: v}
+	}
+	return result
 }
 
 func enumValueName(v any) string {

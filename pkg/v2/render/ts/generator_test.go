@@ -441,7 +441,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	t.Run("inline enum", func(t *testing.T) {
-		ref := &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{"option1", 42, nil}}
+		ref := &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []graph.EnumValue{{Value: "option1"}, {Value: 42}, {Value: nil}}}
 		result := g.typeRefToTS(ref)
 		assert.Contains(t, result, `"option1"`)
 		assert.Contains(t, result, "42")

@@ -33,9 +33,9 @@ func (g *Generator) typeRefToTS(ref *graph.TypeRef) string {
 		if len(ref.EnumValues) > 0 {
 			literals := make([]string, 0, len(ref.EnumValues))
 			for _, val := range ref.EnumValues {
-				switch val.(type) {
+				switch val.Value.(type) {
 				case string, float64, int, int64, bool, nil:
-					literals = append(literals, common.TSLiterals.FormatValue(val))
+					literals = append(literals, common.TSLiterals.FormatValue(val.Value))
 				default:
 				}
 			}

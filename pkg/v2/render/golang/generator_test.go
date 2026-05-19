@@ -265,12 +265,12 @@ func TestFieldValidateTag_Comprehensive(t *testing.T) {
 		},
 		{
 			"inline enum oneof strings",
-			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{"a", "b", "c"}}},
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []graph.EnumValue{{Value: "a"}, {Value: "b"}, {Value: "c"}}}},
 			"oneof=a b c",
 		},
 		{
 			"inline enum oneof numbers",
-			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{float64(1), float64(2)}}},
+			&graph.Field{JSONName: "x", Type: &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []graph.EnumValue{{Value: float64(1)}, {Value: float64(2)}}}},
 			"oneof=1 2",
 		},
 		{
@@ -310,7 +310,7 @@ func TestFieldHasValidation(t *testing.T) {
 		},
 		{
 			"enum values",
-			&graph.Field{Type: &graph.TypeRef{EnumValues: []any{"a"}}},
+			&graph.Field{Type: &graph.TypeRef{EnumValues: []graph.EnumValue{{Value: "a"}}}},
 			true,
 		},
 		{

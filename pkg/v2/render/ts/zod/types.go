@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/v2/graph"
 )
 
@@ -95,24 +94,24 @@ func (e *Emitter) primitiveToZod(p graph.PrimitiveKind, field *graph.Field) stri
 	}
 }
 
-func (e *Emitter) enumValuesToZod(values []any) string {
+func (e *Emitter) enumValuesToZod(values []graph.EnumValue) string {
 	if len(values) == 0 {
 		return "z.never()"
 	}
 
-	category := enumutil.AnalyzeRawValues(values)
+	category := graph.AnalyzeEnumValues(values)
 
 	if category.AllStrings {
 		strValues := make([]string, len(values))
 		for i, v := range values {
-			strValues[i] = fmt.Sprintf("%q", v.(string))
+			strValues[i] = fmt.Sprintf("%q", v.Value.(string))
 		}
 		return fmt.Sprintf("z.enum([%s])", strings.Join(strValues, ", "))
 	}
 
 	literals := make([]string, len(values))
 	for i, v := range values {
-		literals[i] = formatZodLiteral(v)
+		literals[i] = formatZodLiteral(v.Value)
 	}
 	return fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
 }

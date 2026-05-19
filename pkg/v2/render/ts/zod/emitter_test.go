@@ -274,7 +274,7 @@ func TestEmitter_TypeRefToZod(t *testing.T) {
 		{"array", &graph.TypeRef{Kind: graph.KindArray, ItemType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString}}, "z.array(z.string())"},
 		{"map", &graph.TypeRef{Kind: graph.KindMap, ValueType: &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimInt}}, "z.record(z.string(), z.int())"},
 		{"nullable", &graph.TypeRef{Kind: graph.KindPrimitive, Primitive: graph.PrimString, Nullable: true}, "z.string().nullable()"},
-		{"inline enum", &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []any{"a", "b", "c"}}, `z.enum(["a", "b", "c"])`},
+		{"inline enum", &graph.TypeRef{Kind: graph.KindEnum, EnumValues: []graph.EnumValue{{Value: "a"}, {Value: "b"}, {Value: "c"}}}, `z.enum(["a", "b", "c"])`},
 	}
 
 	e := createTestEmitter(nil)

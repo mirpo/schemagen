@@ -102,7 +102,7 @@ type TypeRef struct {
 	ValueType    *TypeRef
 	UnionMembers []*TypeRef
 
-	EnumValues []any
+	EnumValues []EnumValue
 
 	ObjectFields []*Field
 }

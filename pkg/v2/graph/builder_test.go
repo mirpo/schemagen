@@ -107,6 +107,25 @@ func TestInferEnumType(t *testing.T) {
 	}
 }
 
+func TestRawToEnumValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []any
+		expected []EnumValue
+	}{
+		{"strings", []any{"active", "inactive"}, []EnumValue{{Value: "active"}, {Value: "inactive"}}},
+		{"numbers", []any{float64(1), int64(2)}, []EnumValue{{Value: float64(1)}, {Value: int64(2)}}},
+		{"mixed", []any{"a", float64(1), nil}, []EnumValue{{Value: "a"}, {Value: float64(1)}, {Value: nil}}},
+		{"empty", []any{}, []EnumValue{}},
+		{"nil", nil, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, rawToEnumValues(tt.input))
+		})
+	}
+}
+
 func TestEnumValueName(t *testing.T) {
 	assert.Equal(t, "hello", enumValueName("hello"))
 	assert.Equal(t, "42", enumValueName(42))
@@ -823,7 +842,7 @@ func TestBuild_ConstTypeRef(t *testing.T) {
 	versionField := fieldMap(g.Types[0])["version"]
 	assert.Equal(t, KindEnum, versionField.Type.Kind)
 	require.Len(t, versionField.Type.EnumValues, 1)
-	assert.Equal(t, "1.0", versionField.Type.EnumValues[0])
+	assert.Equal(t, "1.0", versionField.Type.EnumValues[0].Value)
 }
 
 // ==================== Object without properties (map) ====================
