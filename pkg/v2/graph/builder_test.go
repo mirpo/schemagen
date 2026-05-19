@@ -1412,6 +1412,65 @@ func TestBuild_ProcessedTypesGuard_SetBeforeRecursion(t *testing.T) {
 	assert.Equal(t, KindEnum, tm["Status2"].Kind)
 }
 
+// ==================== SourceFile ====================
+
+func TestBuild_SourceFile_SetOnAllTypes(t *testing.T) {
+	ns1 := &parse.NamedSchema{
+		Name: "User",
+		Path: "user.json",
+		Schema: mustParse(t, `{
+			"type": "object",
+			"properties": {
+				"name": {"type": "string"}
+			},
+			"$defs": {
+				"Address": {
+					"type": "object",
+					"properties": {
+						"city": {"type": "string"}
+					}
+				}
+			}
+		}`),
+	}
+	ns2 := &parse.NamedSchema{
+		Name: "Product",
+		Path: "product.json",
+		Schema: mustParse(t, `{
+			"type": "object",
+			"properties": {
+				"title": {"type": "string"}
+			}
+		}`),
+	}
+
+	g, err := Build([]*parse.NamedSchema{ns1, ns2}, BuildConfig{})
+	require.NoError(t, err)
+
+	tm := typeMap(g)
+	assert.Equal(t, "user.json", tm["User"].SourceFile)
+	assert.Equal(t, "user.json", tm["Address"].SourceFile, "$defs type inherits parent schema source file")
+	assert.Equal(t, "product.json", tm["Product"].SourceFile)
+}
+
+func TestBuild_SourceFile_ExtractedInlineTypes(t *testing.T) {
+	g := buildOne(t, "Order", `{
+		"type": "object",
+		"properties": {
+			"status": {
+				"type": "string",
+				"enum": ["pending", "shipped"]
+			}
+		}
+	}`, BuildConfig{ExtractInlined: true})
+
+	tm := typeMap(g)
+	require.Contains(t, tm, "Order")
+	require.Contains(t, tm, "Status")
+	assert.Equal(t, "Order", tm["Order"].SourceFile, "root type gets schema name as source")
+	assert.Equal(t, "Order", tm["Status"].SourceFile, "extracted inline type inherits source file")
+}
+
 // ==================== Warnings ====================
 
 func TestBuild_Warnings_EmptyGraph(t *testing.T) {

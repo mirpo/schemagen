@@ -29,6 +29,11 @@ func Build(schemas []*parse.NamedSchema, cfg BuildConfig) (*Graph, error) {
 	}
 
 	for _, ns := range schemas {
+		b.currentSourceFile = ns.Path
+		if b.currentSourceFile == "" {
+			b.currentSourceFile = ns.Name
+		}
+
 		for _, d := range ns.Schema.Defs {
 			b.buildType(naming.ToPascalCase(d.Name), d.Schema, ns.Name)
 		}
@@ -42,12 +47,13 @@ func Build(schemas []*parse.NamedSchema, cfg BuildConfig) (*Graph, error) {
 }
 
 type builder struct {
-	graph          *Graph
-	cfg            BuildConfig
-	globalDefs     map[string]*parse.SchemaNode
-	processedTypes map[string]bool
-	schemaNames    map[string]string
-	warnings       []string
+	graph             *Graph
+	cfg               BuildConfig
+	globalDefs        map[string]*parse.SchemaNode
+	processedTypes    map[string]bool
+	schemaNames       map[string]string
+	warnings          []string
+	currentSourceFile string
 }
 
 func (b *builder) warn(format string, args ...any) {
@@ -105,15 +111,17 @@ func (b *builder) buildType(name string, node *parse.SchemaNode, rootName string
 		b.buildStruct(name, node, rootName, false)
 	case node.IsArray():
 		b.graph.AddType(&Type{
-			Name:      name,
-			Kind:      KindPrimitive,
-			Primitive: PrimUnknown,
+			Name:       name,
+			Kind:       KindPrimitive,
+			Primitive:  PrimUnknown,
+			SourceFile: b.currentSourceFile,
 		})
 	case node.IsPrimitive():
 		b.graph.AddType(&Type{
-			Name:      name,
-			Kind:      KindPrimitive,
-			Primitive: mapPrimitive(node.Type.Single(), node.Format),
+			Name:       name,
+			Kind:       KindPrimitive,
+			Primitive:  mapPrimitive(node.Type.Single(), node.Format),
+			SourceFile: b.currentSourceFile,
 		})
 	default:
 		b.warn("schema %q did not produce a type (no recognizable structure)", name)
@@ -125,6 +133,7 @@ func (b *builder) buildStruct(name string, node *parse.SchemaNode, rootName stri
 		Name:        name,
 		Kind:        KindStruct,
 		Description: node.Description,
+		SourceFile:  b.currentSourceFile,
 	}
 
 	if node.AdditionalProperties != nil {
@@ -165,6 +174,7 @@ func (b *builder) buildEnum(name string, node *parse.SchemaNode) {
 		Name:        name,
 		Kind:        KindEnum,
 		Description: node.Description,
+		SourceFile:  b.currentSourceFile,
 		EnumType:    inferEnumType(node.Enum),
 	}
 
@@ -185,6 +195,7 @@ func (b *builder) buildUnion(name string, node *parse.SchemaNode, rootName strin
 		Name:        name,
 		Kind:        KindUnion,
 		Description: node.Description,
+		SourceFile:  b.currentSourceFile,
 	}
 
 	for _, m := range members {
@@ -200,6 +211,7 @@ func (b *builder) buildAllOf(name string, node *parse.SchemaNode, rootName strin
 		Name:        name,
 		Kind:        KindStruct,
 		Description: node.Description,
+		SourceFile:  b.currentSourceFile,
 	}
 
 	seen := map[string]bool{}

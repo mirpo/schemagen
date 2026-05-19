@@ -4,7 +4,6 @@ import (
 	pkgerrors "github.com/mirpo/schemagen/pkg/errors"
 	"github.com/mirpo/schemagen/pkg/v2/graph"
 	"github.com/mirpo/schemagen/pkg/v2/output"
-	"github.com/mirpo/schemagen/pkg/v2/parse"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,17 +29,20 @@ func Run(cfg *Config) error {
 		Int("types", len(g.Types)).
 		Msg("Built type graph")
 
-	schemas := make([]parse.NamedSchema, len(cfg.Schemas))
-	for i, s := range cfg.Schemas {
-		schemas[i] = *s
+	rootSourceFile := ""
+	if len(cfg.Schemas) > 0 {
+		rootSourceFile = cfg.Schemas[0].Path
+		if rootSourceFile == "" {
+			rootSourceFile = cfg.Schemas[0].Name
+		}
 	}
 
 	plan, err := output.PlanOutput(
 		g,
-		schemas,
 		cfg.OutputStrategy,
 		cfg.Language,
 		DefaultBundleName,
+		rootSourceFile,
 	)
 	if err != nil {
 		return err

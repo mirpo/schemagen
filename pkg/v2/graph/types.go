@@ -47,6 +47,7 @@ type Type struct {
 	Name        string
 	Kind        TypeKind
 	Description string
+	SourceFile  string
 
 	Fields          []*Field
 	Extends         []string

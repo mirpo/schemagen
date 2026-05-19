@@ -8,7 +8,6 @@ import (
 
 	"github.com/mirpo/schemagen/pkg/constants"
 	"github.com/mirpo/schemagen/pkg/v2/graph"
-	"github.com/mirpo/schemagen/pkg/v2/parse"
 )
 
 func TestOutputStrategy_Set(t *testing.T) {
@@ -18,13 +17,11 @@ func TestOutputStrategy_Set(t *testing.T) {
 		expected OutputStrategy
 		wantErr  bool
 	}{
-		// Valid inputs
 		{"bundle", "bundle", StrategyBundle, false},
 		{"multifile", "multifile", StrategyMultiFile, false},
 		{"multi-file", "multi-file", StrategyMultiFile, false},
 		{"bundledeps", "bundledeps", StrategyBundleDeps, false},
 		{"bundle-deps", "bundle-deps", StrategyBundleDeps, false},
-		// Invalid inputs should error
 		{"invalid", "invalid", "", true},
 		{"empty", "", "", true},
 		{"typo", "bundel", "", true},
@@ -76,14 +73,7 @@ func TestPlanOutput_Bundle(t *testing.T) {
 		},
 	}
 
-	plan, err := PlanOutput(
-		g,
-		nil,
-		StrategyBundle,
-		constants.LanguageTypeScript,
-		"models",
-	)
-
+	plan, err := PlanOutput(g, StrategyBundle, constants.LanguageTypeScript, "models", "")
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 
@@ -97,30 +87,14 @@ func TestPlanOutput_Bundle(t *testing.T) {
 }
 
 func TestPlanOutput_MultiFile_Basic(t *testing.T) {
-	userSchema := parse.NamedSchema{
-		Name: "User",
-		Path: "user.json",
-	}
-	profileSchema := parse.NamedSchema{
-		Name: "Profile",
-		Path: "profile.json",
-	}
-
 	g := &graph.Graph{
 		Types: []*graph.Type{
-			{Name: "User"},
-			{Name: "Profile"},
+			{Name: "User", SourceFile: "user.json"},
+			{Name: "Profile", SourceFile: "profile.json"},
 		},
 	}
 
-	plan, err := PlanOutput(
-		g,
-		[]parse.NamedSchema{userSchema, profileSchema},
-		StrategyMultiFile,
-		constants.LanguageTypeScript,
-		"",
-	)
-
+	plan, err := PlanOutput(g, StrategyMultiFile, constants.LanguageTypeScript, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 
@@ -136,36 +110,43 @@ func TestPlanOutput_MultiFile_Basic(t *testing.T) {
 	assert.True(t, found["profile.ts"])
 }
 
-func TestPlanOutput_MultiFile_IncludesOrphanedTypes(t *testing.T) {
-	orphan := &graph.Type{
-		Name: "Timestamped",
-	}
-
-	user := &graph.Type{
-		Name:    "User",
-		Extends: []string{"Timestamped"},
-	}
-
+func TestPlanOutput_MultiFile_SameSourceFileGrouped(t *testing.T) {
 	g := &graph.Graph{
 		Types: []*graph.Type{
-			user,
-			orphan,
+			{Name: "User", SourceFile: "user.json"},
+			{Name: "Address", SourceFile: "user.json"},
+			{Name: "Product", SourceFile: "product.json"},
 		},
 	}
 
-	userSchema := parse.NamedSchema{
-		Name: "User",
-		Path: "user.json",
+	plan, err := PlanOutput(g, StrategyMultiFile, constants.LanguageTypeScript, "", "")
+	require.NoError(t, err)
+	require.Len(t, plan.Files, 2)
+
+	fileTypes := map[string][]string{}
+	for _, f := range plan.Files {
+		for _, typ := range f.Types {
+			fileTypes[f.RelativePath] = append(fileTypes[f.RelativePath], typ.Name)
+		}
 	}
 
-	plan, err := PlanOutput(
-		g,
-		[]parse.NamedSchema{userSchema},
-		StrategyMultiFile,
-		constants.LanguageTypeScript,
-		"",
-	)
+	assert.ElementsMatch(t, []string{"User", "Address"}, fileTypes["user.ts"])
+	assert.ElementsMatch(t, []string{"Product"}, fileTypes["product.ts"])
+}
 
+func TestPlanOutput_MultiFile_OrphanedTypesPulledIn(t *testing.T) {
+	orphan := &graph.Type{Name: "Timestamped"}
+	user := &graph.Type{
+		Name:       "User",
+		SourceFile: "user.json",
+		Extends:    []string{"Timestamped"},
+	}
+
+	g := &graph.Graph{
+		Types: []*graph.Type{user, orphan},
+	}
+
+	plan, err := PlanOutput(g, StrategyMultiFile, constants.LanguageTypeScript, "", "")
 	require.NoError(t, err)
 	require.Len(t, plan.Files, 1)
 
@@ -182,40 +163,19 @@ func TestPlanOutput_MultiFile_IncludesOrphanedTypes(t *testing.T) {
 }
 
 func TestPlanOutput_BundleDeps(t *testing.T) {
-	base := &graph.Type{
-		Name: "Base",
-	}
-
+	base := &graph.Type{Name: "Base", SourceFile: "base.json"}
 	child := &graph.Type{
-		Name:    "Child",
-		Extends: []string{"Base"},
+		Name:       "Child",
+		SourceFile: "child.json",
+		Extends:    []string{"Base"},
 	}
-
-	unused := &graph.Type{
-		Name: "Unused",
-	}
+	unused := &graph.Type{Name: "Unused", SourceFile: "unused.json"}
 
 	g := &graph.Graph{
-		Types: []*graph.Type{
-			base,
-			child,
-			unused,
-		},
+		Types: []*graph.Type{base, child, unused},
 	}
 
-	childSchema := parse.NamedSchema{
-		Name: "Child",
-		Path: "child.json",
-	}
-
-	plan, err := PlanOutput(
-		g,
-		[]parse.NamedSchema{childSchema},
-		StrategyBundleDeps,
-		constants.LanguageTypeScript,
-		"bundle",
-	)
-
+	plan, err := PlanOutput(g, StrategyBundleDeps, constants.LanguageTypeScript, "bundle", "child.json")
 	require.NoError(t, err)
 	require.Len(t, plan.Files, 1)
 
@@ -233,11 +193,12 @@ func TestPlanOutput_BundleDeps(t *testing.T) {
 }
 
 func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
-	circle := &graph.Type{Name: "Circle", Kind: graph.KindStruct}
-	square := &graph.Type{Name: "Square", Kind: graph.KindStruct}
+	circle := &graph.Type{Name: "Circle", Kind: graph.KindStruct, SourceFile: "circle.json"}
+	square := &graph.Type{Name: "Square", Kind: graph.KindStruct, SourceFile: "square.json"}
 	shape := &graph.Type{
-		Name: "Shape",
-		Kind: graph.KindUnion,
+		Name:       "Shape",
+		Kind:       graph.KindUnion,
+		SourceFile: "shape.json",
 		UnionMembers: []*graph.TypeRef{
 			{Kind: graph.KindRef, TypeName: "Circle"},
 			{Kind: graph.KindRef, TypeName: "Square"},
@@ -249,19 +210,7 @@ func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
 	g.AddType(square)
 	g.AddType(shape)
 
-	shapeSchema := parse.NamedSchema{
-		Name: "Shape",
-		Path: "shape.json",
-	}
-
-	plan, err := PlanOutput(
-		g,
-		[]parse.NamedSchema{shapeSchema},
-		StrategyBundleDeps,
-		constants.LanguageTypeScript,
-		"bundle",
-	)
-
+	plan, err := PlanOutput(g, StrategyBundleDeps, constants.LanguageTypeScript, "bundle", "shape.json")
 	require.NoError(t, err)
 	require.Len(t, plan.Files, 1)
 
@@ -270,25 +219,23 @@ func TestPlanOutput_BundleDeps_IncludesUnionMembers(t *testing.T) {
 		typeNames[typ.Name] = true
 	}
 
-	assert.True(t, typeNames["Shape"], "Shape should be included")
-	assert.True(t, typeNames["Circle"], "Circle should be included as union member")
-	assert.True(t, typeNames["Square"], "Square should be included as union member")
+	assert.True(t, typeNames["Shape"])
+	assert.True(t, typeNames["Circle"])
+	assert.True(t, typeNames["Square"])
 }
 
 func TestPlanOutput_MultiFile_DeterministicOrder(t *testing.T) {
-	schemas := make([]parse.NamedSchema, 10)
 	types := make([]*graph.Type, 10)
 	for i := range 10 {
 		name := string(rune('A' + i))
-		schemas[i] = parse.NamedSchema{Name: name, Path: name + ".json"}
-		types[i] = &graph.Type{Name: name}
+		types[i] = &graph.Type{Name: name, SourceFile: name + ".json"}
 	}
 
 	g := &graph.Graph{Types: types}
 
 	var firstOrder []string
 	for run := range 50 {
-		plan, err := PlanOutput(g, schemas, StrategyMultiFile, constants.LanguageTypeScript, "")
+		plan, err := PlanOutput(g, StrategyMultiFile, constants.LanguageTypeScript, "", "")
 		require.NoError(t, err)
 		require.Len(t, plan.Files, 10)
 
@@ -306,21 +253,14 @@ func TestPlanOutput_MultiFile_DeterministicOrder(t *testing.T) {
 	}
 }
 
-func TestPlanOutput_BundleDeps_EmptySchemas(t *testing.T) {
+func TestPlanOutput_BundleDeps_EmptyRootSourceFile(t *testing.T) {
 	g := &graph.Graph{
 		Types: []*graph.Type{
 			{Name: "Orphan"},
 		},
 	}
 
-	plan, err := PlanOutput(
-		g,
-		[]parse.NamedSchema{},
-		StrategyBundleDeps,
-		constants.LanguageTypeScript,
-		"bundle",
-	)
-
+	plan, err := PlanOutput(g, StrategyBundleDeps, constants.LanguageTypeScript, "bundle", "")
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 	assert.Empty(t, plan.Files)
