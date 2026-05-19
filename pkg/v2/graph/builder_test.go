@@ -107,6 +107,31 @@ func TestInferEnumType(t *testing.T) {
 	}
 }
 
+func TestAnalyzeEnumValues(t *testing.T) {
+	tests := []struct {
+		name       string
+		values     []EnumValue
+		allStrings bool
+		allNumbers bool
+		hasMixed   bool
+	}{
+		{"all strings", []EnumValue{{Value: "a"}, {Value: "b"}}, true, false, false},
+		{"all numbers", []EnumValue{{Value: float64(1)}, {Value: int64(2)}}, false, true, false},
+		{"mixed", []EnumValue{{Value: "a"}, {Value: float64(1)}}, false, false, true},
+		{"with bool", []EnumValue{{Value: true}}, false, false, true},
+		{"with nil", []EnumValue{{Value: nil}}, false, false, true},
+		{"empty", []EnumValue{}, true, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cat := AnalyzeEnumValues(tt.values)
+			assert.Equal(t, tt.allStrings, cat.AllStrings)
+			assert.Equal(t, tt.allNumbers, cat.AllNumbers)
+			assert.Equal(t, tt.hasMixed, cat.HasMixed)
+		})
+	}
+}
+
 func TestRawToEnumValues(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mirpo/schemagen/pkg/enumutil"
 	"github.com/mirpo/schemagen/pkg/naming"
 	"github.com/mirpo/schemagen/pkg/v2/parse"
 )
@@ -471,7 +470,7 @@ func isNullType(node *parse.SchemaNode) bool {
 }
 
 func inferEnumType(values []any) EnumKind {
-	cat := enumutil.AnalyzeRawValues(values)
+	cat := analyzeRawValues(values)
 	switch {
 	case cat.AllStrings:
 		return EnumKindString
