@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -8,6 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func testdataDir() string {
+	return filepath.Join("..", "..", "..", "testdata")
+}
 
 func mustParse(t *testing.T, json string) *parse.SchemaNode {
 	t.Helper()
@@ -1088,7 +1093,7 @@ func TestGraph_GetType_NilIndex(t *testing.T) {
 // ==================================================================
 
 func TestIntegration_EcommerceOrder(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/complex/ecommerce_order.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "complex", "ecommerce_order.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -1142,7 +1147,7 @@ func TestIntegration_EcommerceOrder(t *testing.T) {
 }
 
 func TestIntegration_CyclicRef(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/edge-cases/cyclic-ref.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "edge-cases", "cyclic-ref.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -1162,7 +1167,7 @@ func TestIntegration_CyclicRef(t *testing.T) {
 }
 
 func TestIntegration_Document(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/allof/document.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "allof", "document.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -1196,7 +1201,7 @@ func TestIntegration_Document(t *testing.T) {
 }
 
 func TestIntegration_Notification(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/anyof/notification.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "anyof", "notification.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -1241,7 +1246,7 @@ func TestIntegration_Notification(t *testing.T) {
 }
 
 func TestIntegration_Foundation(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/foundation/foundation.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "foundation", "foundation.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -1307,7 +1312,7 @@ func TestIntegration_Foundation(t *testing.T) {
 }
 
 func TestIntegration_Organization(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/refs/organization.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "refs", "organization.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})

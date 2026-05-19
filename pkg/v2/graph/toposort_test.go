@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/mirpo/schemagen/pkg/v2/parse"
@@ -300,7 +301,7 @@ func TestCollectDeps(t *testing.T) {
 // ==================== Integration: EcommerceOrder toposort ====================
 
 func TestTopoSort_Integration_EcommerceOrder(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/complex/ecommerce_order.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "complex", "ecommerce_order.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -321,7 +322,7 @@ func TestTopoSort_Integration_EcommerceOrder(t *testing.T) {
 }
 
 func TestTopoSort_Integration_CyclicRef(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/edge-cases/cyclic-ref.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "edge-cases", "cyclic-ref.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -333,7 +334,7 @@ func TestTopoSort_Integration_CyclicRef(t *testing.T) {
 }
 
 func TestTopoSort_Integration_Document(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/allof/document.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "allof", "document.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
@@ -352,7 +353,7 @@ func TestTopoSort_Integration_Document(t *testing.T) {
 }
 
 func TestTopoSort_Integration_Organization(t *testing.T) {
-	ns, err := parse.ParseFile("/Users/mirpo/Projects/schemagen/testdata/schemas/refs/organization.json")
+	ns, err := parse.ParseFile(filepath.Join(testdataDir(), "schemas", "refs", "organization.json"))
 	require.NoError(t, err)
 
 	g, err := Build([]*parse.NamedSchema{ns}, BuildConfig{})
