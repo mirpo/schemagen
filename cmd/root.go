@@ -13,7 +13,6 @@ var (
 	Commit  = "none"
 )
 
-// NewRootCmd creates a new root command instance for testing isolation
 func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schemagen",
@@ -48,7 +47,6 @@ TypeScript interfaces, Python Pydantic v2 models, and Go structs.`,
 	return cmd
 }
 
-// rootCmd is the global instance for production use
 var rootCmd = NewRootCmd()
 
 func Execute() error {

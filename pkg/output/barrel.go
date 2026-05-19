@@ -5,24 +5,22 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/mirpo/schemagen/pkg/common"
-	"github.com/mirpo/schemagen/pkg/constants"
+	"github.com/mirpo/schemagen/pkg/render"
 )
 
-func GenerateBarrelContent(barrel BarrelFile, language constants.Language) string {
-	barrelName := constants.GetBarrelFileName(string(language))
-	switch barrelName {
-	case "index.ts":
+func GenerateBarrelContent(barrel BarrelFile, language Language) string {
+	switch language {
+	case LanguageTypeScript:
 		return generateTypeScriptBarrel(barrel)
-	case "__init__.py":
+	case LanguagePython:
 		return generatePythonBarrel(barrel)
 	default:
 		return ""
 	}
 }
 
-func GenerateNestedBarrels(files []OutputFile, language constants.Language) []BarrelFile {
-	if constants.GetBarrelFileName(string(language)) == "" {
+func GenerateNestedBarrels(files []OutputFile, language Language) []BarrelFile {
+	if GetBarrelFileName(language) == "" {
 		return nil
 	}
 
@@ -50,7 +48,7 @@ func GenerateNestedBarrels(files []OutputFile, language constants.Language) []Ba
 
 		sort.Strings(exports)
 
-		barrelName := constants.GetBarrelFileName(string(language))
+		barrelName := GetBarrelFileName(language)
 		if barrelName == "" {
 			continue
 		}
@@ -75,8 +73,8 @@ func GenerateNestedBarrels(files []OutputFile, language constants.Language) []Ba
 func generateTypeScriptBarrel(barrel BarrelFile) string {
 	var b strings.Builder
 
-	b.WriteString(common.GenerateHeader(common.HeaderConfig{
-		CommentPrefix:    common.CommentPrefixSlash,
+	b.WriteString(render.GenerateHeader(render.HeaderConfig{
+		CommentPrefix:    render.CommentPrefixSlash,
 		DisableTimestamp: true,
 	}))
 
@@ -92,8 +90,8 @@ func generateTypeScriptBarrel(barrel BarrelFile) string {
 func generatePythonBarrel(barrel BarrelFile) string {
 	var b strings.Builder
 
-	b.WriteString(common.GenerateHeader(common.HeaderConfig{
-		CommentPrefix:    common.CommentPrefixHash,
+	b.WriteString(render.GenerateHeader(render.HeaderConfig{
+		CommentPrefix:    render.CommentPrefixHash,
 		DisableTimestamp: true,
 	}))
 

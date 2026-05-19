@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mirpo/schemagen/pkg/compare"
-	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +45,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		Flags: flags,
 	})
 	if err != nil {
-		return errors.Wrap(err, "verification failed")
+		return wrapErr(err, "verification failed")
 	}
 
 	// Log differences if not quiet
@@ -64,15 +63,15 @@ func runVerify(cmd *cobra.Command, args []string) error {
 	}
 
 	// Handle result
-	if result.HasDrift {
+	if len(result.Diffs) > 0 {
 		if !quiet {
 			fmt.Println()
 			fmt.Println("❌ Drift detected! Generated files don't match existing files.")
 			fmt.Println("Run 'schemagen generate' to update generated files.")
 		}
-		return &errors.ExitCodeError{
+		return &exitCodeError{
 			Message: "drift detected",
-			Code:    errors.ExitDrift,
+			Code:    exitDrift,
 		}
 	}
 

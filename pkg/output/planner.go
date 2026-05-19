@@ -7,10 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/mirpo/schemagen/pkg/constants"
-	"github.com/mirpo/schemagen/pkg/naming"
-	"github.com/mirpo/schemagen/pkg/schema"
-	"github.com/mirpo/schemagen/pkg/typegraph"
+	"github.com/mirpo/schemagen/pkg/graph"
 )
 
 type OutputStrategy string
@@ -50,8 +47,8 @@ type OutputPlan struct {
 
 type OutputFile struct {
 	RelativePath string
-	Types        []*typegraph.Type
-	Imports      []typegraph.ImportSpec
+	Types        []*graph.Type
+	Imports      []graph.ImportSpec
 }
 
 type BarrelFile struct {
@@ -59,56 +56,21 @@ type BarrelFile struct {
 	Exports []string
 }
 
-func PlanOutput(graph *typegraph.Graph, schemas []*schema.Schema, strategy OutputStrategy, language string, bundleName string) (*OutputPlan, error) {
-	typeSourceMap := buildTypeSourceMap(schemas)
-
+func PlanOutput(g *graph.Graph, strategy OutputStrategy, language Language, bundleName string, rootSourceFile string) (*OutputPlan, error) {
 	switch strategy {
 	case StrategyBundle:
-		return planBundle(graph, language, bundleName), nil
+		return planBundle(g, language, bundleName), nil
 	case StrategyMultiFile:
-		return planMultiFile(graph, schemas, typeSourceMap, language), nil
+		return planMultiFile(g, language), nil
 	case StrategyBundleDeps:
-		return planBundleDeps(graph, schemas, typeSourceMap, language, bundleName), nil
+		return planBundleDeps(g, language, bundleName, rootSourceFile), nil
 	default:
 		return nil, fmt.Errorf("unsupported output strategy: %s", strategy)
 	}
 }
 
-func buildTypeSourceMap(schemas []*schema.Schema) map[string]*schema.Schema {
-	typeSourceMap := make(map[string]*schema.Schema)
-
-	for _, s := range schemas {
-		schemaTypes := extractTypesFromSchema(s)
-		for _, typeName := range schemaTypes {
-			typeSourceMap[typeName] = s
-		}
-	}
-
-	return typeSourceMap
-}
-
-func extractTypesFromSchema(s *schema.Schema) []string {
-	var types []string
-
-	if s == nil {
-		return types
-	}
-
-	if s.Name != "" {
-		types = append(types, s.Name)
-	}
-
-	if s.Compiled != nil && s.Compiled.Defs != nil {
-		for defName := range s.Compiled.Defs {
-			types = append(types, naming.ToPascalCase(defName))
-		}
-	}
-
-	return types
-}
-
-func planBundle(graph *typegraph.Graph, language string, bundleName string) *OutputPlan {
-	ext := constants.GetExtension(language)
+func planBundle(g *graph.Graph, language Language, bundleName string) *OutputPlan {
+	ext := GetExtension(language)
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
 	return &OutputPlan{
@@ -116,124 +78,123 @@ func planBundle(graph *typegraph.Graph, language string, bundleName string) *Out
 		Files: []OutputFile{
 			{
 				RelativePath: filename,
-				Types:        graph.Types,
-				Imports:      []typegraph.ImportSpec{},
+				Types:        g.Types,
+				Imports:      []graph.ImportSpec{},
 			},
 		},
 	}
 }
 
-func planMultiFile(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string) *OutputPlan {
-	schemaFiles := make(map[string]*OutputFile)
+func planMultiFile(g *graph.Graph, language Language) *OutputPlan {
+	fileTypes := make(map[string][]*graph.Type)
 
-	// For each schema, determine which types belong to it (including orphaned dependencies)
-	// We do this in two passes to preserve graph.Types order (dependencies before parent)
-	for _, s := range schemas {
-		outputPath := convertSchemaPathToOutputForLanguage(s.RelativePath, language)
-
-		// First pass: collect all type names that belong to this file
-		belongsToFile := make(map[string]bool)
-		for _, typ := range graph.Types {
-			if typeSourceMap[typ.Name] == s {
-				belongsToFile[typ.Name] = true
-				// Mark orphaned types (no source schema) that are referenced by this type
-				markOrphanedTypes(typ, graph, typeSourceMap, belongsToFile)
-			}
+	for _, typ := range g.Types {
+		if typ.SourceFile == "" {
+			continue
 		}
-
-		// Second pass: iterate graph.Types in order and collect types that belong to this file
-		// This preserves the type graph order (dependencies come before types that use them)
-		var fileTypes []*typegraph.Type
-		for _, typ := range graph.Types {
-			if belongsToFile[typ.Name] {
-				fileTypes = append(fileTypes, typ)
-			}
-		}
-
-		if len(fileTypes) > 0 {
-			schemaFiles[outputPath] = &OutputFile{
-				RelativePath: outputPath,
-				Types:        fileTypes,
-				Imports:      []typegraph.ImportSpec{},
-			}
-		}
+		outputPath := convertSchemaPathToOutputForLanguage(typ.SourceFile, language)
+		fileTypes[outputPath] = append(fileTypes[outputPath], typ)
 	}
+
+	assignOrphanedTypes(g, fileTypes)
 
 	plan := &OutputPlan{
 		Strategy: StrategyMultiFile,
-		Files:    make([]OutputFile, 0, len(schemaFiles)),
+		Files:    make([]OutputFile, 0, len(fileTypes)),
 	}
 
-	for _, p := range slices.Sorted(maps.Keys(schemaFiles)) {
-		plan.Files = append(plan.Files, *schemaFiles[p])
+	for _, p := range slices.Sorted(maps.Keys(fileTypes)) {
+		plan.Files = append(plan.Files, OutputFile{
+			RelativePath: p,
+			Types:        fileTypes[p],
+			Imports:      []graph.ImportSpec{},
+		})
 	}
 
 	return plan
 }
 
-func markOrphanedTypes(typ *typegraph.Type, graph *typegraph.Graph, typeSourceMap map[string]*schema.Schema, belongsToFile map[string]bool) {
-	walkReachableTypes(typ, graph, func(name string) bool {
-		return !belongsToFile[name] && typeSourceMap[name] == nil
-	}, func(name string) {
-		belongsToFile[name] = true
-	})
+func assignOrphanedTypes(g *graph.Graph, fileTypes map[string][]*graph.Type) {
+	type pending struct {
+		path string
+		typ  *graph.Type
+	}
+
+	assigned := make(map[string]bool)
+	var orphans []pending
+
+	for outputPath, types := range fileTypes {
+		for _, typ := range types {
+			walkReachableTypes(typ, g, func(name string) bool {
+				t := g.GetType(name)
+				return t != nil && t.SourceFile == "" && !assigned[name]
+			}, func(name string) {
+				assigned[name] = true
+				if t := g.GetType(name); t != nil {
+					orphans = append(orphans, pending{outputPath, t})
+				}
+			})
+		}
+	}
+
+	for _, o := range orphans {
+		fileTypes[o.path] = append(fileTypes[o.path], o.typ)
+	}
 }
 
-func planBundleDeps(graph *typegraph.Graph, schemas []*schema.Schema, typeSourceMap map[string]*schema.Schema, language string, bundleName string) *OutputPlan {
-	ext := constants.GetExtension(language)
+func planBundleDeps(g *graph.Graph, language Language, bundleName string, rootSourceFile string) *OutputPlan {
+	if rootSourceFile == "" {
+		return &OutputPlan{}
+	}
+
+	ext := GetExtension(language)
 	filename := fmt.Sprintf("%s%s", bundleName, ext)
 
-	rootSchema := schemas[0]
-	includedTypes := collectDependentTypes(graph, rootSchema, typeSourceMap)
+	included := make(map[string]bool)
+	var result []*graph.Type
+
+	for _, typ := range g.Types {
+		if typ.SourceFile == rootSourceFile {
+			included[typ.Name] = true
+			result = append(result, typ)
+		}
+	}
+
+	for i := 0; i < len(result); i++ {
+		walkReachableTypes(result[i], g, func(name string) bool {
+			return !included[name]
+		}, func(name string) {
+			included[name] = true
+			if t := g.GetType(name); t != nil {
+				result = append(result, t)
+			}
+		})
+	}
 
 	return &OutputPlan{
 		Strategy: StrategyBundleDeps,
 		Files: []OutputFile{
 			{
 				RelativePath: filename,
-				Types:        includedTypes,
-				Imports:      []typegraph.ImportSpec{},
+				Types:        result,
+				Imports:      []graph.ImportSpec{},
 			},
 		},
 	}
 }
 
-func collectDependentTypes(graph *typegraph.Graph, rootSchema *schema.Schema, typeSourceMap map[string]*schema.Schema) []*typegraph.Type {
-	included := make(map[string]bool)
-	var result []*typegraph.Type
-
-	for _, typ := range graph.Types {
-		if typeSourceMap[typ.Name] == rootSchema {
-			included[typ.Name] = true
-			result = append(result, typ)
-			collectReferencedTypes(typ, graph, included, &result)
-		}
-	}
-
-	return result
-}
-
-func collectReferencedTypes(typ *typegraph.Type, graph *typegraph.Graph, included map[string]bool, result *[]*typegraph.Type) {
-	walkReachableTypes(typ, graph, func(name string) bool {
-		return !included[name]
-	}, func(name string) {
-		included[name] = true
-		*result = append(*result, graph.GetType(name))
-	})
-}
-
-func walkReachableTypes(typ *typegraph.Type, graph *typegraph.Graph, shouldVisit func(string) bool, onVisit func(string)) {
+func walkReachableTypes(typ *graph.Type, g *graph.Graph, shouldVisit func(string) bool, onVisit func(string)) {
 	visit := func(name string) {
 		if shouldVisit(name) {
-			if t := graph.GetType(name); t != nil {
+			if t := g.GetType(name); t != nil {
 				onVisit(name)
-				walkReachableTypes(t, graph, shouldVisit, onVisit)
+				walkReachableTypes(t, g, shouldVisit, onVisit)
 			}
 		}
 	}
 
 	for _, field := range typ.Fields {
-		field.Type.Walk(func(r *typegraph.TypeRef) {
+		field.Type.Walk(func(r *graph.TypeRef) {
 			if r.TypeName != "" {
 				visit(r.TypeName)
 			}
@@ -245,7 +206,7 @@ func walkReachableTypes(typ *typegraph.Type, graph *typegraph.Graph, shouldVisit
 	}
 
 	for _, m := range typ.UnionMembers {
-		m.Walk(func(r *typegraph.TypeRef) {
+		m.Walk(func(r *graph.TypeRef) {
 			if r.TypeName != "" {
 				visit(r.TypeName)
 			}
@@ -253,20 +214,18 @@ func walkReachableTypes(typ *typegraph.Type, graph *typegraph.Graph, shouldVisit
 	}
 }
 
-func convertSchemaPathToOutputForLanguage(schemaPath string, language string) string {
-	ext := constants.GetExtension(language)
+func convertSchemaPathToOutputForLanguage(schemaPath string, language Language) string {
+	ext := GetExtension(language)
 	dir := filepath.Dir(schemaPath)
 	base := filepath.Base(schemaPath)
 	nameWithoutExt := stripExtension(base)
 
-	// Sanitize filename for Python: convert hyphens to underscores
-	if constants.IsPython(language) {
+	if language == LanguagePython {
 		nameWithoutExt = strings.ReplaceAll(nameWithoutExt, "-", "_")
 	}
 
 	outputName := nameWithoutExt + ext
 
-	// If there's a directory structure (not just "."), preserve it
 	if dir != "." && dir != "" {
 		return filepath.Join(dir, outputName)
 	}

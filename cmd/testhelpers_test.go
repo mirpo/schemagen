@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +46,7 @@ func generateToDir(t *testing.T, schemaPath, outTS, outPY string, extraFlags ...
 func requireExitCode(t *testing.T, err error, code int) {
 	t.Helper()
 	require.Error(t, err)
-	if exitErr, ok := err.(*errors.ExitCodeError); ok {
+	if exitErr, ok := err.(*exitCodeError); ok {
 		assert.Equal(t, code, exitErr.Code)
 	}
 }

@@ -1,12 +1,11 @@
 package cmd
 
 import (
-	"github.com/mirpo/schemagen/pkg/generation"
 	"github.com/mirpo/schemagen/pkg/output"
+	"github.com/mirpo/schemagen/pkg/pipeline"
 	"github.com/spf13/cobra"
 )
 
-// AddGenerationFlags adds all generation-related flags to a command
 func AddGenerationFlags(cmd *cobra.Command) {
 	// Output directory flags
 	cmd.Flags().String("out-ts", "", "Output directory for TypeScript")
@@ -46,9 +45,8 @@ func AddGenerationFlags(cmd *cobra.Command) {
 	cmd.MarkFlagsOneRequired("out-ts", "out-py", "out-go")
 }
 
-// GetGenerationFlags extracts generation flags from a cobra command.
-func GetGenerationFlags(cmd *cobra.Command) *generation.GenerationFlags {
-	flags := &generation.GenerationFlags{}
+func GetGenerationFlags(cmd *cobra.Command) *pipeline.GenerationFlags {
+	flags := &pipeline.GenerationFlags{}
 
 	flags.OutTS, _ = cmd.Flags().GetString("out-ts")
 	flags.OutPY, _ = cmd.Flags().GetString("out-py")

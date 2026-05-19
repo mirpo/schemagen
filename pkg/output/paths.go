@@ -31,7 +31,6 @@ func computeRelativeImport(fromFile, toFile string) string {
 	return nameWithoutExt
 }
 
-// stripExtension removes the file extension from a path or filename.
 func stripExtension(name string) string {
 	return strings.TrimSuffix(name, filepath.Ext(name))
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/kylelemons/godebug/diff"
 	"github.com/mirpo/schemagen/pkg/compare"
-	"github.com/mirpo/schemagen/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +54,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		Flags: flags,
 	})
 	if err != nil {
-		return errors.Wrap(err, "diff failed")
+		return wrapErr(err, "diff failed")
 	}
 
 	// Show diffs if any
@@ -84,22 +83,19 @@ func runDiff(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	color.Red("✗ Differences found")
-	return &errors.ExitCodeError{
+	return &exitCodeError{
 		Message: "differences found",
-		Code:    errors.ExitDrift,
+		Code:    exitDrift,
 	}
 }
 
-// showUnifiedDiff shows a unified diff with context lines
 func showUnifiedDiff(old, new string) {
-	// Use godebug/diff to generate line-by-line diff
 	diffOutput := diff.Diff(old, new)
 
 	if diffOutput == "" {
 		return
 	}
 
-	// Colorize the diff output
 	lines := strings.Split(diffOutput, "\n")
 	for _, line := range lines {
 		if len(line) == 0 {

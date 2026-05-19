@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/mirpo/schemagen/pkg/typegraph"
+	"github.com/mirpo/schemagen/pkg/graph"
 )
 
 type importDependency struct {
@@ -65,10 +65,10 @@ func ComputeImports(files []OutputFile, typeToFile map[string]string) []OutputFi
 		}
 
 		deps := tracker.GetDependencies()
-		imports := make([]typegraph.ImportSpec, 0, len(deps))
+		imports := make([]graph.ImportSpec, 0, len(deps))
 
 		for _, d := range deps {
-			imports = append(imports, typegraph.ImportSpec{
+			imports = append(imports, graph.ImportSpec{
 				FromPath:  files[i].RelativePath,
 				ToPath:    d.TargetFile,
 				TypeNames: d.TypeNames,
@@ -85,7 +85,7 @@ func ComputeImports(files []OutputFile, typeToFile map[string]string) []OutputFi
 	return files
 }
 
-func collectTypeReferences(typ *typegraph.Type, tracker *importTracker, typeToFile map[string]string) {
+func collectTypeReferences(typ *graph.Type, tracker *importTracker, typeToFile map[string]string) {
 	for _, field := range typ.Fields {
 		collectTypeRefReferences(field.Type, tracker, typeToFile)
 	}
@@ -101,8 +101,8 @@ func collectTypeReferences(typ *typegraph.Type, tracker *importTracker, typeToFi
 	}
 }
 
-func collectTypeRefReferences(ref *typegraph.TypeRef, tracker *importTracker, typeToFile map[string]string) {
-	ref.Walk(func(r *typegraph.TypeRef) {
+func collectTypeRefReferences(ref *graph.TypeRef, tracker *importTracker, typeToFile map[string]string) {
+	ref.Walk(func(r *graph.TypeRef) {
 		if r.TypeName != "" {
 			if target, ok := typeToFile[r.TypeName]; ok {
 				tracker.AddImport(target, r.TypeName)
