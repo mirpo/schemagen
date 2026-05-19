@@ -137,13 +137,3 @@ func BuildTargets(flags *GenerationFlags) []GenerationTarget {
 	}
 	return targets
 }
-
-func RunTargets(targets []GenerationTarget, flags *GenerationFlags, schemas []*parse.NamedSchema) error {
-	for _, t := range targets {
-		cfg := ConfigFromFlags(flags, schemas, t.Dir, t.Lang)
-		if err := Run(cfg); err != nil {
-			return err
-		}
-	}
-	return nil
-}

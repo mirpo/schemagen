@@ -98,4 +98,4 @@ echo "=== Generating TS-ZOD-ONLY-EXTRACTED mode outputs (--ts-zod-only --extract
 ./schemagen generate testdata/schemas/anyof/ --out-ts testdata/expected/ts-zod-only-extracted/anyof --ts-zod-only --extract-inline --disable-timestamp
 ./schemagen generate testdata/schemas/allof/ --out-ts testdata/expected/ts-zod-only-extracted/allof --ts-zod-only --extract-inline --disable-timestamp
 
-# Note: Go always extracts inline types (no go-extracted needed, see pkg/generation/pipeline.go)
+# Note: Go always extracts inline types (no go-extracted needed, see pkg/pipeline/pipeline.go)
