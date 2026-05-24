@@ -3,8 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/mirpo/schemagen/pkg/errors"
-	"github.com/mirpo/schemagen/pkg/schema"
+	"github.com/mirpo/schemagen/pkg/parse"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -36,13 +35,10 @@ Exit codes:
 func runValidate(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
-	// Use pkg/schema loader to validate schemas
-	// If it can load and parse them, they're valid
-	loader := schema.NewLoader()
-	schemas, err := loader.Load(inputPath)
+	schemas, err := parse.Load(inputPath)
 	if err != nil {
 		log.Error().Err(err).Str("input", inputPath).Msg("Schema validation failed")
-		return errors.Wrap(err, "validation failed")
+		return wrapErr(err, "validation failed")
 	}
 
 	log.Info().Int("count", len(schemas)).Msg("All schemas are valid")

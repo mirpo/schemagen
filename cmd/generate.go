@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"github.com/mirpo/schemagen/pkg/errors"
-	"github.com/mirpo/schemagen/pkg/generation"
-	"github.com/mirpo/schemagen/pkg/schema"
+	"github.com/mirpo/schemagen/pkg/parse"
+	"github.com/mirpo/schemagen/pkg/pipeline"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -33,20 +32,19 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	flags := GetGenerationFlags(cmd)
 
 	log.Info().Str("input", input).Msg("Loading schemas")
-	loader := schema.NewLoader()
-	schemas, err := loader.Load(input)
+	schemas, err := parse.Load(input)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load schemas")
-		return errors.Wrap(err, "loading schemas")
+		return wrapErr(err, "loading schemas")
 	}
 	log.Info().Int("count", len(schemas)).Msg("Loaded schemas")
 
-	targets := generation.BuildTargets(flags)
+	targets := pipeline.BuildTargets(flags)
 	for _, t := range targets {
-		cfg := generation.ConfigFromFlags(flags, schemas, loader.Compiler(), t.Dir, t.Lang)
-		if err := generation.Run(cfg); err != nil {
+		cfg := pipeline.ConfigFromFlags(flags, schemas, t.Dir, t.Lang)
+		if err := pipeline.Run(cfg); err != nil {
 			log.Error().Err(err).Str("lang", string(t.Lang)).Msg("Generation failed")
-			return errors.Wrap(err, "generating "+string(t.Lang))
+			return wrapErr(err, "generating "+string(t.Lang))
 		}
 		log.Info().Str("dir", t.Dir).Str("lang", string(t.Lang)).Msg("Generation complete")
 	}

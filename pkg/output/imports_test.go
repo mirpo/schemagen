@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mirpo/schemagen/pkg/typegraph"
+	"github.com/mirpo/schemagen/pkg/graph"
 )
 
 func TestImportTracker_BasicBehavior(t *testing.T) {
@@ -53,17 +53,17 @@ func TestImportTracker_TypeNamesSorted(t *testing.T) {
 }
 
 func TestCollectTypeReferences_DeepTraversal(t *testing.T) {
-	typ := &typegraph.Type{
+	typ := &graph.Type{
 		Name: "Wrapper",
-		Fields: []*typegraph.Field{
+		Fields: []*graph.Field{
 			{
-				Type: &typegraph.TypeRef{
-					Kind: typegraph.KindMap,
-					ValueType: &typegraph.TypeRef{
-						Kind: typegraph.KindArray,
-						ItemType: &typegraph.TypeRef{
-							Kind: typegraph.KindUnion,
-							UnionMembers: []*typegraph.TypeRef{
+				Type: &graph.TypeRef{
+					Kind: graph.KindMap,
+					ValueType: &graph.TypeRef{
+						Kind: graph.KindArray,
+						ItemType: &graph.TypeRef{
+							Kind: graph.KindUnion,
+							UnionMembers: []*graph.TypeRef{
 								{TypeName: "A"},
 								{TypeName: "B"},
 							},
@@ -90,13 +90,13 @@ func TestCollectTypeReferences_DeepTraversal(t *testing.T) {
 }
 
 func TestCollectTypeReferences_UnionMembers(t *testing.T) {
-	typ := &typegraph.Type{
+	typ := &graph.Type{
 		Name: "Shape",
-		Kind: typegraph.KindUnion,
-		UnionMembers: []*typegraph.TypeRef{
-			{Kind: typegraph.KindRef, TypeName: "Circle"},
-			{Kind: typegraph.KindRef, TypeName: "Square"},
-			{Kind: typegraph.KindRef, TypeName: "Triangle"},
+		Kind: graph.KindUnion,
+		UnionMembers: []*graph.TypeRef{
+			{Kind: graph.KindRef, TypeName: "Circle"},
+			{Kind: graph.KindRef, TypeName: "Square"},
+			{Kind: graph.KindRef, TypeName: "Triangle"},
 		},
 	}
 
@@ -122,12 +122,12 @@ func TestComputeImports_Integration(t *testing.T) {
 	files := []OutputFile{
 		{
 			RelativePath: "event.ts",
-			Types: []*typegraph.Type{
+			Types: []*graph.Type{
 				{
 					Name: "Event",
-					Fields: []*typegraph.Field{
+					Fields: []*graph.Field{
 						{
-							Type: &typegraph.TypeRef{
+							Type: &graph.TypeRef{
 								TypeName: "Header",
 							},
 						},
@@ -137,7 +137,7 @@ func TestComputeImports_Integration(t *testing.T) {
 		},
 		{
 			RelativePath: "header.ts",
-			Types: []*typegraph.Type{
+			Types: []*graph.Type{
 				{Name: "Header"},
 			},
 		},

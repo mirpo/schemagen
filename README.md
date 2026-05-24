@@ -1,6 +1,6 @@
 # schemagen
 
-Generate TypeScript, Python, and Go types from JSON Schema. One binary, zero dependencies.
+Generate TypeScript, Python, and Go types from JSON Schema (JSON and YAML). One binary, zero dependencies.
 
 ## Install
 
@@ -35,6 +35,9 @@ schemagen generate schemas/ --out-go ./models
 
 # All three at once
 schemagen generate schemas/ --out-ts ./types --out-py ./models --out-go ./models
+
+# YAML schemas work too
+schemagen generate schemas/*.yaml --out-ts ./types
 ```
 
 ## Commands
@@ -48,7 +51,7 @@ These flags are available for all commands:
 
 ### generate
 
-Generate code from JSON Schema files.
+Generate code from JSON Schema files. Input can be a `.json`, `.yaml`, or `.yml` file, a directory, or a glob pattern.
 
 ```bash
 schemagen generate <input> [flags]
@@ -111,25 +114,53 @@ Show what would change if you regenerated.
 schemagen diff schemas/ --out-ts ./types
 ```
 
+**Flags:**
+- `--no-color` - Disable colored diff output
+
+## Schema Support
+
+### Types
+- **Objects** → structs / interfaces / BaseModel classes
+- **Enums** → string/int/mixed enums (string unions in TS, `Enum`/`IntEnum` in Python, typed constants in Go)
+- **Primitives** → native types with format handling (uuid, email, date-time, etc.)
+- **Arrays / Maps** → typed slices/arrays/dicts
+- **allOf** → struct embedding (Go), class inheritance (Python), `.extend()` (TS/Zod)
+- **anyOf / oneOf** → union types (`Type1 | Type2` in TS, `Union[Type1, Type2]` in Python, `any` in Go)
+- **$ref** → cross-file references with automatic import generation
+
+### Constraints
+
+JSON Schema validation constraints are propagated to generated code:
+
+| Constraint | TypeScript (Zod) | Python (Pydantic) | Go (validator tags) |
+|---|---|---|---|
+| `minLength` / `maxLength` | `.min()` / `.max()` | `min_length` / `max_length` | `min` / `max` |
+| `pattern` | `.regex()` | `pattern` | — |
+| `minimum` / `maximum` | `.gte()` / `.lte()` | `ge` / `le` | `gte` / `lte` |
+| `exclusiveMinimum` / `exclusiveMaximum` | `.gt()` / `.lt()` | `gt` / `lt` | `gt` / `lt` |
+| `multipleOf` | `.multipleOf()` | `multiple_of` | — |
+| `minItems` / `maxItems` | `.min()` / `.max()` | `min_length` / `max_length` | `min` / `max` |
+
+### Input Formats
+- JSON Schema (`.json`)
+- YAML Schema (`.yaml`, `.yml`)
+
 ## What it generates
 
 ### TypeScript
-- Interfaces with JSDoc comments
-- `@format` annotations (uuid, email, etc.)
-- Union types for enums
+- Interfaces with JSDoc comments and `@format` annotations
+- Union types for anyOf/oneOf, string literal unions for string enums
 - Auto-generated barrel exports (`index.ts`)
 
 ### Python
-- Pydantic v2 BaseModel classes
-- Field constraints (min, max, pattern)
+- Pydantic v2 BaseModel classes with full constraint validation
 - Format types (EmailStr, UUID, datetime)
-- Enum classes
+- Enum classes (`str, Enum` / `IntEnum` / `Literal` for mixed)
 - Optional: `model_config = ConfigDict(extra='allow')` for additionalProperties (use `--py-additional-properties`)
 - Auto-generated barrel exports (`__init__.py`)
 
 ### Go
-- Structs with JSON tags
-- Go validator tags (min, max, email, uuid, etc.)
+- Structs with JSON tags and go-playground/validator tags
 - Embedded structs for allOf composition
 - UUID and time.Time format types
 - Configurable pointer usage and package naming
@@ -156,7 +187,7 @@ schemagen generate schema.json --out-ts ./types --ts-zod-only
 
 Python output uses Pydantic v2 BaseModel with built-in validation:
 
-- Field constraints: `min_length`, `max_length`, `pattern`, `ge`, `le`
+- Field constraints: `min_length`, `max_length`, `pattern`, `ge`, `le`, `gt`, `lt`, `multiple_of`
 - Format types: `EmailStr`, `UUID`, `datetime`
 - Enums with string/int values
 
