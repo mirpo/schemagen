@@ -113,11 +113,7 @@ func parseObjectBody(dec *json.Decoder) (*SchemaNode, error) {
 		case "maxLength":
 			node.MaxLength, err = decodeIntPtr(dec)
 		case "pattern":
-			var s string
-			s, err = decodeString(dec)
-			if err == nil {
-				node.Pattern = &s
-			}
+			node.Pattern, err = decodeStringPtr(dec)
 		case "minimum":
 			node.Minimum, err = decodeFloatPtr(dec)
 		case "maximum":
@@ -164,6 +160,41 @@ func decodeExclusiveLimit(dec *json.Decoder) (*float64, error) {
 	}
 }
 
+func expectDelim(dec *json.Decoder, delim json.Delim) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	if d, ok := tok.(json.Delim); !ok || d != delim {
+		return fmt.Errorf("expected '%c', got %v", delim, tok)
+	}
+	return nil
+}
+
+// drainContainer runs each over every element of the current array or object body,
+// then consumes the closing delimiter.
+func drainContainer(dec *json.Decoder, each func() error) error {
+	for dec.More() {
+		if err := each(); err != nil {
+			return err
+		}
+	}
+	_, err := dec.Token()
+	return err
+}
+
+func decodeNumber(dec *json.Decoder) (json.Number, error) {
+	tok, err := dec.Token()
+	if err != nil {
+		return "", err
+	}
+	n, ok := tok.(json.Number)
+	if !ok {
+		return "", fmt.Errorf("expected number, got %T", tok)
+	}
+	return n, nil
+}
+
 func decodeString(dec *json.Decoder) (string, error) {
 	tok, err := dec.Token()
 	if err != nil {
@@ -174,6 +205,14 @@ func decodeString(dec *json.Decoder) (string, error) {
 		return "", fmt.Errorf("expected string, got %T", tok)
 	}
 	return s, nil
+}
+
+func decodeStringPtr(dec *json.Decoder) (*string, error) {
+	s, err := decodeString(dec)
+	if err != nil {
+		return nil, err
+	}
+	return &s, nil
 }
 
 func decodeStringOrSlice(dec *json.Decoder) (StringOrSlice, error) {
@@ -189,14 +228,15 @@ func decodeStringOrSlice(dec *json.Decoder) (StringOrSlice, error) {
 			return nil, fmt.Errorf("expected '[' for type array, got %v", v)
 		}
 		var result StringOrSlice
-		for dec.More() {
+		err := drainContainer(dec, func() error {
 			s, err := decodeString(dec)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			result = append(result, s)
-		}
-		if _, err := dec.Token(); err != nil {
+			return nil
+		})
+		if err != nil {
 			return nil, err
 		}
 		return result, nil
@@ -206,92 +246,80 @@ func decodeStringOrSlice(dec *json.Decoder) (StringOrSlice, error) {
 }
 
 func decodeStringSlice(dec *json.Decoder) ([]string, error) {
-	tok, err := dec.Token()
-	if err != nil {
+	if err := expectDelim(dec, '['); err != nil {
 		return nil, err
 	}
-	if d, ok := tok.(json.Delim); !ok || d != '[' {
-		return nil, fmt.Errorf("expected '[', got %v", tok)
-	}
 	var result []string
-	for dec.More() {
+	err := drainContainer(dec, func() error {
 		s, err := decodeString(dec)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result = append(result, s)
-	}
-	if _, err := dec.Token(); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
 func decodeNamedSchemas(dec *json.Decoder) ([]NamedSchema, error) {
-	tok, err := dec.Token()
-	if err != nil {
+	if err := expectDelim(dec, '{'); err != nil {
 		return nil, err
 	}
-	if d, ok := tok.(json.Delim); !ok || d != '{' {
-		return nil, fmt.Errorf("expected '{', got %v", tok)
-	}
 	var result []NamedSchema
-	for dec.More() {
+	err := drainContainer(dec, func() error {
 		name, err := decodeString(dec)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		schema, err := parseNode(dec)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result = append(result, NamedSchema{Name: name, Schema: schema})
-	}
-	if _, err := dec.Token(); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
 func decodeSchemaSlice(dec *json.Decoder) ([]*SchemaNode, error) {
-	tok, err := dec.Token()
-	if err != nil {
+	if err := expectDelim(dec, '['); err != nil {
 		return nil, err
 	}
-	if d, ok := tok.(json.Delim); !ok || d != '[' {
-		return nil, fmt.Errorf("expected '[', got %v", tok)
-	}
 	var result []*SchemaNode
-	for dec.More() {
+	err := drainContainer(dec, func() error {
 		n, err := parseNode(dec)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result = append(result, n)
-	}
-	if _, err := dec.Token(); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
 func decodeAnySlice(dec *json.Decoder) ([]any, error) {
-	tok, err := dec.Token()
-	if err != nil {
+	if err := expectDelim(dec, '['); err != nil {
 		return nil, err
 	}
-	if d, ok := tok.(json.Delim); !ok || d != '[' {
-		return nil, fmt.Errorf("expected '[', got %v", tok)
-	}
 	var result []any
-	for dec.More() {
+	err := drainContainer(dec, func() error {
 		v, err := decodeAny(dec)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		result = append(result, v)
-	}
-	if _, err := dec.Token(); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -325,35 +353,37 @@ func decodeComplexValue(dec *json.Decoder, d json.Delim) (any, error) {
 	switch d {
 	case '{':
 		obj := make(map[string]any)
-		for dec.More() {
+		err := drainContainer(dec, func() error {
 			keyTok, err := dec.Token()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			key, ok := keyTok.(string)
 			if !ok {
-				return nil, fmt.Errorf("expected string key, got %T", keyTok)
+				return fmt.Errorf("expected string key, got %T", keyTok)
 			}
 			val, err := decodeAny(dec)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			obj[key] = val
-		}
-		if _, err := dec.Token(); err != nil {
+			return nil
+		})
+		if err != nil {
 			return nil, err
 		}
 		return obj, nil
 	case '[':
 		var arr []any
-		for dec.More() {
+		err := drainContainer(dec, func() error {
 			val, err := decodeAny(dec)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			arr = append(arr, val)
-		}
-		if _, err := dec.Token(); err != nil {
+			return nil
+		})
+		if err != nil {
 			return nil, err
 		}
 		return arr, nil
@@ -362,13 +392,9 @@ func decodeComplexValue(dec *json.Decoder, d json.Delim) (any, error) {
 }
 
 func decodeIntPtr(dec *json.Decoder) (*int, error) {
-	tok, err := dec.Token()
+	n, err := decodeNumber(dec)
 	if err != nil {
 		return nil, err
-	}
-	n, ok := tok.(json.Number)
-	if !ok {
-		return nil, fmt.Errorf("expected number, got %T", tok)
 	}
 	i, err := n.Int64()
 	if err != nil {
@@ -379,13 +405,9 @@ func decodeIntPtr(dec *json.Decoder) (*int, error) {
 }
 
 func decodeFloatPtr(dec *json.Decoder) (*float64, error) {
-	tok, err := dec.Token()
+	n, err := decodeNumber(dec)
 	if err != nil {
 		return nil, err
-	}
-	n, ok := tok.(json.Number)
-	if !ok {
-		return nil, fmt.Errorf("expected number, got %T", tok)
 	}
 	f, err := n.Float64()
 	if err != nil {
