@@ -119,6 +119,32 @@ func TestCompareFiles(t *testing.T) {
 		assert.Equal(t, "models/user.ts", diffs[0].Path)
 		assert.Equal(t, StatusModified, diffs[0].Status)
 	})
+
+	t.Run("mixed drift collects every status", func(t *testing.T) {
+		dir := t.TempDir()
+		createTestOutput(t, dir, "same.ts", "identical")
+		createTestOutput(t, dir, "changed.ts", "old")
+		createTestOutput(t, dir, "gone.ts", "removed")
+
+		generated := map[string][]byte{
+			"same.ts":    []byte("identical"),
+			"changed.ts": []byte("new"),
+			"added.ts":   []byte("brand new"),
+		}
+		diffs, err := compareFiles(generated, dir)
+		require.NoError(t, err)
+
+		// Diff order is non-deterministic (map iteration), so assert as a set.
+		got := make(map[string]FileStatus, len(diffs))
+		for _, d := range diffs {
+			got[d.Path] = d.Status
+		}
+		assert.Equal(t, map[string]FileStatus{
+			"added.ts":   StatusNew,
+			"changed.ts": StatusModified,
+			"gone.ts":    StatusDeleted,
+		}, got)
+	})
 }
 
 func TestRun(t *testing.T) {

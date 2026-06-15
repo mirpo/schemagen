@@ -64,8 +64,21 @@ func Run(cfg *Config) (*Result, error) {
 }
 
 func compareFiles(generated map[string][]byte, existingDir string) ([]FileDiff, error) {
-	var diffs []FileDiff
+	newAndModified, err := findNewAndModified(generated, existingDir)
+	if err != nil {
+		return nil, err
+	}
+	deleted, err := findDeleted(generated, existingDir)
+	if err != nil {
+		return nil, err
+	}
+	return append(newAndModified, deleted...), nil
+}
 
+// findNewAndModified walks the generated files and classifies each against its
+// counterpart on disk: absent on disk is new, present-but-differing is modified.
+func findNewAndModified(generated map[string][]byte, existingDir string) ([]FileDiff, error) {
+	var diffs []FileDiff
 	for path, genBytes := range generated {
 		genContent := normalizeLineEndings(string(genBytes))
 
@@ -84,7 +97,14 @@ func compareFiles(generated map[string][]byte, existingDir string) ([]FileDiff, 
 			diffs = append(diffs, FileDiff{Path: path, Status: StatusModified, OldContent: existContent, NewContent: genContent})
 		}
 	}
+	return diffs, nil
+}
 
+// findDeleted walks the existing directory and reports files that have no
+// generated counterpart. Walk-relative paths are normalized with ToSlash so
+// the lookup keys match the slash-delimited keys in the generated map.
+func findDeleted(generated map[string][]byte, existingDir string) ([]FileDiff, error) {
+	var diffs []FileDiff
 	if info, err := os.Stat(existingDir); err == nil && info.IsDir() {
 		err := filepath.Walk(existingDir, func(existPath string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
@@ -108,7 +128,6 @@ func compareFiles(generated map[string][]byte, existingDir string) ([]FileDiff, 
 			return nil, err
 		}
 	}
-
 	return diffs, nil
 }
 
