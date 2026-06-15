@@ -517,6 +517,26 @@ func TestBuild_AllOfFieldDedup(t *testing.T) {
 	assert.NotNil(t, fm["extra"])
 }
 
+func TestBuild_AllOfBranchRequired(t *testing.T) {
+	g := buildOne(t, "Merged", `{
+		"allOf": [
+			{
+				"type": "object",
+				"required": ["a"],
+				"properties": {
+					"a": {"type": "string"},
+					"b": {"type": "string"}
+				}
+			}
+		]
+	}`, BuildConfig{})
+
+	require.Len(t, g.Types, 1)
+	fm := fieldMap(g.Types[0])
+	assert.True(t, fm["a"].Required, "a is required via the branch-level required array")
+	assert.False(t, fm["b"].Required, "b is not required")
+}
+
 // ==================== $ref Resolution ====================
 
 func TestBuild_RefResolution(t *testing.T) {
