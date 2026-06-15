@@ -317,6 +317,20 @@ func TestEmitter_TypeRefToZod(t *testing.T) {
 	})
 }
 
+// Inline non-string enums render via the same multi-line z.union form as
+// top-level enums (shared enumToZod helper), not a single-line union.
+func TestEmitter_InlineEnum_NonStringUsesMultilineUnion(t *testing.T) {
+	e := createTestEmitter(nil)
+	ref := &graph.TypeRef{
+		Kind:       graph.KindEnum,
+		EnumValues: []graph.EnumValue{{Value: 1}, {Value: 2}},
+	}
+	result := e.typeRefToZod(ref, nil)
+	for _, want := range []string{"z.union([\n", "  z.literal(1),\n", "  z.literal(2),\n"} {
+		assert.Contains(t, result, want)
+	}
+}
+
 // Property Name Quoting
 
 func TestEmitter_GenerateField_PropertyNames(t *testing.T) {

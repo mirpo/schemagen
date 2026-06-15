@@ -115,27 +115,30 @@ func (e *Emitter) determineObjectMode(additionalProps *graph.AdditionalPropsConf
 	return "z.object", ""
 }
 
-func (e *Emitter) generateEnumSchema(typ *graph.Type, schemaName string) string {
-	category := graph.AnalyzeEnumValues(typ.EnumValues)
-
-	var schema string
-	if category.AllStrings && len(typ.EnumValues) > 0 {
-		values := make([]string, len(typ.EnumValues))
-		for i, ev := range typ.EnumValues {
-			values[i] = formatLiteral(ev.Value)
+// enumToZod renders enum values as a Zod schema fragment: z.enum for all-string
+// enums, otherwise a multi-line z.union of literals. It assumes a non-empty
+// value list for the z.enum form; callers handle their own empty-value case.
+func enumToZod(values []graph.EnumValue) string {
+	category := graph.AnalyzeEnumValues(values)
+	if category.AllStrings && len(values) > 0 {
+		strs := make([]string, len(values))
+		for i, ev := range values {
+			strs[i] = formatLiteral(ev.Value)
 		}
-		schema = fmt.Sprintf("z.enum([%s])", strings.Join(values, ", "))
-	} else {
-		var sb strings.Builder
-		sb.WriteString("z.union([\n")
-		for _, ev := range typ.EnumValues {
-			fmt.Fprintf(&sb, "  %s,\n", formatZodLiteral(ev.Value))
-		}
-		sb.WriteString("])")
-		schema = sb.String()
+		return fmt.Sprintf("z.enum([%s])", strings.Join(strs, ", "))
 	}
 
-	return wrapSchemaExport(schemaName, schema, typ.Description)
+	var sb strings.Builder
+	sb.WriteString("z.union([\n")
+	for _, ev := range values {
+		fmt.Fprintf(&sb, "  %s,\n", formatZodLiteral(ev.Value))
+	}
+	sb.WriteString("])")
+	return sb.String()
+}
+
+func (e *Emitter) generateEnumSchema(typ *graph.Type, schemaName string) string {
+	return wrapSchemaExport(schemaName, enumToZod(typ.EnumValues), typ.Description)
 }
 
 func (e *Emitter) generateUnionSchema(typ *graph.Type, schemaName string) string {
