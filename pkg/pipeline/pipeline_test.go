@@ -161,6 +161,28 @@ func TestApplyDefaults(t *testing.T) {
 		applyDefaults(cfg)
 		assert.Equal(t, output.StrategyBundle, cfg.OutputStrategy)
 	})
+
+	t.Run("go forces extract inline even when explicitly disabled", func(t *testing.T) {
+		cfg := &Config{Language: LanguageGo, ExtractInline: false}
+		applyDefaults(cfg)
+		assert.True(t, cfg.ExtractInline, "Go must force inline extraction regardless of the flag")
+	})
+
+	t.Run("python forces extract inline even when explicitly disabled", func(t *testing.T) {
+		cfg := &Config{Language: LanguagePython, ExtractInline: false}
+		applyDefaults(cfg)
+		assert.True(t, cfg.ExtractInline, "Python must force inline extraction regardless of the flag")
+	})
+
+	t.Run("typescript preserves the extract inline flag", func(t *testing.T) {
+		cfg := &Config{Language: LanguageTypeScript, ExtractInline: true}
+		applyDefaults(cfg)
+		assert.True(t, cfg.ExtractInline, "TypeScript must not alter the user's flag")
+
+		cfg = &Config{Language: LanguageTypeScript, ExtractInline: false}
+		applyDefaults(cfg)
+		assert.False(t, cfg.ExtractInline, "TypeScript must not alter the user's flag")
+	})
 }
 
 func TestBuildTargets(t *testing.T) {
