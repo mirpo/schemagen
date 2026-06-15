@@ -46,14 +46,7 @@ func Run(cfg *Config) (*Result, error) {
 
 	var diffs []FileDiff
 	for _, t := range pipeline.BuildTargets(cfg.Flags) {
-		w := pipeline.NewMemoryWriter()
-		pipeCfg := pipeline.ConfigFromFlags(cfg.Flags, schemas, t.Dir, t.Lang)
-		pipeCfg.Writer = w
-		if err := pipeline.Run(pipeCfg); err != nil {
-			return nil, err
-		}
-
-		langDiffs, err := compareFiles(w.Files, t.Dir)
+		langDiffs, err := generateAndDiffTarget(schemas, t, cfg.Flags)
 		if err != nil {
 			return nil, err
 		}
@@ -61,6 +54,24 @@ func Run(cfg *Config) (*Result, error) {
 	}
 
 	return &Result{Diffs: diffs}, nil
+}
+
+// generateAndDiffTarget generates one language target into memory and diffs the
+// result against its output directory. Errors are wrapped with the target's
+// dir/lang so a failure in one target is attributable.
+func generateAndDiffTarget(schemas []*parse.NamedSchema, t pipeline.GenerationTarget, flags *pipeline.GenerationFlags) ([]FileDiff, error) {
+	w := pipeline.NewMemoryWriter()
+	pipeCfg := pipeline.ConfigFromFlags(flags, schemas, t.Dir, t.Lang)
+	pipeCfg.Writer = w
+	if err := pipeline.Run(pipeCfg); err != nil {
+		return nil, fmt.Errorf("target %s/%s: %w", t.Dir, t.Lang, err)
+	}
+
+	diffs, err := compareFiles(w.Files, t.Dir)
+	if err != nil {
+		return nil, fmt.Errorf("target %s/%s: %w", t.Dir, t.Lang, err)
+	}
+	return diffs, nil
 }
 
 func compareFiles(generated map[string][]byte, existingDir string) ([]FileDiff, error) {

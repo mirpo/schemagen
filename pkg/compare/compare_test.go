@@ -147,6 +147,16 @@ func TestCompareFiles(t *testing.T) {
 	})
 }
 
+func TestGenerateAndDiffTarget_WrapsErrorWithTargetContext(t *testing.T) {
+	// Empty schemas make pipeline.Run fail validation; the surfaced error
+	// must carry the target's dir and lang so the failing target is known.
+	target := pipeline.GenerationTarget{Dir: "out/ts", Lang: pipeline.LanguageTypeScript}
+	_, err := generateAndDiffTarget(nil, target, &pipeline.GenerationFlags{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "out/ts")
+	assert.Contains(t, err.Error(), string(pipeline.LanguageTypeScript))
+}
+
 func TestRun(t *testing.T) {
 	t.Run("no drift", func(t *testing.T) {
 		tmpDir := t.TempDir()
