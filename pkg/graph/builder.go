@@ -175,6 +175,15 @@ func (b *builder) buildFields(parentName string, props []parse.NamedSchema, root
 	return fields
 }
 
+// extractNamedType synthesizes a uniquely-named top-level type from an inline
+// definition (via build) and returns a ref to it. Shared by the inline enum and
+// object branches of buildTypeRef when ExtractInlined is enabled.
+func (b *builder) extractNamedType(fieldName string, nullable bool, build func(name string)) *TypeRef {
+	name := b.ensureUniqueName(ToPascalCase(fieldName))
+	build(name)
+	return &TypeRef{Kind: KindRef, TypeName: name, Nullable: nullable}
+}
+
 // unseenProps returns the props whose names have not been seen yet, marking each
 // returned name as seen. allOf uses this to dedup fields across branches with
 // first-occurrence-wins semantics.
@@ -277,10 +286,9 @@ func (b *builder) buildTypeRef(parentName, fieldName string, node *parse.SchemaN
 
 	if node.IsEnum() {
 		if b.cfg.ExtractInlined && fieldName != "" {
-			enumName := ToPascalCase(fieldName)
-			enumName = b.ensureUniqueName(enumName)
-			b.buildEnum(enumName, node)
-			return &TypeRef{Kind: KindRef, TypeName: enumName, Nullable: nullable}
+			return b.extractNamedType(fieldName, nullable, func(name string) {
+				b.buildEnum(name, node)
+			})
 		}
 		prim := PrimUnknown
 		if len(node.Enum) > 0 {
@@ -318,10 +326,9 @@ func (b *builder) buildTypeRef(parentName, fieldName string, node *parse.SchemaN
 
 	if node.IsObject() && len(node.Properties) > 0 {
 		if b.cfg.ExtractInlined && fieldName != "" {
-			objName := ToPascalCase(fieldName)
-			objName = b.ensureUniqueName(objName)
-			b.buildStruct(objName, node, rootName, true)
-			return &TypeRef{Kind: KindRef, TypeName: objName, Nullable: nullable}
+			return b.extractNamedType(fieldName, nullable, func(name string) {
+				b.buildStruct(name, node, rootName, true)
+			})
 		}
 		sortedProps := sortedProperties(node.Properties)
 		fields := b.buildFields(parentName, sortedProps, rootName, node.IsRequired)

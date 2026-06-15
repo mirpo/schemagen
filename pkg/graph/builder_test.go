@@ -685,6 +685,34 @@ func TestBuild_InlineExtraction_ObjectDisabled(t *testing.T) {
 	assert.Len(t, authorField.Type.ObjectFields, 2)
 }
 
+func TestBuild_InlineExtraction_NameCollisionUniquified(t *testing.T) {
+	// A $def named Author already occupies the name, so the extracted inline
+	// object field must be uniquified to Author2, with the field ref following.
+	g := buildOne(t, "BlogPost", `{
+		"type": "object",
+		"properties": {
+			"author": {
+				"type": "object",
+				"properties": {"name": {"type": "string"}}
+			}
+		},
+		"$defs": {
+			"Author": {
+				"type": "object",
+				"properties": {"id": {"type": "string"}}
+			}
+		}
+	}`, BuildConfig{ExtractInlined: true})
+
+	tm := typeMap(g)
+	require.Contains(t, tm, "Author")
+	require.Contains(t, tm, "Author2")
+
+	authorField := fieldMap(tm["BlogPost"])["author"]
+	assert.Equal(t, KindRef, authorField.Type.Kind)
+	assert.Equal(t, "Author2", authorField.Type.TypeName)
+}
+
 // ==================== AdditionalProperties ====================
 
 func TestBuild_AdditionalProperties_BooleanFalse(t *testing.T) {
