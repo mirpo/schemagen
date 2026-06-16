@@ -37,13 +37,8 @@ Exit codes:
 func runVerify(cmd *cobra.Command, args []string) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	input := args[0]
-	flags := GetGenerationFlags(cmd)
 
-	// Run comparison
-	result, err := compare.Run(&compare.Config{
-		Input: input,
-		Flags: flags,
-	})
+	result, err := runCompare(cmd, input)
 	if err != nil {
 		return wrapErr(err, "verification failed")
 	}

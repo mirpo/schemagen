@@ -46,13 +46,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		defer func() { color.NoColor = old }()
 	}
 
-	flags := GetGenerationFlags(cmd)
-
-	// Run comparison
-	result, err := compare.Run(&compare.Config{
-		Input: input,
-		Flags: flags,
-	})
+	result, err := runCompare(cmd, input)
 	if err != nil {
 		return wrapErr(err, "diff failed")
 	}

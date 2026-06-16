@@ -1,9 +1,20 @@
 package cmd
 
 import (
+	"github.com/mirpo/schemagen/pkg/compare"
 	"github.com/mirpo/schemagen/pkg/pipeline"
 	"github.com/spf13/cobra"
 )
+
+// runCompare resolves generation flags from cmd and compares generated output
+// against the existing files at input. Shared by the diff and verify commands;
+// callers handle error wrapping and presentation.
+func runCompare(cmd *cobra.Command, input string) (*compare.Result, error) {
+	return compare.Run(&compare.Config{
+		Input: input,
+		Flags: GetGenerationFlags(cmd),
+	})
+}
 
 func AddGenerationFlags(cmd *cobra.Command) {
 	// Output directory flags
