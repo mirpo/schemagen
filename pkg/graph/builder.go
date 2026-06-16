@@ -148,9 +148,7 @@ func (b *builder) buildStruct(name string, node *parse.SchemaNode, rootName stri
 		props = sortedProperties(props)
 	}
 
-	for _, p := range props {
-		t.Fields = append(t.Fields, b.buildField(name, p, rootName, node.IsRequired(p.Name)))
-	}
+	t.Fields = append(t.Fields, b.buildFields(name, props, rootName, node.IsRequired)...)
 
 	b.graph.AddType(t)
 }
@@ -164,6 +162,41 @@ func (b *builder) buildField(parentName string, p parse.NamedSchema, rootName st
 	}
 	extractConstraints(p.Schema, f)
 	return f
+}
+
+// buildFields builds a Field for each prop in order. isRequired resolves the
+// required flag, absorbing the difference between a plain object (node.IsRequired)
+// and allOf's merged requiredMap.
+func (b *builder) buildFields(parentName string, props []parse.NamedSchema, rootName string, isRequired func(string) bool) []*Field {
+	var fields []*Field
+	for _, p := range props {
+		fields = append(fields, b.buildField(parentName, p, rootName, isRequired(p.Name)))
+	}
+	return fields
+}
+
+// extractNamedType synthesizes a uniquely-named top-level type from an inline
+// definition (via build) and returns a ref to it. Shared by the inline enum and
+// object branches of buildTypeRef when ExtractInlined is enabled.
+func (b *builder) extractNamedType(fieldName string, nullable bool, build func(name string)) *TypeRef {
+	name := b.ensureUniqueName(ToPascalCase(fieldName))
+	build(name)
+	return &TypeRef{Kind: KindRef, TypeName: name, Nullable: nullable}
+}
+
+// unseenProps returns the props whose names have not been seen yet, marking each
+// returned name as seen. allOf uses this to dedup fields across branches with
+// first-occurrence-wins semantics.
+func unseenProps(props []parse.NamedSchema, seen map[string]bool) []parse.NamedSchema {
+	var fresh []parse.NamedSchema
+	for _, p := range props {
+		if seen[p.Name] {
+			continue
+		}
+		seen[p.Name] = true
+		fresh = append(fresh, p)
+	}
+	return fresh
 }
 
 func (b *builder) buildEnum(name string, node *parse.SchemaNode) {
@@ -228,23 +261,13 @@ func (b *builder) buildAllOf(name string, node *parse.SchemaNode, rootName strin
 			for _, req := range branch.Required {
 				requiredMap[req] = true
 			}
-			for _, p := range branch.Properties {
-				if seen[p.Name] {
-					continue
-				}
-				seen[p.Name] = true
-				t.Fields = append(t.Fields, b.buildField(name, p, rootName, requiredMap[p.Name]))
-			}
+			fresh := unseenProps(branch.Properties, seen)
+			t.Fields = append(t.Fields, b.buildFields(name, fresh, rootName, func(n string) bool { return requiredMap[n] })...)
 		}
 	}
 
-	for _, p := range node.Properties {
-		if seen[p.Name] {
-			continue
-		}
-		seen[p.Name] = true
-		t.Fields = append(t.Fields, b.buildField(name, p, rootName, node.IsRequired(p.Name)))
-	}
+	fresh := unseenProps(node.Properties, seen)
+	t.Fields = append(t.Fields, b.buildFields(name, fresh, rootName, node.IsRequired)...)
 
 	b.graph.AddType(t)
 }
@@ -263,10 +286,9 @@ func (b *builder) buildTypeRef(parentName, fieldName string, node *parse.SchemaN
 
 	if node.IsEnum() {
 		if b.cfg.ExtractInlined && fieldName != "" {
-			enumName := ToPascalCase(fieldName)
-			enumName = b.ensureUniqueName(enumName)
-			b.buildEnum(enumName, node)
-			return &TypeRef{Kind: KindRef, TypeName: enumName, Nullable: nullable}
+			return b.extractNamedType(fieldName, nullable, func(name string) {
+				b.buildEnum(name, node)
+			})
 		}
 		prim := PrimUnknown
 		if len(node.Enum) > 0 {
@@ -304,16 +326,12 @@ func (b *builder) buildTypeRef(parentName, fieldName string, node *parse.SchemaN
 
 	if node.IsObject() && len(node.Properties) > 0 {
 		if b.cfg.ExtractInlined && fieldName != "" {
-			objName := ToPascalCase(fieldName)
-			objName = b.ensureUniqueName(objName)
-			b.buildStruct(objName, node, rootName, true)
-			return &TypeRef{Kind: KindRef, TypeName: objName, Nullable: nullable}
+			return b.extractNamedType(fieldName, nullable, func(name string) {
+				b.buildStruct(name, node, rootName, true)
+			})
 		}
 		sortedProps := sortedProperties(node.Properties)
-		var fields []*Field
-		for _, p := range sortedProps {
-			fields = append(fields, b.buildField(parentName, p, rootName, node.IsRequired(p.Name)))
-		}
+		fields := b.buildFields(parentName, sortedProps, rootName, node.IsRequired)
 		return &TypeRef{Kind: KindInterface, ObjectFields: fields, Nullable: nullable}
 	}
 

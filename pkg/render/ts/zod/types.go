@@ -98,22 +98,7 @@ func (e *Emitter) enumValuesToZod(values []graph.EnumValue) string {
 	if len(values) == 0 {
 		return "z.never()"
 	}
-
-	category := graph.AnalyzeEnumValues(values)
-
-	if category.AllStrings {
-		strValues := make([]string, len(values))
-		for i, v := range values {
-			strValues[i] = fmt.Sprintf("%q", v.Value.(string))
-		}
-		return fmt.Sprintf("z.enum([%s])", strings.Join(strValues, ", "))
-	}
-
-	literals := make([]string, len(values))
-	for i, v := range values {
-		literals[i] = formatZodLiteral(v.Value)
-	}
-	return fmt.Sprintf("z.union([%s])", strings.Join(literals, ", "))
+	return enumToZod(values)
 }
 
 func (e *Emitter) generateInlineObject(fields []*graph.Field) string {

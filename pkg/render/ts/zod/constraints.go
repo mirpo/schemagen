@@ -7,16 +7,16 @@ import (
 	"github.com/mirpo/schemagen/pkg/graph"
 )
 
-func zodMinLength(n int) string      { return fmt.Sprintf("min(%d)", n) }
-func zodMaxLength(n int) string      { return fmt.Sprintf("max(%d)", n) }
+// zodMin/zodMax map to Zod's .min()/.max(), used for both string length and
+// array item counts (Zod's method is length-agnostic).
+func zodMin(n int) string            { return fmt.Sprintf("min(%d)", n) }
+func zodMax(n int) string            { return fmt.Sprintf("max(%d)", n) }
 func zodPattern(p string) string     { return fmt.Sprintf("regex(/%s/)", escapeRegex(p)) }
 func zodGte(n float64) string        { return fmt.Sprintf("gte(%v)", formatNumber(n)) }
 func zodLte(n float64) string        { return fmt.Sprintf("lte(%v)", formatNumber(n)) }
 func zodGt(n float64) string         { return fmt.Sprintf("gt(%v)", formatNumber(n)) }
 func zodLt(n float64) string         { return fmt.Sprintf("lt(%v)", formatNumber(n)) }
 func zodMultipleOf(n float64) string { return fmt.Sprintf("multipleOf(%v)", formatNumber(n)) }
-func zodMinItems(n int) string       { return fmt.Sprintf("min(%d)", n) }
-func zodMaxItems(n int) string       { return fmt.Sprintf("max(%d)", n) }
 
 func buildStringConstraints(field *graph.Field) []string {
 	if field == nil {
@@ -24,10 +24,10 @@ func buildStringConstraints(field *graph.Field) []string {
 	}
 	var result []string
 	if field.MinLength != nil {
-		result = append(result, zodMinLength(*field.MinLength))
+		result = append(result, zodMin(*field.MinLength))
 	}
 	if field.MaxLength != nil {
-		result = append(result, zodMaxLength(*field.MaxLength))
+		result = append(result, zodMax(*field.MaxLength))
 	}
 	if field.Pattern != nil {
 		result = append(result, zodPattern(*field.Pattern))
@@ -64,10 +64,10 @@ func buildArrayConstraints(field *graph.Field) []string {
 	}
 	var result []string
 	if field.MinItems != nil {
-		result = append(result, zodMinItems(*field.MinItems))
+		result = append(result, zodMin(*field.MinItems))
 	}
 	if field.MaxItems != nil {
-		result = append(result, zodMaxItems(*field.MaxItems))
+		result = append(result, zodMax(*field.MaxItems))
 	}
 	return result
 }

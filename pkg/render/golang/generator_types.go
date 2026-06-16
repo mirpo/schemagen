@@ -77,28 +77,14 @@ func importsForPrimitive(p graph.PrimitiveKind) string {
 	}
 }
 
-func fieldHasValidation(field *graph.Field) bool {
-	if field.Required || field.HasConstraints() {
-		return true
-	}
-	if field.Type != nil {
-		switch field.Type.Format {
-		case graph.FormatEmail, graph.FormatURI, graph.FormatURL, graph.FormatUUID:
-			return true
-		}
-		if len(field.Type.EnumValues) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 func (g *Generator) scanTypeForImports(typ *graph.Type) {
 	switch typ.Kind {
 	case graph.KindStruct:
 		for _, field := range typ.Fields {
 			g.scanTypeRefForImports(field.Type)
-			if fieldHasValidation(field) {
+			// The blank validator import is only needed when a field emits a
+			// validate: tag (e.g. not for Pattern/MultipleOf, which have no tag).
+			if g.fieldValidateTag(field) != "" {
 				g.imports[validatorImport] = "_"
 			}
 		}

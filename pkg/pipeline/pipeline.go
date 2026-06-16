@@ -136,9 +136,7 @@ func applyDefaults(cfg *Config) {
 		if cfg.Python == nil {
 			cfg.Python = &PythonConfig{}
 		}
-		cfg.ExtractInline = true
 	case LanguageGo:
-		cfg.ExtractInline = true
 		if cfg.Go == nil {
 			cfg.Go = &GoConfig{
 				PackageName: "models",
@@ -146,6 +144,19 @@ func applyDefaults(cfg *Config) {
 				OmitEmpty:   true,
 			}
 		}
+	}
+
+	applyLanguageConstraints(cfg)
+}
+
+// applyLanguageConstraints enforces invariants a language imposes regardless of
+// user flags. The Go and Python generators cannot represent inline (anonymous)
+// types, so inline extraction is always forced on for them — this overrides the
+// ExtractInline flag rather than defaulting it.
+func applyLanguageConstraints(cfg *Config) {
+	switch cfg.Language {
+	case LanguagePython, LanguageGo:
+		cfg.ExtractInline = true
 	}
 }
 

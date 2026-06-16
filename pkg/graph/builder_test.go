@@ -517,6 +517,26 @@ func TestBuild_AllOfFieldDedup(t *testing.T) {
 	assert.NotNil(t, fm["extra"])
 }
 
+func TestBuild_AllOfBranchRequired(t *testing.T) {
+	g := buildOne(t, "Merged", `{
+		"allOf": [
+			{
+				"type": "object",
+				"required": ["a"],
+				"properties": {
+					"a": {"type": "string"},
+					"b": {"type": "string"}
+				}
+			}
+		]
+	}`, BuildConfig{})
+
+	require.Len(t, g.Types, 1)
+	fm := fieldMap(g.Types[0])
+	assert.True(t, fm["a"].Required, "a is required via the branch-level required array")
+	assert.False(t, fm["b"].Required, "b is not required")
+}
+
 // ==================== $ref Resolution ====================
 
 func TestBuild_RefResolution(t *testing.T) {
@@ -663,6 +683,34 @@ func TestBuild_InlineExtraction_ObjectDisabled(t *testing.T) {
 	authorField := fieldMap(g.Types[0])["author"]
 	assert.Equal(t, KindInterface, authorField.Type.Kind)
 	assert.Len(t, authorField.Type.ObjectFields, 2)
+}
+
+func TestBuild_InlineExtraction_NameCollisionUniquified(t *testing.T) {
+	// A $def named Author already occupies the name, so the extracted inline
+	// object field must be uniquified to Author2, with the field ref following.
+	g := buildOne(t, "BlogPost", `{
+		"type": "object",
+		"properties": {
+			"author": {
+				"type": "object",
+				"properties": {"name": {"type": "string"}}
+			}
+		},
+		"$defs": {
+			"Author": {
+				"type": "object",
+				"properties": {"id": {"type": "string"}}
+			}
+		}
+	}`, BuildConfig{ExtractInlined: true})
+
+	tm := typeMap(g)
+	require.Contains(t, tm, "Author")
+	require.Contains(t, tm, "Author2")
+
+	authorField := fieldMap(tm["BlogPost"])["author"]
+	assert.Equal(t, KindRef, authorField.Type.Kind)
+	assert.Equal(t, "Author2", authorField.Type.TypeName)
 }
 
 // ==================== AdditionalProperties ====================

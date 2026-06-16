@@ -75,6 +75,21 @@ func TestParseStringOrSlice(t *testing.T) {
 	})
 }
 
+func TestParseEmptyArrays(t *testing.T) {
+	input := `{
+		"type": [],
+		"required": [],
+		"allOf": [],
+		"enum": []
+	}`
+	node, err := ParseJSON(strings.NewReader(input))
+	require.NoError(t, err)
+	assert.Empty(t, node.Type)
+	assert.Empty(t, node.Required)
+	assert.Empty(t, node.AllOf)
+	assert.Empty(t, node.Enum)
+}
+
 func TestParsePropertyOrderPreserved(t *testing.T) {
 	input := `{
 		"type": "object",
@@ -241,6 +256,34 @@ func TestParseConstraints(t *testing.T) {
 	assert.Equal(t, 1, *arr.MinItems)
 	require.NotNil(t, arr.MaxItems)
 	assert.Equal(t, 10, *arr.MaxItems)
+}
+
+func TestParsePattern(t *testing.T) {
+	t.Run("present sets pointer", func(t *testing.T) {
+		node, err := ParseJSON(strings.NewReader(`{"pattern": "^x$"}`))
+		require.NoError(t, err)
+		require.NotNil(t, node.Pattern)
+		assert.Equal(t, "^x$", *node.Pattern)
+	})
+
+	t.Run("empty string is a non-nil pointer", func(t *testing.T) {
+		node, err := ParseJSON(strings.NewReader(`{"pattern": ""}`))
+		require.NoError(t, err)
+		require.NotNil(t, node.Pattern)
+		assert.Empty(t, *node.Pattern)
+	})
+
+	t.Run("absent is nil", func(t *testing.T) {
+		node, err := ParseJSON(strings.NewReader(`{"type": "string"}`))
+		require.NoError(t, err)
+		assert.Nil(t, node.Pattern)
+	})
+
+	t.Run("non-string errors", func(t *testing.T) {
+		_, err := ParseJSON(strings.NewReader(`{"pattern": 123}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "expected string")
+	})
 }
 
 func TestParseExclusiveLimitBoolean(t *testing.T) {
@@ -502,6 +545,41 @@ func TestParseMalformedJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseJSON(strings.NewReader(tt.input))
 			assert.Error(t, err)
+		})
+	}
+}
+
+// TestParseTypeMismatchErrors exercises the parser's hand-written type-assertion
+// error branches. The wantErr substring verifies the intended branch fired, not
+// just that some error occurred.
+func TestParseTypeMismatchErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		// expectDelim (decodeStringSlice / decodeSchemaSlice / decodeAnySlice)
+		{"required not array", `{"required": "name"}`, "expected '['"},
+		{"allOf not array", `{"allOf": {}}`, "expected '['"},
+		{"enum not array", `{"enum": 1}`, "expected '['"},
+		// decodeNumber (decodeIntPtr / decodeFloatPtr)
+		{"minLength not number", `{"minLength": "five"}`, "expected number"},
+		{"maximum not number", `{"maximum": "x"}`, "expected number"},
+		// decodeString
+		{"title not string", `{"title": 123}`, "expected string"},
+		// decodeStringOrSlice
+		{"type wrong kind", `{"type": 5}`, "expected string or array"},
+		// decodeExclusiveLimit (number or bool only)
+		{"exclusiveMinimum wrong kind", `{"exclusiveMinimum": "x"}`, "expected number or bool"},
+		// decodeAdditionalProperties (bool or object only)
+		{"additionalProperties wrong kind", `{"additionalProperties": 5}`, "expected bool or object"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseJSON(strings.NewReader(tt.input))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }
