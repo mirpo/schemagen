@@ -196,6 +196,15 @@ func TestGenerateFile_ValidatorImport(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, out, "validator")
 	})
+
+	t.Run("absent for pattern-only field which emits no validate tag", func(t *testing.T) {
+		f := field("code", graph.PrimString, false)
+		pattern := "^[a-z]+$"
+		f.Constraints = graph.Constraints{Pattern: &pattern}
+		out, err := gen(&Config{OmitEmpty: false}).GenerateFile([]*graph.Type{structType("User", f)}, nil)
+		require.NoError(t, err)
+		assert.NotContains(t, out, "validator")
+	})
 }
 
 func TestFieldValidateTag_ExclusiveMinMax(t *testing.T) {
@@ -282,51 +291,6 @@ func TestFieldValidateTag_Comprehensive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, g.fieldValidateTag(tt.field))
-		})
-	}
-}
-
-func TestFieldHasValidation(t *testing.T) {
-	tests := []struct {
-		name     string
-		field    *graph.Field
-		expected bool
-	}{
-		{
-			"required",
-			&graph.Field{Required: true},
-			true,
-		},
-		{
-			"has constraints",
-			&graph.Field{Constraints: graph.Constraints{MinLength: intPtr(1)}},
-			true,
-		},
-		{
-			"email format",
-			&graph.Field{Type: &graph.TypeRef{Format: "email"}},
-			true,
-		},
-		{
-			"enum values",
-			&graph.Field{Type: &graph.TypeRef{EnumValues: []graph.EnumValue{{Value: "a"}}}},
-			true,
-		},
-		{
-			"no validation",
-			&graph.Field{Type: &graph.TypeRef{Kind: graph.KindPrimitive}},
-			false,
-		},
-		{
-			"nil type no required",
-			&graph.Field{},
-			false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, fieldHasValidation(tt.field))
 		})
 	}
 }
